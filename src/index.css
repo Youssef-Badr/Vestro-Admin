@@ -1,0 +1,27 @@
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+html[dir="rtl"] {
+    direction: rtl;
+    unicode-bidi: bidi-override;
+  }
+  
+  /* عكس اتجاه flex-row في حالة rtl */
+  [dir="rtl"] .flex-row {
+    flex-direction: row-reverse;
+  }
+  
+  /* عكس النصوص */
+  [dir="rtl"] .text-left {
+    text-align: right !important;
+  }
+  [dir="rtl"] .text-right {
+    text-align: left !important;
+  }
+  
