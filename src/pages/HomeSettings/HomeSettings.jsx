@@ -86,7 +86,7 @@ export default function HomeSettings() {
   };
 
   return (
-    <div className="p-6 bg-white dark:bg-black min-h-screen text-black dark:text-white transition-colors duration-300">
+    <div className="p-6 bg-white dark:bg-black min-h-screen text-black dark:text-white transition-colors duration-300 mt-14">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-black mb-10 uppercase italic tracking-tighter border-l-8 border-[#86FE05] pl-4">
           Home Page <span className="text-[#86FE05]">Settings</span>

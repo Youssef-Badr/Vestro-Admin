@@ -113,13 +113,13 @@ relatedProduct: [],
     <div className={`p-4 md:p-10 min-h-screen bg-[#FDFDFD] dark:bg-gray-950 transition-colors duration-500 ${isRTL ? "font-cairo" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
       
       {/* Header - Luxury Vestro Style */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-16">
+      <div className="flex flex-col mt-16 md:flex-row justify-between items-start md:items-center gap-6 mb-16">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-gray-100 flex items-center gap-5">
             <div className="bg-indigo-950 dark:bg-indigo-900 p-3.5 rounded-[1.8rem] text-indigo-100 shadow-2xl border border-indigo-800/20">
               <Layers size={35} />
             </div>
-            {isRTL ? "إدارة الباندلات" : "Vestro Bundles"}
+            {isRTL ? "إدارة العروض" : "Vestro Bundles"}
           </h1>
           <p className="text-slate-500 dark:text-gray-400 mt-4 text-lg font-medium tracking-tight">
             {isRTL ? "تحكم في عروضك المجمعة الحصرية" : "Control your exclusive master offers"}

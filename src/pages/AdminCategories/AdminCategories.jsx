@@ -172,7 +172,7 @@ const AdminCategories = () => {
     <div className={`p-4 md:p-8 min-h-screen transition-colors duration-500 ${isDark ? "bg-[#050505] text-white" : "bg-gray-50 text-black"}`} dir={isRTL ? "rtl" : "ltr"}>
       
       {/* Header - Responsive Layout */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start mt-16 md:items-center gap-6 mb-10">
         <div className="w-full md:w-auto">
             <h1 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter">
             {isRTL ? "الأقسام" : "Categories"}

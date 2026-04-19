@@ -96,7 +96,7 @@ const Announcements = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 mt-14">
       {/* العنوان */}
       <h1 className="text-3xl font-bold mb-6 mt-6 text-gray-900 dark:text-gray-100">
         {lang.title}

@@ -48,13 +48,13 @@ const CustomersTable = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#080808] text-gray-900 dark:text-white p-4 md:p-8 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-[#080808] text-gray-900 dark:text-white p-4  md:p-8 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}
-        <div className={`flex flex-col md:flex-row justify-between items-center mb-10 gap-6 ${isRTL ? 'text-right' : 'text-left'}`}>
+        <div className={`flex flex-col md:flex-row justify-between items-center mb-10 mt-20  gap-6 ${isRTL ? 'text-right' : 'text-left'}`}>
           <div className="w-full">
-            <h1 className="text-4xl font-black tracking-tighter italic flex items-center gap-3 uppercase">
+            <h1 className="text-4xl font-black  tracking-tighter italic flex items-center gap-3 uppercase">
               <span className="bg-[#86FE05] text-black px-3 py-1 rounded-xl not-italic tracking-normal">CRM</span>
               {isRTL ? "قاعدة البيانات" : "Database"}
             </h1>
