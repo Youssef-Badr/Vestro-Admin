@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosInstance";
@@ -17,91 +18,96 @@ const Login = () => {
     e.preventDefault();
     try {
       const res = await axios.post("/auth/login", { email, password });
-
       if (!res.data.token) {
-        console.warn("❌ No token received from backend");
-        setError(
-          language === "ar"
-            ? "فشل تسجيل الدخول: لم يتم استلام رمز التوثيق من الخادم"
-            : "Login failed: No token received from server"
-        );
+        setError(language === "ar" ? "فشل تسجيل الدخول" : "Login failed");
         return;
       }
-
       login(res.data.token);
-
-      toast.success(
-        language === "ar"
-          ? "✅ تم تسجيل الدخول بنجاح"
-          : "✅ Logged in successfully"
-      );
+      toast.success(language === "ar" ? "✅ مرحباً بك في فيسترو" : "✅ Welcome to Vestro");
       navigate("/");
     } catch (err) {
-      console.error("❌ Error:", err.response?.data || err.message);
-      setError(
-        language === "ar"
-          ? "البريد الإلكتروني أو كلمة المرور غير صحيحة"
-          : "Email Address or Password is incorrect"
-      );
-      toast.error(
-        language === "ar"
-          ? "❌ البريد الإلكتروني أو كلمة المرور غير صحيحة"
-          : "❌ Email or password is incorrect"
-      );
+      setError(language === "ar" ? "بيانات الدخول غير صحيحة" : "Invalid Credentials");
+      toast.error(error);
     }
   };
 
   return (
     <div
       dir={language === "ar" ? "rtl" : "ltr"}
-      // تغيير الخلفية إلى تدرج ليلي عصري
-      className="flex items-center justify-center min-h-screen bg-gradient-to-tr from-slate-900 via-purple-900 to-slate-900"
-      style={{ textAlign: language === "ar" ? "right" : "left" }}
+      // خلفية متغيرة حسب المود (لايت/دارك)
+      className="flex items-center justify-center min-h-screen transition-colors duration-500 bg-slate-50 dark:bg-[#0b0f1a]"
     >
+      {/* الديكور الخلفي (الدوائر الملونة) - تظهر في الدارك مود لتعطي فخامة */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl dark:bg-violet-600/20"></div>
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl dark:bg-indigo-600/20"></div>
+      </div>
+
       <form
         onSubmit={handleLogin}
-        // تغيير شكل الكارت ليصبح شبه شفاف (Glassmorphism) أو داكن أنيق
-        className="bg-white/10 backdrop-blur-md p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-white/20"
+        className="relative z-10 w-full max-w-md p-10 mx-4 transition-all duration-300 bg-white shadow-xl dark:bg-slate-900/40 dark:backdrop-blur-xl dark:border dark:border-white/10 rounded-3xl"
       >
-        <h2 className="text-3xl font-extrabold mb-8 text-center text-white tracking-tight">
-          {language === "ar" ? "Vestro Store" : "Vestro Store"}
-        </h2>
+        {/* Logo / Brand Name */}
+        <div className="text-center mb-10">
+          <h2 className="text-4xl font-black tracking-tighter text-slate-800 dark:text-white">
+            VESTRO<span className="text-indigo-600 dark:text-violet-400">.</span>
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm font-medium">
+            {language === "ar" ? "سجل دخولك لتجربة تسوق فريدة" : "Sign in for a premium experience"}
+          </p>
+        </div>
 
         {error && (
-          <p className="bg-red-500/20 text-red-200 p-2 rounded-lg mb-4 text-center text-sm font-medium border border-red-500/50">
+          <div className="mb-6 p-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-2xl dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 text-center animate-pulse">
             {error}
-          </p>
+          </div>
         )}
 
-        <input
-          type="email"
-          placeholder={
-            language === "ar" ? "البريد الإلكتروني" : "Email Address"
-          }
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          // تغيير ألوان الحقول لتناسب الثيم الداكن
-          className="w-full mb-4 p-3 bg-white/5 border border-purple-300/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-          required
-          autoComplete="username"
-        />
-        <input
-          type="password"
-          placeholder={language === "ar" ? "كلمة المرور" : "Password"}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-6 p-3 bg-white/5 border border-purple-300/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-          required
-          autoComplete="current-password"
-        />
+        <div className="space-y-5">
+          <div>
+            <label className="block mb-2 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">
+              {language === "ar" ? "البريد الإلكتروني" : "Email Address"}
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-5 py-4 bg-slate-100 border-none rounded-2xl dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              placeholder="name@example.com"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block mb-2 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">
+              {language === "ar" ? "كلمة المرور" : "Password"}
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-5 py-4 bg-slate-100 border-none rounded-2xl dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+        </div>
 
         <button
           type="submit"
-          // تغيير لون الزر إلى بنفسجي متدرج بلمسة تفاعلية
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-xl hover:from-purple-500 hover:to-indigo-500 transition duration-300 font-bold shadow-lg shadow-purple-900/50"
+          className="w-full mt-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-lg hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-violet-500 transform transition active:scale-[0.98] shadow-lg shadow-indigo-500/20"
         >
-          {language === "ar" ? "تسجيل الدخول" : "Login"}
+          {language === "ar" ? "دخول" : "Login"}
         </button>
+
+        <div className="mt-8 text-center">
+            <span className="text-slate-500 dark:text-slate-400 text-sm">
+                {language === "ar" ? "ليس لديك حساب؟" : "Don't have an account?"}
+            </span>
+            <button className="ml-2 text-indigo-600 dark:text-violet-400 font-bold hover:underline text-sm">
+                {language === "ar" ? "أنشئ حسابك الآن" : "Create one"}
+            </button>
+        </div>
       </form>
     </div>
   );
