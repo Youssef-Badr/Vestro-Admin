@@ -3808,55 +3808,117 @@ placeholder={language === "ar" ? "مثال: تيشيرت، قطن، صيفي" : 
     </table>
   </div>
 
-  {/* Mobile Cards View (Visible on Small Screens) */}
-  <div className="grid grid-cols-1 gap-4 md:hidden">
-    {products.map((product) => (
-      <div key={product._id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-3">
-            <img src={product.images?.[0]?.url || "https://via.placeholder.com/150"} className="h-16 w-16 object-cover rounded-xl border dark:border-gray-700" alt="" />
-            <div>
-              <h3 className="font-bold text-sm leading-tight mb-1">{product.name}</h3>
-              <span className="text-[9px] font-black text-blue-500 uppercase bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
-                {Array.isArray(product.category) ? product.category[0]?.name : product.category?.name || "N/A"}
-              </span>
-            </div>
-          </div>
-          {/* Toggle on Mobile */}
-          <div className="flex flex-col items-center">
-            <button
-              onClick={() => handleToggleActive(product._id, product.isActive)}
-              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 ${product.isActive ? "bg-[#86FE05]" : "bg-gray-300 dark:bg-zinc-700"}`}
+  {/* Mobile Cards View (Visible on Small Screens) - يدعم الترتيب اليدوي */}
+<div className="md:hidden">
+  <DragDropContext onDragEnd={onDragEndProducts}>
+    <Droppable droppableId="products-mobile-list">
+      {(provided) => (
+        <div 
+          {...provided.droppableProps} 
+          ref={provided.innerRef} 
+          className="grid grid-cols-1 gap-4"
+        >
+          {products.map((product, index) => (
+            <Draggable 
+              key={product._id} 
+              draggableId={`mobile-${product._id}`} 
+              index={index}
+              isDragDisabled={sortType !== "manual"}
             >
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-300 ${product.isActive ? (language === "ar" ? "-translate-x-5" : "translate-x-5") : (language === "ar" ? "-translate-x-1" : "translate-x-1")}`} />
-            </button>
-            <span className="text-[8px] font-bold uppercase opacity-60 mt-1">{product.isActive ? "ON" : "OFF"}</span>
-          </div>
-        </div>
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                  className={`bg-white dark:bg-gray-800 p-4 rounded-2xl border transition-all duration-300 ${
+                    snapshot.isDragging 
+                      ? "border-[#86FE05] shadow-[0_0_25px_rgba(134,254,5,0.3)] scale-[1.03] z-[100] bg-gray-50 dark:bg-zinc-800" 
+                      : "border-gray-100 dark:border-gray-700 shadow-sm"
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      {/* مقبض سحب بصري يظهر فقط في الوضع اليدوي */}
+                      {sortType === "manual" && (
+                        <div className="text-gray-300 dark:text-zinc-600">
+                          <svg width="12" height="20" viewBox="0 0 10 16">
+                            <circle cx="2" cy="2" r="1.5" fill="currentColor"/>
+                            <circle cx="2" cy="8" r="1.5" fill="currentColor"/>
+                            <circle cx="2" cy="14" r="1.5" fill="currentColor"/>
+                            <circle cx="8" cy="2" r="1.5" fill="currentColor"/>
+                            <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+                            <circle cx="8" cy="14" r="1.5" fill="currentColor"/>
+                          </svg>
+                        </div>
+                      )}
+                      <img 
+                        src={product.images?.[0]?.url || "https://via.placeholder.com/150"} 
+                        className="h-16 w-16 object-cover rounded-xl border dark:border-gray-700" 
+                        alt="" 
+                      />
+                      <div>
+                        <h3 className="font-bold text-sm leading-tight mb-1">{product.name}</h3>
+                        <span className="text-[9px] font-black text-blue-500 uppercase bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
+                          {Array.isArray(product.category) ? product.category[0]?.name : product.category?.name || "N/A"}
+                        </span>
+                      </div>
+                    </div>
 
-        <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl mb-4 text-xs">
-          <div>
-            <p className="text-[9px] text-gray-400 uppercase font-black">{language === "ar" ? "السعر" : "Price"}</p>
-            <p className="font-bold text-indigo-600 dark:text-indigo-400">{product.salePrice || product.originalPrice} {language === "ar" ? "ج" : "EGP"}</p>
-          </div>
-          <div className="text-end">
-            <p className="text-[9px] text-gray-400 uppercase font-black">{language === "ar" ? "المخزون" : "Stock"}</p>
-            <p className={`font-bold ${product.countInStock < 5 ? "text-red-500" : ""}`}>{product.countInStock}</p>
-          </div>
-        </div>
+                    {/* Toggle on Mobile */}
+                    <div className="flex flex-col items-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // منع التداخل مع السحب
+                          handleToggleActive(product._id, product.isActive);
+                        }}
+                        className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 ${
+                          product.isActive ? "bg-[#86FE05]" : "bg-gray-300 dark:bg-zinc-700"
+                        }`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-300 ${
+                          product.isActive 
+                            ? (language === "ar" ? "-translate-x-5" : "translate-x-5") 
+                            : (language === "ar" ? "-translate-x-1" : "translate-x-1")
+                        }`} />
+                      </button>
+                      <span className="text-[8px] font-bold uppercase opacity-60 mt-1">
+                        {product.isActive ? (language === "ar" ? "نشط" : "ON") : (language === "ar" ? "مخفي" : "OFF")}
+                      </span>
+                    </div>
+                  </div>
 
-        <div className="flex justify-between items-center pt-3 border-t dark:border-gray-700">
-          <div className="flex items-center text-yellow-500 font-bold text-[10px] gap-1"><FaStar size={10}/> {product.rating?.toFixed(1) || "0.0"}</div>
-          <div className="flex gap-2">
-            <button onClick={() => openReviewsModal(product.reviews || [])} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 rounded-lg"><FaCommentDots size={16}/></button>
-            <button onClick={() => openEditModal(product)} className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg"><FaEdit size={16}/></button>
-            <button onClick={() => { setSelectedImages(product.images || []); setShowImageModal(true); }} className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg"><FaEye size={16}/></button>
-            <button onClick={() => deleteProduct(product._id)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg"><FaTrash size={16}/></button>
-          </div>
+                  <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl mb-4 text-xs">
+                    <div>
+                      <p className="text-[9px] text-gray-400 uppercase font-black">{language === "ar" ? "السعر" : "Price"}</p>
+                      <p className="font-bold text-indigo-600 dark:text-indigo-400">{product.salePrice || product.originalPrice} {language === "ar" ? "ج" : "EGP"}</p>
+                    </div>
+                    <div className="text-end">
+                      <p className="text-[9px] text-gray-400 uppercase font-black">{language === "ar" ? "المخزون" : "Stock"}</p>
+                      <p className={`font-bold ${product.countInStock < 5 ? "text-red-500" : ""}`}>{product.countInStock}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-3 border-t dark:border-gray-700">
+                    <div className="flex items-center text-yellow-500 font-bold text-[10px] gap-1">
+                      <FaStar size={10}/> {product.rating?.toFixed(1) || "0.0"}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => openReviewsModal(product.reviews || [])} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 rounded-lg"><FaCommentDots size={16}/></button>
+                      <button onClick={() => openEditModal(product)} className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg"><FaEdit size={16}/></button>
+                      <button onClick={() => { setSelectedImages(product.images || []); setShowImageModal(true); }} className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg"><FaEye size={16}/></button>
+                      <button onClick={() => deleteProduct(product._id)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg"><FaTrash size={16}/></button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Draggable>
+          ))}
+          {provided.placeholder}
         </div>
-      </div>
-    ))}
-  </div>
+      )}
+    </Droppable>
+  </DragDropContext>
+</div>
 
   {/* Modals Section */}
   {showModal && renderModalContent()}
