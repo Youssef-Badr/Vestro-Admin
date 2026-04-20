@@ -3705,9 +3705,34 @@ placeholder={language === "ar" ? "مثال: تيشيرت، قطن، صيفي" : 
 
             <td className="p-3 font-bold">{product.name}</td>
 
-            <td className="p-3">
-              {product.salePrice || product.price} EGP
-            </td>
+          <td className="p-3 whitespace-nowrap text-sm">
+  {product.salePrice && product.salePrice > 0 ? (
+    <div className="flex flex-col leading-tight">
+      
+      {/* ORIGINAL PRICE */}
+      <span className="text-red-400 line-through text-xs font-medium">
+        {product.originalPrice || product.price}{" "}
+        {language === "ar" ? "ج" : "EGP"}
+      </span>
+
+      {/* SALE PRICE */}
+      <span className="text-green-600 dark:text-green-400 font-extrabold text-sm">
+        {product.salePrice} {language === "ar" ? "ج" : "EGP"}
+      </span>
+
+      {/* LABEL */}
+      <span className="text-[10px] text-gray-400 mt-1">
+        {language === "ar" ? "بعد الخصم" : "Discounted"}
+      </span>
+
+    </div>
+  ) : (
+    <span className="font-bold text-indigo-600 dark:text-indigo-400">
+      {product.originalPrice || product.price}{" "}
+      {language === "ar" ? "ج" : "EGP"}
+    </span>
+  )}
+</td>
 
             <td className="p-3">{product.countInStock}</td>
 
@@ -3789,9 +3814,34 @@ placeholder={language === "ar" ? "مثال: تيشيرت، قطن، صيفي" : 
 
           <div className="flex-1">
             <h3 className="font-bold">{product.name}</h3>
-            <p className="text-green-600 font-bold">
-              {product.salePrice || product.price} EGP
-            </p>
+           <td className="p-3 whitespace-nowrap text-sm">
+  {product.salePrice && product.salePrice > 0 ? (
+    <div className="flex flex-col leading-tight">
+      
+      {/* ORIGINAL PRICE */}
+      <span className="text-red-400 line-through text-xs font-medium">
+        {product.originalPrice || product.price}{" "}
+        {language === "ar" ? "ج" : "EGP"}
+      </span>
+
+      {/* SALE PRICE */}
+      <span className="text-green-600 dark:text-green-400 font-extrabold text-sm">
+        {product.salePrice} {language === "ar" ? "ج" : "EGP"}
+      </span>
+
+      {/* LABEL */}
+      <span className="text-[10px] text-gray-400 mt-1">
+        {language === "ar" ? "بعد الخصم" : "Discounted"}
+      </span>
+
+    </div>
+  ) : (
+    <span className="font-bold text-indigo-600 dark:text-indigo-400">
+      {product.originalPrice || product.price}{" "}
+      {language === "ar" ? "ج" : "EGP"}
+    </span>
+  )}
+</td>
             <p className="text-sm">Stock: {product.countInStock}</p>
           </div>
         </div>
