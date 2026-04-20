@@ -3649,376 +3649,261 @@ placeholder={language === "ar" ? "مثال: تيشيرت، قطن، صيفي" : 
   );
 
   return (
-    <div
-      dir={language === "ar" ? "rtl" : "ltr"}
-      className="p-4 max-w-7xl mx-auto pt-20 md:pt-8 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300"
-    >
-    {/* HEADER */}
-  <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b pb-6">
-    <h2 className="text-3xl font-extrabold">
-      {language === "ar" ? "إدارة المنتجات" : "Product Management"}
+<div
+  dir={language === "ar" ? "rtl" : "ltr"}
+  className="p-4 max-w-7xl mx-auto pt-20 md:pt-8 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300"
+>
+ <div className="flex flex-col lg:flex-row justify-between items-center mb-8 gap-6 border-b dark:border-gray-800 pb-8">
+  {/* Left Side: Title & Count */}
+  <div className="text-center lg:text-start">
+    <h2 className="text-3xl md:text-4xl font-[1000] flex items-center justify-center lg:justify-start gap-4 tracking-tight">
+      <span className="bg-indigo-600 text-white p-3 rounded-2xl shadow-[0_10px_20px_rgba(79,70,229,0.3)] transform -rotate-3">
+        🧥
+      </span>
+      <span className="bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-500 dark:from-white dark:to-gray-400">
+        {language === "ar" ? "إدارة المنتجات" : "Product Management"}
+      </span>
     </h2>
+    <p className="text-gray-400 text-xs md:text-sm mt-2 font-bold uppercase tracking-[0.2em]">
+      {language === "ar"
+        ? `المنتجات المتاحة : ${products.length} قطعة`
+        : `Available Fleet: ${products.length} Items`}
+    </p>
+  </div>
 
+  {/* Right Side: Actions & Sorting */}
+  <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 w-full lg:w-auto justify-center">
+    
+    {/* ⚡ الترتيب بتصميم Premium */}
+    <div className="relative w-full sm:w-44 group">
+      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-indigo-500 z-10">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+        </svg>
+      </div>
+      <select
+        value={sortType}
+        onChange={(e) => setSortType(e.target.value)}
+        className="w-full appearance-none bg-gray-100 dark:bg-zinc-800 border-2 border-transparent focus:border-indigo-500 text-gray-700 dark:text-gray-200 py-3 px-10 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+      >
+        <option value="manual">{language === "ar" ? "ترتيب يدوي" : "Manual Sort"}</option>
+        <option value="newest">{language === "ar" ? "الأحدث أولاً" : "Newest"}</option>
+        <option value="oldest">{language === "ar" ? "الأقدم أولاً" : "Oldest"}</option>
+      </select>
+    </div>
+
+    {/* 🟢 زر تصدير إكسيل */}
+    <button
+      onClick={() => exportProductsToExcel(products)}
+      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white px-5 py-3 rounded-2xl transition-all duration-300 font-bold text-xs border border-emerald-500/20 shadow-lg shadow-emerald-500/5"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      {language === "ar" ? "تصدير" : "Export"}
+    </button>
+
+    {/* 🌑 زر استيراد */}
+    <label className="w-full sm:w-auto flex items-center justify-center gap-2 bg-zinc-800 hover:bg-black text-white px-5 py-3 rounded-2xl cursor-pointer transition-all duration-300 font-bold text-xs shadow-xl">
+      <svg className="w-4 h-4 text-[#ccff00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+      </svg>
+      {language === "ar" ? "استيراد" : "Import"}
+      <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExcel} />
+    </label>
+
+    {/* 🟣 زر إضافة منتج */}
     <button
       onClick={openAddModal}
-      className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl shadow-[0_10px_25px_rgba(79,70,229,0.4)] font-black text-xs hover:-translate-y-1 transition-all"
     >
-      + {language === "ar" ? "إضافة منتج" : "Add Product"}
+      <FaPlus />
+      {language === "ar" ? "إضافة منتج" : "New Product"}
     </button>
   </div>
+</div>
 
-  {/* ================= DESKTOP ================= */}
-  <div className="hidden md:block border rounded-xl overflow-hidden">
-    <table className="min-w-full">
-     <thead className="bg-gray-100 dark:bg-gray-800">
-  <tr>
-    {[
-      language === "ar" ? "الصورة" : "Image",
-      language === "ar" ? "الاسم" : "Name",
-      language === "ar" ? "السعر" : "Price",
-      language === "ar" ? "المخزون" : "Stock",
-      language === "ar" ? "الحالة" : "Status",
-      language === "ar" ? "الإجراءات" : "Actions",
-    ].map((h, i) => (
-      <th
-        key={i}
-        className={`p-3 text-xs font-bold ${
-          language === "ar" ? "text-right" : "text-left"
-        }`}
-      >
-        {h}
-      </th>
-    ))}
-  </tr>
-</thead>
-
-      <tbody>
-        {products.map((product)=>(
-          <tr key={product._id} className="border-b">
-
-            <td className="p-3">
-              <img
-                src={product.images?.[0]?.url || product.images?.[0]}
-                className="w-12 h-12 rounded object-cover"
-              />
-            </td>
-
-            <td className="p-3 font-bold">{product.name}</td>
-
-          <td className="p-3 whitespace-nowrap text-sm">
-  {product.salePrice && product.salePrice > 0 ? (
-    <div className="flex flex-col leading-tight">
-      
-      {/* ORIGINAL PRICE */}
-      <span className="text-red-400 line-through text-xs font-medium">
-        {product.originalPrice || product.price}{" "}
-        {language === "ar" ? "ج" : "EGP"}
-      </span>
-
-      {/* SALE PRICE */}
-      <span className="text-green-600 dark:text-green-400 font-extrabold text-sm">
-        {product.salePrice} {language === "ar" ? "ج" : "EGP"}
-      </span>
-
-      {/* LABEL */}
-      <span className="text-[10px] text-gray-400 mt-1">
-        {language === "ar" ? "بعد الخصم" : "Discounted"}
-      </span>
-
-    </div>
-  ) : (
-    <span className="font-bold text-indigo-600 dark:text-indigo-400">
-      {product.originalPrice || product.price}{" "}
-      {language === "ar" ? "ج" : "EGP"}
-    </span>
-  )}
-</td>
-
-            <td className="p-3">{product.countInStock}</td>
-
-            {/* TOGGLE */}
-            <td className="p-3">
-              <button
-                onClick={() => handleToggleActive(product._id, product.isActive)}
-                className={`relative inline-flex h-7 w-14 items-center rounded-full transition-all duration-300 ${
-                  product.isActive
-                    ? "bg-[#86FE05] shadow-[0_0_10px_rgba(134,254,5,0.6)]"
-                    : "bg-gray-300 dark:bg-zinc-700"
-                }`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-all duration-300 ${
-                    product.isActive ? "translate-x-7" : "translate-x-1"
-                  }`}
-                />
-                <span className="absolute w-full text-[9px] font-bold text-center">
-                  {product.isActive ? "ON" : "OFF"}
-                </span>
-              </button>
-            </td>
-
-           {/* ACTIONS VERTICAL */}
-<td className="p-3">
-  <div className="flex flex-col gap-2">
-
-    <button
-      onClick={() => openEditModal(product)}
-      className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold"
-    >
-      ✏️ {language === "ar" ? "تعديل" : "Edit"}
-    </button>
-
-    <button
-      onClick={() => deleteProduct(product._id)}
-      className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold"
-    >
-      🗑️ {language === "ar" ? "حذف" : "Delete"}
-    </button>
-
-    <button
-      onClick={() => openReviewsModal(product.reviews || [])}
-      className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-bold"
-    >
-      💬 {language === "ar" ? "التقييمات" : "Reviews"}
-    </button>
-
-    <button
-      onClick={() => {
-        setSelectedImages(product.images || []);
-        setShowImageModal(true);
-      }}
-      className="bg-purple-500 text-white px-2 py-1 rounded text-xs font-bold"
-    >
-      👁️ {language === "ar" ? "الصور" : "Images"}
-    </button>
-
-  </div>
-</td>
-
-          </tr>
-        ))}
-      </tbody>
+  {/* Desktop Table View (Hidden on Mobile) */}
+  <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
+    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+      <thead className="bg-gray-50 dark:bg-gray-800/50 text-[11px] uppercase tracking-wider font-bold">
+        <tr>
+          {["Image", "Name", "Price", "Category", "Stock", "Rating", "Status", "Actions"].map((head, i) => (
+            <th key={i} className="px-6 py-4 text-start text-gray-500 dark:text-gray-400">
+              {language === "ar" ? ["الصورة", "الاسم", "السعر", "الفئة", "المخزون", "التقييم", "الحالة", "الإجراءات"][i] : head}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <DragDropContext onDragEnd={onDragEndProducts}>
+        <Droppable droppableId="products-table-body">
+          {(provided) => (
+            <tbody {...provided.droppableProps} ref={provided.innerRef} className="divide-y divide-gray-100 dark:divide-gray-800">
+              {products.map((product, index) => (
+                <Draggable key={product._id} draggableId={product._id} index={index} isDragDisabled={sortType !== "manual"}>
+                  {(provided, snapshot) => (
+                    <tr
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className={`transition-all duration-300 group ${snapshot.isDragging ? "bg-[#86FE05]/10 shadow-2xl scale-[1.01] z-50" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"}`}
+                    >
+                      <td className="px-6 py-4">
+                        <img
+                          src={product.images?.[0]?.url || "https://via.placeholder.com/150"}
+                          className="h-12 w-12 object-cover rounded-lg border dark:border-gray-700 shadow-sm group-hover:scale-105 transition-transform"
+                          alt={product.name}
+                        />
+                      </td>
+                      <td className="px-6 py-4 font-bold text-sm text-gray-700 dark:text-gray-200">{product.name}</td>
+                      <td className="px-6 py-4 text-sm font-semibold">
+                        {product.salePrice > 0 ? (
+                          <div className="flex flex-col">
+                            <span className="text-red-500 line-through text-[10px]">{product.originalPrice} {language === "ar" ? "ج" : "EGP"}</span>
+                            <span className="text-green-600 dark:text-green-400 font-bold">{product.salePrice} {language === "ar" ? "ج" : "EGP"}</span>
+                          </div>
+                        ) : (
+                          <span className="text-indigo-600 dark:text-indigo-400 font-bold">{product.originalPrice} {language === "ar" ? "ج" : "EGP"}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded text-[10px] font-black uppercase">
+                          {Array.isArray(product.category) ? product.category[0]?.name : product.category?.name || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold">
+                        <span className={product.countInStock < 5 ? "text-red-500" : ""}>{product.countInStock}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-yellow-500 font-bold gap-1 text-sm"><FaStar size={12}/> {product.rating?.toFixed(1) || "0.0"}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col items-center">
+                          <button
+                            onClick={() => handleToggleActive(product._id, product.isActive)}
+                            className={`relative inline-flex h-6 w-12 items-center rounded-full transition-all duration-300 ${product.isActive ? "bg-gradient-to-r from-[#86FE05] to-[#6ed204] shadow-[0_0_10px_rgba(134,254,5,0.3)]" : "bg-gray-300 dark:bg-zinc-700"}`}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${product.isActive ? (language === "ar" ? "-translate-x-7" : "translate-x-7") : (language === "ar" ? "-translate-x-1" : "translate-x-1")}`} />
+                          </button>
+                          <span className="text-[8px] font-black uppercase opacity-60 mt-1">{product.isActive ? (language === "ar" ? "نشط" : "Active") : (language === "ar" ? "مخفي" : "Hidden")}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openReviewsModal(product.reviews || [])} className="p-2 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-full transition-all" title="Reviews"><FaCommentDots /></button>
+                          <button onClick={() => openEditModal(product)} className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-all"><FaEdit /></button>
+                          <button onClick={() => deleteProduct(product._id)} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all"><FaTrash /></button>
+                          <button onClick={() => { setSelectedImages(product.images || []); setShowImageModal(true); }} className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-all" title="View Images"><FaEye /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </tbody>
+          )}
+        </Droppable>
+      </DragDropContext>
     </table>
   </div>
 
-  {/* ================= MOBILE ================= */}
-  <div className="md:hidden space-y-4">
-    {products.map((product)=>(
-      <div key={product._id} className="border rounded-xl p-4 shadow">
-
-        <div className="flex gap-3">
-          <img
-            src={product.images?.[0]?.url || product.images?.[0]}
-            className="w-20 h-20 rounded object-cover"
-          />
-
-          <div className="flex-1">
-            <h3 className="font-bold">{product.name}</h3>
-           <td className="p-3 whitespace-nowrap text-sm">
-  {product.salePrice && product.salePrice > 0 ? (
-    <div className="flex flex-col leading-tight">
-      
-      {/* ORIGINAL PRICE */}
-      <span className="text-red-400 line-through text-xs font-medium">
-        {product.originalPrice || product.price}{" "}
-        {language === "ar" ? "ج" : "EGP"}
-      </span>
-
-      {/* SALE PRICE */}
-      <span className="text-green-600 dark:text-green-400 font-extrabold text-sm">
-        {product.salePrice} {language === "ar" ? "ج" : "EGP"}
-      </span>
-
-      {/* LABEL */}
-      <span className="text-[10px] text-gray-400 mt-1">
-        {language === "ar" ? "بعد الخصم" : "Discounted"}
-      </span>
-
-    </div>
-  ) : (
-    <span className="font-bold text-indigo-600 dark:text-indigo-400">
-      {product.originalPrice || product.price}{" "}
-      {language === "ar" ? "ج" : "EGP"}
-    </span>
-  )}
-</td>
-            <p className="text-sm">Stock: {product.countInStock}</p>
+  {/* Mobile Cards View (Visible on Small Screens) */}
+  <div className="grid grid-cols-1 gap-4 md:hidden">
+    {products.map((product) => (
+      <div key={product._id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3">
+            <img src={product.images?.[0]?.url || "https://via.placeholder.com/150"} className="h-16 w-16 object-cover rounded-xl border dark:border-gray-700" alt="" />
+            <div>
+              <h3 className="font-bold text-sm leading-tight mb-1">{product.name}</h3>
+              <span className="text-[9px] font-black text-blue-500 uppercase bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
+                {Array.isArray(product.category) ? product.category[0]?.name : product.category?.name || "N/A"}
+              </span>
+            </div>
+          </div>
+          {/* Toggle on Mobile */}
+          <div className="flex flex-col items-center">
+            <button
+              onClick={() => handleToggleActive(product._id, product.isActive)}
+              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 ${product.isActive ? "bg-[#86FE05]" : "bg-gray-300 dark:bg-zinc-700"}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-300 ${product.isActive ? (language === "ar" ? "-translate-x-5" : "translate-x-5") : (language === "ar" ? "-translate-x-1" : "translate-x-1")}`} />
+            </button>
+            <span className="text-[8px] font-bold uppercase opacity-60 mt-1">{product.isActive ? "ON" : "OFF"}</span>
           </div>
         </div>
 
-       <div className="flex flex-col items-center justify-center gap-1.5">
-  <button
-    onClick={() => handleToggleActive(product._id, product.isActive)}
-    className={`relative inline-flex h-6 w-12 items-center rounded-full transition-all duration-500 ease-in-out outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 ${
-      product.isActive
-        ? "bg-gradient-to-r from-[#86FE05] to-[#6ed204] shadow-[0_0_15px_rgba(134,254,5,0.4)]"
-        : "bg-gray-200 dark:bg-zinc-700 shadow-inner"
-    }`}
-  >
-    {/* الدائرة المتحركة */}
-    <span
-      className={`absolute h-5 w-5 transform rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-all duration-500 cubic-bezier(0.68, -0.55, 0.265, 1.55) ${
-        product.isActive 
-          ? (language === "ar" ? "-translate-x-6" : "translate-x-6") 
-          : (language === "ar" ? "-translate-x-1" : "translate-x-1")
-      }`}
-    >
-      {/* نقطة صغيرة داخل الدائرة لزيادة التفاصيل */}
-      <span className={`absolute inset-0 m-auto h-1.5 w-1.5 rounded-full transition-colors duration-500 ${product.isActive ? 'bg-[#86FE05]' : 'bg-gray-300'}`} />
-    </span>
+        <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl mb-4 text-xs">
+          <div>
+            <p className="text-[9px] text-gray-400 uppercase font-black">{language === "ar" ? "السعر" : "Price"}</p>
+            <p className="font-bold text-indigo-600 dark:text-indigo-400">{product.salePrice || product.originalPrice} {language === "ar" ? "ج" : "EGP"}</p>
+          </div>
+          <div className="text-end">
+            <p className="text-[9px] text-gray-400 uppercase font-black">{language === "ar" ? "المخزون" : "Stock"}</p>
+            <p className={`font-bold ${product.countInStock < 5 ? "text-red-500" : ""}`}>{product.countInStock}</p>
+          </div>
+        </div>
 
-    {/* النصوص المخفية داخل التوجل (اختياري) */}
-    <div className={`absolute w-full px-1.5 flex justify-between items-center text-[8px] font-black pointer-events-none select-none ${product.isActive ? 'text-green-900' : 'text-gray-400'}`}>
-       <span className={product.isActive ? 'opacity-0' : 'opacity-100 ml-auto'}>OFF</span>
-       <span className={product.isActive ? 'opacity-100' : 'opacity-0'}>ON</span>
-    </div>
-  </button>
-
-  {/* نص توضيحي تحت التوجل يدعم اللغتين */}
-  <span className="text-[9px] font-bold uppercase tracking-widest opacity-50 dark:text-gray-400">
-    {product.isActive 
-      ? (language === "ar" ? "نشط" : "Active") 
-      : (language === "ar" ? "مخفي" : "Hidden")}
-  </span>
-</div>
-
-        {/* ACTIONS MOBILE - IMPROVED */}
-<div className="flex flex-col gap-3 mt-5">
-
-  <button
-    onClick={() => openEditModal(product)}
-    className="flex items-center justify-center gap-2 w-full bg-blue-500/90 active:scale-[0.97] text-white py-3 rounded-xl font-bold shadow-sm transition-all"
-  >
-    ✏️ {language === "ar" ? "تعديل المنتج" : "Edit Product"}
-  </button>
-
-  <button
-    onClick={() => deleteProduct(product._id)}
-    className="flex items-center justify-center gap-2 w-full bg-red-500/90 active:scale-[0.97] text-white py-3 rounded-xl font-bold shadow-sm transition-all"
-  >
-    🗑️ {language === "ar" ? "حذف المنتج" : "Delete Product"}
-  </button>
-
-  <button
-    onClick={() => openReviewsModal(product.reviews || [])}
-    className="flex items-center justify-center gap-2 w-full bg-yellow-500/90 active:scale-[0.97] text-white py-3 rounded-xl font-bold shadow-sm transition-all"
-  >
-    💬 {language === "ar" ? "عرض التقييمات" : "View Reviews"}
-  </button>
-
-  <button
-    onClick={() => {
-      setSelectedImages(product.images || []);
-      setShowImageModal(true);
-    }}
-    className="flex items-center justify-center gap-2 w-full bg-purple-500/90 active:scale-[0.97] text-white py-3 rounded-xl font-bold shadow-sm transition-all"
-  >
-    👁️ {language === "ar" ? "عرض الصور" : "View Images"}
-  </button>
-
-</div>
-
+        <div className="flex justify-between items-center pt-3 border-t dark:border-gray-700">
+          <div className="flex items-center text-yellow-500 font-bold text-[10px] gap-1"><FaStar size={10}/> {product.rating?.toFixed(1) || "0.0"}</div>
+          <div className="flex gap-2">
+            <button onClick={() => openReviewsModal(product.reviews || [])} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 rounded-lg"><FaCommentDots size={16}/></button>
+            <button onClick={() => openEditModal(product)} className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg"><FaEdit size={16}/></button>
+            <button onClick={() => { setSelectedImages(product.images || []); setShowImageModal(true); }} className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg"><FaEye size={16}/></button>
+            <button onClick={() => deleteProduct(product._id)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg"><FaTrash size={16}/></button>
+          </div>
+        </div>
       </div>
     ))}
   </div>
 
-      {/* Mobile view and Modals */}
-      {showModal && renderModalContent()}
-      {showReviewsModal && renderReviewsModal()}
+  {/* Modals Section */}
+  {showModal && renderModalContent()}
+  {showReviewsModal && renderReviewsModal()}
 
-{/* Image Modal - Vestro Neon Luxury */}
-{showImageModal && (
-  <div
-    className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm animate-in fade-in duration-300"
-    onClick={() => setShowImageModal(false)}
-  >
-    <div
-      className="bg-white dark:bg-black p-8 rounded-[2.5rem] shadow-[0_0_50px_rgba(0,0,0,1)] w-full max-w-5xl max-h-[90vh] overflow-hidden relative border border-gray-100 dark:border-[#1a1a1a] transform transition-all"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div className="flex justify-between items-center mb-10 border-b dark:border-[#1a1a1a] pb-6">
-        <h2 className="text-3xl font-black text-black dark:text-white flex items-center gap-4">
-          <div className="p-3 bg-[#ccff00]/10 dark:bg-[#ccff00]/20 rounded-2xl">
-            <FaEye className="text-[#a8d600] dark:text-[#ccff00] drop-shadow-[0_0_8px_rgba(204,255,0,0.5)]" />
-          </div>
-          {language === "ar" ? "معرض الصور الملكي" : "Royal Gallery"}
-        </h2>
-        <button
-          onClick={() => setShowImageModal(false)}
-          className="w-12 h-12 flex items-center justify-center rounded-2xl bg-gray-100 dark:bg-[#1a1a1a] text-black dark:text-white hover:bg-red-500 hover:text-white transition-all duration-300 font-bold text-xl"
-        >
-          &times;
-        </button>
-      </div>
-
-      {/* Grid Container */}
-      <div className="overflow-y-auto max-h-[65vh] pr-4 custom-scrollbar">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
-          {selectedImages.length > 0 ? (
-            selectedImages.map((img, index) => (
-              <div
-                key={index}
-                className="group relative aspect-square overflow-hidden rounded-[2rem] border-2 border-transparent hover:border-[#ccff00] bg-gray-50 dark:bg-[#0a0a0a] transition-all duration-500 shadow-sm hover:shadow-[0_0_20px_rgba(204,255,0,0.2)]"
-              >
-                <img
-                  src={img.url}
-                  alt="Vestro Product"
-                  className="w-full h-full object-contain p-6 transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#ccff00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+  {/* Image Modal */}
+  {showImageModal && (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm animate-in fade-in" onClick={() => setShowImageModal(false)}>
+      <div className="bg-white dark:bg-black p-8 rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-hidden relative border dark:border-[#1a1a1a]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-10 border-b dark:border-[#1a1a1a] pb-6">
+          <h2 className="text-3xl font-black text-black dark:text-white flex items-center gap-4">
+            <div className="p-3 bg-[#ccff00]/10 dark:bg-[#ccff00]/20 rounded-2xl"><FaEye className="text-[#ccff00]" /></div>
+            {language === "ar" ? "معرض الصور" : "Gallery"}
+          </h2>
+          <button onClick={() => setShowImageModal(false)} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-gray-100 dark:bg-[#1a1a1a] hover:bg-red-500 hover:text-white transition-all text-xl font-bold">&times;</button>
+        </div>
+        <div className="overflow-y-auto max-h-[65vh] pr-4 custom-scrollbar">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
+            {selectedImages.map((img, index) => (
+              <div key={index} className="aspect-square overflow-hidden rounded-[2rem] border-2 border-transparent hover:border-[#ccff00] bg-gray-50 dark:bg-[#0a0a0a] transition-all duration-500 shadow-sm">
+                <img src={img.url} className="w-full h-full object-contain p-4 transition-transform hover:scale-105" alt="" />
               </div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-24 bg-gray-50 dark:bg-[#0a0a0a] rounded-[3rem] border-2 border-dashed border-gray-200 dark:border-[#1a1a1a]">
-              <p className="text-gray-400 dark:text-[#333] text-xl font-black uppercase tracking-widest">
-                {language === "ar" ? "الفخامة تبدأ من هنا" : "Luxury starts here"}
-              </p>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       </div>
     </div>
-  </div>
-)}
+  )}
 
-    {/* Category Modal - Vestro Neon Luxury */}
-{showCatModal && (
-  <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in zoom-in duration-300">
-    <div className="bg-white dark:bg-black border border-gray-100 dark:border-[#1a1a1a] w-full max-w-md rounded-[3rem] shadow-[0_20px_80px_rgba(0,0,0,0.5)] overflow-hidden">
-      <div className="p-10">
-        {/* Header */}
+  {/* Category Modal */}
+  {showCatModal && (
+    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in zoom-in">
+      <div className="bg-white dark:bg-black border dark:border-[#1a1a1a] w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-10">
         <div className="flex justify-between items-center mb-10">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[#ccff00] rounded-[1.2rem] flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(204,255,0,0.4)]">
-              ✨
-            </div>
-            <div>
-              <h3 className="text-2xl font-[1000] text-black dark:text-white leading-none tracking-tight">
-                {language === "ar" ? "فئة ملكية" : "Royal Category"}
-              </h3>
-              <p className="text-[10px] text-gray-400 dark:text-[#444] mt-2 font-black uppercase tracking-[0.3em]">Exclusive Inventory</p>
-            </div>
+            <div className="w-14 h-14 bg-[#ccff00] rounded-[1.2rem] flex items-center justify-center text-2xl">✨</div>
+            <h3 className="text-2xl font-[1000] dark:text-white">{language === "ar" ? "فئة ملكية" : "Royal Category"}</h3>
           </div>
-          <button
-            onClick={() => setShowCatModal(false)}
-            className="text-gray-300 dark:text-[#222] hover:text-red-500 transition-colors text-4xl font-light"
-          >
-            &times;
-          </button>
+          <button onClick={() => setShowCatModal(false)} className="text-gray-300 hover:text-red-500 text-4xl">&times;</button>
         </div>
-
-        {/* Form Body */}
         <div className="space-y-8">
-          <div className="relative group">
-            <label className="text-[11px] font-black text-gray-400 dark:text-[#666] mb-3 uppercase tracking-[0.25em] ml-2 block">
-              {language === "ar" ? "اسم التصنيف" : "Category Identity"}
-            </label>
+          <div>
+            <label className="text-[11px] font-black text-gray-400 uppercase mb-3 block">{language === "ar" ? "اسم التصنيف" : "Category Identity"}</label>
             <input
               type="text"
               autoFocus
-              className="w-full p-5 bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#1a1a1a] rounded-2xl outline-none focus:border-[#ccff00] focus:ring-4 focus:ring-[#ccff00]/5 transition-all dark:text-white font-bold text-lg"
-              placeholder="..."
+              className="w-full p-5 bg-gray-50 dark:bg-[#0a0a0a] border dark:border-[#1a1a1a] rounded-2xl outline-none focus:border-[#ccff00] dark:text-white font-bold"
               value={newCategory.name}
               onChange={(e) => {
                 const name = e.target.value;
@@ -4027,38 +3912,395 @@ placeholder={language === "ar" ? "مثال: تيشيرت، قطن، صيفي" : 
               }}
             />
           </div>
-
-          <div className="relative group">
-            <label className="text-[11px] font-black text-gray-400 dark:text-[#666] mb-3 uppercase tracking-[0.25em] ml-2 block">
-              الرابط الرقمي (Slug)
-            </label>
-            <div className="p-5 bg-black dark:bg-[#0a0a0a] rounded-2xl text-[#ccff00] text-sm font-mono border border-[#ccff00]/20 flex items-center gap-3 overflow-hidden">
-              <span className="opacity-30 select-none">VESTRO://</span>
-              <span className="truncate">{newCategory.slug || "..."}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col gap-4 mt-12">
-          <button
-            onClick={handleCreateCategory}
-            className="w-full bg-[#ccff00] hover:bg-[#d9ff33] text-black py-5 rounded-[1.5rem] font-[1000] text-lg shadow-[0_10px_30px_rgba(204,255,0,0.2)] transition-all active:scale-[0.97] hover:-translate-y-1 uppercase tracking-widest"
-          >
+          <button onClick={handleCreateCategory} className="w-full bg-[#ccff00] text-black py-5 rounded-[1.5rem] font-[1000] text-lg hover:-translate-y-1 transition-all">
             {language === "ar" ? "تأكيد الإضافة" : "Confirm Entry"}
-          </button>
-          <button
-            onClick={() => setShowCatModal(false)}
-            className="w-full py-4 bg-transparent text-gray-400 dark:text-[#333] rounded-2xl font-bold hover:text-black dark:hover:text-white transition-all"
-          >
-            {language === "ar" ? "تراجع" : "Go Back"}
           </button>
         </div>
       </div>
     </div>
-  </div>
-)}
-    </div>
+  )}
+</div>
+  
+//     <div
+//       dir={language === "ar" ? "rtl" : "ltr"}
+//       className="p-4 max-w-7xl mx-auto pt-20 md:pt-8 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300"
+//     >
+//       {/* Header Section */}
+//       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b dark:border-gray-800 pb-6">
+//         <div>
+//           <h2 className="text-3xl font-extrabold flex items-center gap-3">
+//             <span className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
+//               🧥
+//             </span>
+//             {language === "ar" ? "إدارة المنتجات" : "Product Management"}
+//           </h2>
+//           <p className="text-gray-500 text-sm mt-1">
+//             {language === "ar"
+//               ? `لديك ${products.length} منتج حالياً`
+//               : `You have ${products.length} products total`}
+//           </p>
+//         </div>
+
+//        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+//     {/* 🆕 إضافة الـ Dropdown هنا */}
+   
+//       {renderProductCards && renderProductCards()}
+
+//       <button 
+//       onClick={() => exportProductsToExcel(products)}
+//       className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all shadow-md text-sm font-medium"
+//     >
+//       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+//       </svg>
+//       تصدير إكسيل
+//     </button>
+
+//     <label className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-all">
+//   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+//   </svg>
+//   استيراد (Import)
+//   <input 
+//     type="file" 
+//     accept=".xlsx, .xls" 
+//     className="hidden" 
+//     onChange={handleImportExcel} 
+//   />
+// </label>
+
+
+//     <button
+//       onClick={openAddModal}
+//       className="w-full md:w-auto flex items-center justify-center px-6 py-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg font-bold"
+//     >
+//       <FaPlus className={language === "ar" ? "ml-2" : "mr-2"} />
+//       {language === "ar" ? "إضافة منتج جديد" : "Add New Product"}
+//     </button>
+//   </div>
+//       </div>
+
+//       {/* Desktop Table */}
+//       <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
+//         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+//           <thead className="bg-gray-50 dark:bg-gray-800/50">
+//             <tr>
+//               {[
+//                 "Image",
+//                 "Name",
+//                 "Price",
+//                 "Category",
+//                 "Stock",
+//                 "Rating",
+//                 "status",
+//                 "Actions",
+//               ].map((head, i) => (
+//                 <th
+//                   key={i}
+//                   className="px-6 py-4 text-start text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+//                 >
+//                   {language === "ar"
+//                     ? [
+//                         "الصورة",
+//                         "الاسم",
+//                         "السعر",
+//                         "الفئة",
+//                         "المخزون",
+//                         "التقييم",
+//                         "الحالة",
+//                         "الإجراءات",
+//                       ][i]
+//                     : head}
+//                 </th>
+//               ))}
+//             </tr>
+//           </thead>
+//           {/* Desktop Table - بعد التعديل */}
+//           <DragDropContext onDragEnd={onDragEndProducts}>
+//       <Droppable droppableId="products-table-body">
+//         {(provided) => (
+//           <tbody {...provided.droppableProps}
+//             ref={provided.innerRef} className=" divide-y divide-gray-100 dark:divide-gray-800">
+//             {products.map((product, index) => (
+//               <Draggable
+//                 key={product._id}
+//                 draggableId={product._id}
+//                 index={index}
+//                 isDragDisabled={sortType !== "manual"}
+//               >
+// {(provided, snapshot) => (
+//             <tr
+//   ref={provided.innerRef}
+//   {...provided.draggableProps}
+//   {...provided.dragHandleProps}
+//   key={product._id}
+//   className={`transition-all duration-300 group ${
+//     snapshot.isDragging
+//       ? "bg-[#86FE05]/10 border-y-2 border-[#86FE05]/50 shadow-2xl scale-[1.01] z-50"
+//       : "hover:bg-gray-50 dark:hover:bg-gray-800/30 border-b border-transparent"
+//   }`}
+// >
+//                 <td className="px-6 py-4 whitespace-nowrap">
+//                   <img
+//                     // ✅ تحسين الوصول للصورة: بنجرب كل الاحتمالات الممكنة
+//                     src={
+//                       product.images?.[0]?.url ||
+//                       product.images?.[0] || // لو كانت مصفوفة نصوص
+//                       product.variants?.[0]?.images?.[0]?.url ||
+//                       product.variants?.[0]?.images?.[0] ||
+//                       "https://via.placeholder.com/150"
+//                     }
+//                     alt={product.name}
+//                     className="h-12 w-12 object-cover rounded-lg border dark:border-gray-700 shadow-sm transition-transform group-hover:scale-105"
+//                   />
+//                 </td>
+//                 <td className="px-6 py-4 whitespace-nowrap font-bold text-sm text-gray-700 dark:text-gray-200">
+//                   {product.name}
+//                 </td>
+//                 <td className="px-6 py-4 whitespace-nowrap text-sm">
+//                   {product.salePrice && product.salePrice > 0 ? (
+//                     <div className="flex flex-col">
+//                       <span className="text-red-500 line-through text-[10px] font-medium">
+//                         {product.originalPrice}{" "}
+//                         {language === "ar" ? "ج" : "EGP"}
+//                       </span>
+//                       <span className="font-bold text-green-600 dark:text-green-400">
+//                         {product.salePrice} {language === "ar" ? "ج" : "EGP"}
+//                       </span>
+//                     </div>
+//                   ) : (
+//                     <span className="font-bold text-indigo-600 dark:text-indigo-400">
+//                       {product.originalPrice || product.price}{" "}
+//                       {language === "ar" ? "ج" : "EGP"}
+//                     </span>
+//                   )}
+//                 </td>
+//               <td className="px-6 py-4 whitespace-nowrap">
+//   <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md text-[10px] font-black uppercase">
+//     {Array.isArray(product.category)
+//       ? product.category.map(c => c.name).join(", ")
+//       : product.category?.name || product.category}
+//   </span>
+// </td>
+//                 <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
+//                   {/* ✅ تنبيه لوني لو المخزون قليل */}
+//                   <span
+//                     className={`px-2 py-1 rounded ${product.countInStock < 5 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}`}
+//                   >
+//                     {product.countInStock}
+//                   </span>
+//                 </td>
+//                 <td className="px-6 py-4 whitespace-nowrap text-sm">
+//                   <div className="flex items-center text-yellow-500 font-bold gap-1">
+//                     <FaStar className="text-xs" />
+//                     {product.rating ? product.rating.toFixed(1) : "0.0"}
+//                   </div>
+//                 </td>
+//                 <td className="px-6 py-4 whitespace-nowrap text-center">
+//   <button
+//     onClick={() => handleToggleActive(product._id, product.isActive)}
+//     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none shadow-inner ${
+//       product.isActive ? "bg-[#86FE05]" : "bg-gray-300 dark:bg-zinc-700"
+//     }`}
+//     title={product.isActive ? "Active (Visible)" : "Hidden"}
+//   >
+//     <span
+//       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+//         product.isActive 
+//           ? (language === "ar" ? "-translate-x-6" : "translate-x-6") 
+//           : (language === "ar" ? "-translate-x-1" : "translate-x-1")
+//       }`}
+//     />
+//   </button>
+//   <div className="text-[9px] mt-1 font-bold uppercase opacity-60">
+//     {product.isActive 
+//       ? (language === "ar" ? "نشط" : "Active") 
+//       : (language === "ar" ? "مخفي" : "Hidden")}
+//   </div>
+  
+// </td>
+//                 <td className="px-6 py-4 whitespace-nowrap text-end text-sm">
+//                   <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+//                     {/* الأزرار بتاعتك زي ما هي بس ضفت لها tooltip بسيط */}
+//                     <button
+//                       onClick={() => openReviewsModal(product.reviews || [])}
+//                       className="p-2 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-full transition-all"
+//                       title="Reviews"
+//                     >
+//                       <FaCommentDots />
+//                     </button>
+//                     <button
+//                       onClick={() => openEditModal(product)}
+//                       className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-all"
+//                     >
+//                       <FaEdit />
+//                     </button>
+//                     <button
+//                       onClick={() => deleteProduct(product._id)}
+//                       className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all"
+//                     >
+//                       <FaTrash />
+//                     </button>
+//                     <button onClick={() => {
+//     setSelectedImages(product.images || []);
+//     setShowImageModal(true);
+//   }}
+//   className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-all"
+//   title="View Images"
+// ><FaEye /></button>
+//                   </div>
+//                 </td>
+//               </tr>
+//             )}
+//               </Draggable>
+//             ))}
+//             {provided.placeholder}
+//           </tbody>
+//         )}
+//       </Droppable>
+//     </DragDropContext>
+//   </table>
+// </div>
+
+//       {/* Mobile view and Modals */}
+//       {showModal && renderModalContent()}
+//       {showReviewsModal && renderReviewsModal()}
+
+// {/* Image Modal - Vestro Neon Luxury */}
+// {showImageModal && (
+//   <div
+//     className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm animate-in fade-in duration-300"
+//     onClick={() => setShowImageModal(false)}
+//   >
+//     <div
+//       className="bg-white dark:bg-black p-8 rounded-[2.5rem] shadow-[0_0_50px_rgba(0,0,0,1)] w-full max-w-5xl max-h-[90vh] overflow-hidden relative border border-gray-100 dark:border-[#1a1a1a] transform transition-all"
+//       onClick={(e) => e.stopPropagation()}
+//     >
+//       {/* Header */}
+//       <div className="flex justify-between items-center mb-10 border-b dark:border-[#1a1a1a] pb-6">
+//         <h2 className="text-3xl font-black text-black dark:text-white flex items-center gap-4">
+//           <div className="p-3 bg-[#ccff00]/10 dark:bg-[#ccff00]/20 rounded-2xl">
+//             <FaEye className="text-[#a8d600] dark:text-[#ccff00] drop-shadow-[0_0_8px_rgba(204,255,0,0.5)]" />
+//           </div>
+//           {language === "ar" ? "معرض الصور الملكي" : "Royal Gallery"}
+//         </h2>
+//         <button
+//           onClick={() => setShowImageModal(false)}
+//           className="w-12 h-12 flex items-center justify-center rounded-2xl bg-gray-100 dark:bg-[#1a1a1a] text-black dark:text-white hover:bg-red-500 hover:text-white transition-all duration-300 font-bold text-xl"
+//         >
+//           &times;
+//         </button>
+//       </div>
+
+//       {/* Grid Container */}
+//       <div className="overflow-y-auto max-h-[65vh] pr-4 custom-scrollbar">
+//         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
+//           {selectedImages.length > 0 ? (
+//             selectedImages.map((img, index) => (
+//               <div
+//                 key={index}
+//                 className="group relative aspect-square overflow-hidden rounded-[2rem] border-2 border-transparent hover:border-[#ccff00] bg-gray-50 dark:bg-[#0a0a0a] transition-all duration-500 shadow-sm hover:shadow-[0_0_20px_rgba(204,255,0,0.2)]"
+//               >
+//                 <img
+//                   src={img.url}
+//                   alt="Vestro Product"
+//                   className="w-full h-full object-contain p-6 transition-transform duration-700 group-hover:scale-105"
+//                 />
+//                 <div className="absolute inset-0 bg-gradient-to-t from-[#ccff00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+//               </div>
+//             ))
+//           ) : (
+//             <div className="col-span-full text-center py-24 bg-gray-50 dark:bg-[#0a0a0a] rounded-[3rem] border-2 border-dashed border-gray-200 dark:border-[#1a1a1a]">
+//               <p className="text-gray-400 dark:text-[#333] text-xl font-black uppercase tracking-widest">
+//                 {language === "ar" ? "الفخامة تبدأ من هنا" : "Luxury starts here"}
+//               </p>
+//             </div>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   </div>
+// )}
+
+//     {/* Category Modal - Vestro Neon Luxury */}
+// {showCatModal && (
+//   <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in zoom-in duration-300">
+//     <div className="bg-white dark:bg-black border border-gray-100 dark:border-[#1a1a1a] w-full max-w-md rounded-[3rem] shadow-[0_20px_80px_rgba(0,0,0,0.5)] overflow-hidden">
+//       <div className="p-10">
+//         {/* Header */}
+//         <div className="flex justify-between items-center mb-10">
+//           <div className="flex items-center gap-4">
+//             <div className="w-14 h-14 bg-[#ccff00] rounded-[1.2rem] flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(204,255,0,0.4)]">
+//               ✨
+//             </div>
+//             <div>
+//               <h3 className="text-2xl font-[1000] text-black dark:text-white leading-none tracking-tight">
+//                 {language === "ar" ? "فئة ملكية" : "Royal Category"}
+//               </h3>
+//               <p className="text-[10px] text-gray-400 dark:text-[#444] mt-2 font-black uppercase tracking-[0.3em]">Exclusive Inventory</p>
+//             </div>
+//           </div>
+//           <button
+//             onClick={() => setShowCatModal(false)}
+//             className="text-gray-300 dark:text-[#222] hover:text-red-500 transition-colors text-4xl font-light"
+//           >
+//             &times;
+//           </button>
+//         </div>
+
+//         {/* Form Body */}
+//         <div className="space-y-8">
+//           <div className="relative group">
+//             <label className="text-[11px] font-black text-gray-400 dark:text-[#666] mb-3 uppercase tracking-[0.25em] ml-2 block">
+//               {language === "ar" ? "اسم التصنيف" : "Category Identity"}
+//             </label>
+//             <input
+//               type="text"
+//               autoFocus
+//               className="w-full p-5 bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#1a1a1a] rounded-2xl outline-none focus:border-[#ccff00] focus:ring-4 focus:ring-[#ccff00]/5 transition-all dark:text-white font-bold text-lg"
+//               placeholder="..."
+//               value={newCategory.name}
+//               onChange={(e) => {
+//                 const name = e.target.value;
+//                 const slug = name.toLowerCase().trim().replace(/[^\u0621-\u064A\w ]/g, "").replace(/ /g, "-");
+//                 setNewCategory({ ...newCategory, name, slug });
+//               }}
+//             />
+//           </div>
+
+//           <div className="relative group">
+//             <label className="text-[11px] font-black text-gray-400 dark:text-[#666] mb-3 uppercase tracking-[0.25em] ml-2 block">
+//               الرابط الرقمي (Slug)
+//             </label>
+//             <div className="p-5 bg-black dark:bg-[#0a0a0a] rounded-2xl text-[#ccff00] text-sm font-mono border border-[#ccff00]/20 flex items-center gap-3 overflow-hidden">
+//               <span className="opacity-30 select-none">VESTRO://</span>
+//               <span className="truncate">{newCategory.slug || "..."}</span>
+//             </div>
+//           </div>
+//         </div>
+
+//         {/* Actions */}
+//         <div className="flex flex-col gap-4 mt-12">
+//           <button
+//             onClick={handleCreateCategory}
+//             className="w-full bg-[#ccff00] hover:bg-[#d9ff33] text-black py-5 rounded-[1.5rem] font-[1000] text-lg shadow-[0_10px_30px_rgba(204,255,0,0.2)] transition-all active:scale-[0.97] hover:-translate-y-1 uppercase tracking-widest"
+//           >
+//             {language === "ar" ? "تأكيد الإضافة" : "Confirm Entry"}
+//           </button>
+//           <button
+//             onClick={() => setShowCatModal(false)}
+//             className="w-full py-4 bg-transparent text-gray-400 dark:text-[#333] rounded-2xl font-bold hover:text-black dark:hover:text-white transition-all"
+//           >
+//             {language === "ar" ? "تراجع" : "Go Back"}
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   </div>
+// )}
+//     </div>
+
+
   );
 };
 
