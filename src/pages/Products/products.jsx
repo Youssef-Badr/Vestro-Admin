@@ -3653,244 +3653,224 @@ placeholder={language === "ar" ? "مثال: تيشيرت، قطن، صيفي" : 
       dir={language === "ar" ? "rtl" : "ltr"}
       className="p-4 max-w-7xl mx-auto pt-20 md:pt-8 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300"
     >
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b dark:border-gray-800 pb-6">
-        <div>
-          <h2 className="text-3xl font-extrabold flex items-center gap-3">
-            <span className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
-              🧥
-            </span>
-            {language === "ar" ? "إدارة المنتجات" : "Product Management"}
-          </h2>
-          <p className="text-gray-500 text-sm mt-1">
-            {language === "ar"
-              ? `لديك ${products.length} منتج حالياً`
-              : `You have ${products.length} products total`}
-          </p>
-        </div>
-
-       <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-    {/* 🆕 إضافة الـ Dropdown هنا */}
-   
-      {renderProductCards && renderProductCards()}
-
-      <button 
-      onClick={() => exportProductsToExcel(products)}
-      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all shadow-md text-sm font-medium"
-    >
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-      تصدير إكسيل
-    </button>
-
-    <label className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-all">
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-  </svg>
-  استيراد (Import)
-  <input 
-    type="file" 
-    accept=".xlsx, .xls" 
-    className="hidden" 
-    onChange={handleImportExcel} 
-  />
-</label>
-
+    {/* HEADER */}
+  <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b pb-6">
+    <h2 className="text-3xl font-extrabold">
+      {language === "ar" ? "إدارة المنتجات" : "Product Management"}
+    </h2>
 
     <button
       onClick={openAddModal}
-      className="w-full md:w-auto flex items-center justify-center px-6 py-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg font-bold"
+      className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
     >
-      <FaPlus className={language === "ar" ? "ml-2" : "mr-2"} />
-      {language === "ar" ? "إضافة منتج جديد" : "Add New Product"}
+      + {language === "ar" ? "إضافة منتج" : "Add Product"}
     </button>
   </div>
-      </div>
 
-      {/* Desktop Table */}
-      <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-          <thead className="bg-gray-50 dark:bg-gray-800/50">
-            <tr>
-              {[
-                "Image",
-                "Name",
-                "Price",
-                "Category",
-                "Stock",
-                "Rating",
-                "status",
-                "Actions",
-              ].map((head, i) => (
-                <th
-                  key={i}
-                  className="px-6 py-4 text-start text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {language === "ar"
-                    ? [
-                        "الصورة",
-                        "الاسم",
-                        "السعر",
-                        "الفئة",
-                        "المخزون",
-                        "التقييم",
-                        "الحالة",
-                        "الإجراءات",
-                      ][i]
-                    : head}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          {/* Desktop Table - بعد التعديل */}
-          <DragDropContext onDragEnd={onDragEndProducts}>
-      <Droppable droppableId="products-table-body">
-        {(provided) => (
-          <tbody {...provided.droppableProps}
-            ref={provided.innerRef} className=" divide-y divide-gray-100 dark:divide-gray-800">
-            {products.map((product, index) => (
-              <Draggable
-                key={product._id}
-                draggableId={product._id}
-                index={index}
-                isDragDisabled={sortType !== "manual"}
+  {/* ================= DESKTOP ================= */}
+  <div className="hidden md:block border rounded-xl overflow-hidden">
+    <table className="min-w-full">
+     <thead className="bg-gray-100 dark:bg-gray-800">
+  <tr>
+    {[
+      language === "ar" ? "الصورة" : "Image",
+      language === "ar" ? "الاسم" : "Name",
+      language === "ar" ? "السعر" : "Price",
+      language === "ar" ? "المخزون" : "Stock",
+      language === "ar" ? "الحالة" : "Status",
+      language === "ar" ? "الإجراءات" : "Actions",
+    ].map((h, i) => (
+      <th
+        key={i}
+        className={`p-3 text-xs font-bold ${
+          language === "ar" ? "text-right" : "text-left"
+        }`}
+      >
+        {h}
+      </th>
+    ))}
+  </tr>
+</thead>
+
+      <tbody>
+        {products.map((product)=>(
+          <tr key={product._id} className="border-b">
+
+            <td className="p-3">
+              <img
+                src={product.images?.[0]?.url || product.images?.[0]}
+                className="w-12 h-12 rounded object-cover"
+              />
+            </td>
+
+            <td className="p-3 font-bold">{product.name}</td>
+
+            <td className="p-3">
+              {product.salePrice || product.price} EGP
+            </td>
+
+            <td className="p-3">{product.countInStock}</td>
+
+            {/* TOGGLE */}
+            <td className="p-3">
+              <button
+                onClick={() => handleToggleActive(product._id, product.isActive)}
+                className={`relative inline-flex h-7 w-14 items-center rounded-full transition-all duration-300 ${
+                  product.isActive
+                    ? "bg-[#86FE05] shadow-[0_0_10px_rgba(134,254,5,0.6)]"
+                    : "bg-gray-300 dark:bg-zinc-700"
+                }`}
               >
-{(provided, snapshot) => (
-            <tr
-  ref={provided.innerRef}
-  {...provided.draggableProps}
-  {...provided.dragHandleProps}
-  key={product._id}
-  className={`transition-all duration-300 group ${
-    snapshot.isDragging
-      ? "bg-[#86FE05]/10 border-y-2 border-[#86FE05]/50 shadow-2xl scale-[1.01] z-50"
-      : "hover:bg-gray-50 dark:hover:bg-gray-800/30 border-b border-transparent"
-  }`}
->
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <img
-                    // ✅ تحسين الوصول للصورة: بنجرب كل الاحتمالات الممكنة
-                    src={
-                      product.images?.[0]?.url ||
-                      product.images?.[0] || // لو كانت مصفوفة نصوص
-                      product.variants?.[0]?.images?.[0]?.url ||
-                      product.variants?.[0]?.images?.[0] ||
-                      "https://via.placeholder.com/150"
-                    }
-                    alt={product.name}
-                    className="h-12 w-12 object-cover rounded-lg border dark:border-gray-700 shadow-sm transition-transform group-hover:scale-105"
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap font-bold text-sm text-gray-700 dark:text-gray-200">
-                  {product.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {product.salePrice && product.salePrice > 0 ? (
-                    <div className="flex flex-col">
-                      <span className="text-red-500 line-through text-[10px] font-medium">
-                        {product.originalPrice}{" "}
-                        {language === "ar" ? "ج" : "EGP"}
-                      </span>
-                      <span className="font-bold text-green-600 dark:text-green-400">
-                        {product.salePrice} {language === "ar" ? "ج" : "EGP"}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                      {product.originalPrice || product.price}{" "}
-                      {language === "ar" ? "ج" : "EGP"}
-                    </span>
-                  )}
-                </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-  <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md text-[10px] font-black uppercase">
-    {Array.isArray(product.category)
-      ? product.category.map(c => c.name).join(", ")
-      : product.category?.name || product.category}
-  </span>
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-all duration-300 ${
+                    product.isActive ? "translate-x-7" : "translate-x-1"
+                  }`}
+                />
+                <span className="absolute w-full text-[9px] font-bold text-center">
+                  {product.isActive ? "ON" : "OFF"}
+                </span>
+              </button>
+            </td>
+
+           {/* ACTIONS VERTICAL */}
+<td className="p-3">
+  <div className="flex flex-col gap-2">
+
+    <button
+      onClick={() => openEditModal(product)}
+      className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold"
+    >
+      ✏️ {language === "ar" ? "تعديل" : "Edit"}
+    </button>
+
+    <button
+      onClick={() => deleteProduct(product._id)}
+      className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold"
+    >
+      🗑️ {language === "ar" ? "حذف" : "Delete"}
+    </button>
+
+    <button
+      onClick={() => openReviewsModal(product.reviews || [])}
+      className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-bold"
+    >
+      💬 {language === "ar" ? "التقييمات" : "Reviews"}
+    </button>
+
+    <button
+      onClick={() => {
+        setSelectedImages(product.images || []);
+        setShowImageModal(true);
+      }}
+      className="bg-purple-500 text-white px-2 py-1 rounded text-xs font-bold"
+    >
+      👁️ {language === "ar" ? "الصور" : "Images"}
+    </button>
+
+  </div>
 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
-                  {/* ✅ تنبيه لوني لو المخزون قليل */}
-                  <span
-                    className={`px-2 py-1 rounded ${product.countInStock < 5 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}`}
-                  >
-                    {product.countInStock}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <div className="flex items-center text-yellow-500 font-bold gap-1">
-                    <FaStar className="text-xs" />
-                    {product.rating ? product.rating.toFixed(1) : "0.0"}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-center">
+
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* ================= MOBILE ================= */}
+  <div className="md:hidden space-y-4">
+    {products.map((product)=>(
+      <div key={product._id} className="border rounded-xl p-4 shadow">
+
+        <div className="flex gap-3">
+          <img
+            src={product.images?.[0]?.url || product.images?.[0]}
+            className="w-20 h-20 rounded object-cover"
+          />
+
+          <div className="flex-1">
+            <h3 className="font-bold">{product.name}</h3>
+            <p className="text-green-600 font-bold">
+              {product.salePrice || product.price} EGP
+            </p>
+            <p className="text-sm">Stock: {product.countInStock}</p>
+          </div>
+        </div>
+
+       <div className="flex flex-col items-center justify-center gap-1.5">
   <button
     onClick={() => handleToggleActive(product._id, product.isActive)}
-    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none shadow-inner ${
-      product.isActive ? "bg-[#86FE05]" : "bg-gray-300 dark:bg-zinc-700"
+    className={`relative inline-flex h-6 w-12 items-center rounded-full transition-all duration-500 ease-in-out outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 ${
+      product.isActive
+        ? "bg-gradient-to-r from-[#86FE05] to-[#6ed204] shadow-[0_0_15px_rgba(134,254,5,0.4)]"
+        : "bg-gray-200 dark:bg-zinc-700 shadow-inner"
     }`}
-    title={product.isActive ? "Active (Visible)" : "Hidden"}
   >
+    {/* الدائرة المتحركة */}
     <span
-      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+      className={`absolute h-5 w-5 transform rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-all duration-500 cubic-bezier(0.68, -0.55, 0.265, 1.55) ${
         product.isActive 
           ? (language === "ar" ? "-translate-x-6" : "translate-x-6") 
           : (language === "ar" ? "-translate-x-1" : "translate-x-1")
       }`}
-    />
+    >
+      {/* نقطة صغيرة داخل الدائرة لزيادة التفاصيل */}
+      <span className={`absolute inset-0 m-auto h-1.5 w-1.5 rounded-full transition-colors duration-500 ${product.isActive ? 'bg-[#86FE05]' : 'bg-gray-300'}`} />
+    </span>
+
+    {/* النصوص المخفية داخل التوجل (اختياري) */}
+    <div className={`absolute w-full px-1.5 flex justify-between items-center text-[8px] font-black pointer-events-none select-none ${product.isActive ? 'text-green-900' : 'text-gray-400'}`}>
+       <span className={product.isActive ? 'opacity-0' : 'opacity-100 ml-auto'}>OFF</span>
+       <span className={product.isActive ? 'opacity-100' : 'opacity-0'}>ON</span>
+    </div>
   </button>
-  <div className="text-[9px] mt-1 font-bold uppercase opacity-60">
+
+  {/* نص توضيحي تحت التوجل يدعم اللغتين */}
+  <span className="text-[9px] font-bold uppercase tracking-widest opacity-50 dark:text-gray-400">
     {product.isActive 
       ? (language === "ar" ? "نشط" : "Active") 
       : (language === "ar" ? "مخفي" : "Hidden")}
-  </div>
-</td>
-                <td className="px-6 py-4 whitespace-nowrap text-end text-sm">
-                  <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                    {/* الأزرار بتاعتك زي ما هي بس ضفت لها tooltip بسيط */}
-                    <button
-                      onClick={() => openReviewsModal(product.reviews || [])}
-                      className="p-2 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-full transition-all"
-                      title="Reviews"
-                    >
-                      <FaCommentDots />
-                    </button>
-                    <button
-                      onClick={() => openEditModal(product)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-all"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() => deleteProduct(product._id)}
-                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all"
-                    >
-                      <FaTrash />
-                    </button>
-                    <button
-  onClick={() => {
-    setSelectedImages(product.images || []);
-    setShowImageModal(true);
-  }}
-  className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-all"
-  title="View Images"
->
-  <FaEye />
-</button>
-                  </div>
-                </td>
-              </tr>
-            )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
-          </tbody>
-        )}
-      </Droppable>
-    </DragDropContext>
-  </table>
+  </span>
 </div>
+
+        {/* ACTIONS MOBILE - IMPROVED */}
+<div className="flex flex-col gap-3 mt-5">
+
+  <button
+    onClick={() => openEditModal(product)}
+    className="flex items-center justify-center gap-2 w-full bg-blue-500/90 active:scale-[0.97] text-white py-3 rounded-xl font-bold shadow-sm transition-all"
+  >
+    ✏️ {language === "ar" ? "تعديل المنتج" : "Edit Product"}
+  </button>
+
+  <button
+    onClick={() => deleteProduct(product._id)}
+    className="flex items-center justify-center gap-2 w-full bg-red-500/90 active:scale-[0.97] text-white py-3 rounded-xl font-bold shadow-sm transition-all"
+  >
+    🗑️ {language === "ar" ? "حذف المنتج" : "Delete Product"}
+  </button>
+
+  <button
+    onClick={() => openReviewsModal(product.reviews || [])}
+    className="flex items-center justify-center gap-2 w-full bg-yellow-500/90 active:scale-[0.97] text-white py-3 rounded-xl font-bold shadow-sm transition-all"
+  >
+    💬 {language === "ar" ? "عرض التقييمات" : "View Reviews"}
+  </button>
+
+  <button
+    onClick={() => {
+      setSelectedImages(product.images || []);
+      setShowImageModal(true);
+    }}
+    className="flex items-center justify-center gap-2 w-full bg-purple-500/90 active:scale-[0.97] text-white py-3 rounded-xl font-bold shadow-sm transition-all"
+  >
+    👁️ {language === "ar" ? "عرض الصور" : "View Images"}
+  </button>
+
+</div>
+
+      </div>
+    ))}
+  </div>
 
       {/* Mobile view and Modals */}
       {showModal && renderModalContent()}
