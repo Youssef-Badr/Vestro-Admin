@@ -12,39 +12,39 @@ const OrdersStatusSummary = ({ data }) => {
   const summary = data || { completed: 0, pending: 0, paid: 0, canceled: 0 };
 
   const statusItems = [
-    {
-      id: "completed",
-      label: isRTL ? "مكتملة" : "Completed",
-      value: summary.completed,
-      icon: <CheckCircle2 size={22} />,
-      color: "#86FE05",
-      shadow: "shadow-[#86FE05]/10",
-    },
-    {
-      id: "paid",
-      label: isRTL ? "مدفوعة" : "Paid",
-      value: summary.paid,
-      icon: <CreditCard size={22} />,
-      color: "#3B82F6",
-      shadow: "shadow-blue-500/10",
-    },
-    {
-      id: "pending",
-      label: isRTL ? "قيد المعالجة" : "Processing",
-      value: summary.pending,
-      icon: <Clock size={22} />,
-      color: "#F59E0B",
-      shadow: "shadow-yellow-500/10",
-    },
-    {
-      id: "canceled",
-      label: isRTL ? "ملغاة" : "Canceled",
-      value: summary.canceled,
-      icon: <XCircle size={22} />,
-      color: "#EF4444",
-      shadow: "shadow-red-500/10",
-    },
-  ];
+  {
+    id: "completed",
+    label: isRTL ? "مكتملة" : "Completed",
+    value: summary.completed,
+    icon: <CheckCircle2 size={22} />,
+    color: "#86FE05",
+    bg: "rgba(134,254,5,0.08)",
+  },
+  {
+    id: "paid",
+    label: isRTL ? "مدفوعة" : "Paid",
+    value: summary.paid,
+    icon: <CreditCard size={22} />,
+    color: "#86FE05",
+    bg: "rgba(134,254,5,0.08)",
+  },
+  {
+    id: "pending",
+    label: isRTL ? "قيد المعالجة" : "Processing",
+    value: summary.pending,
+    icon: <Clock size={22} />,
+    color: "#FFA500",
+    bg: "rgba(255,165,0,0.08)",
+  },
+  {
+    id: "canceled",
+    label: isRTL ? "ملغاة" : "Canceled",
+    value: summary.canceled,
+    icon: <XCircle size={22} />,
+    color: "#FF3B3B",
+    bg: "rgba(255,59,59,0.08)",
+  },
+];
 
   return (
     <div dir={isRTL ? "rtl" : "ltr"} className="w-full">
