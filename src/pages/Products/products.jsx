@@ -1332,7 +1332,15 @@ placeholder={language === "ar" ? "مثال: تيشيرت، قطن، صيفي" : 
                     ref={provided.innerRef}
                   >
                     {data.images.map((img, idx) => {
-                      const imageToShow = img.isNew ? img.url : img.url || img;
+                     const getOptimizedUrl = (url) => {
+  if (!url || !url.includes("cloudinary")) return url;
+
+  return url.replace("/upload/", "/upload/w_300,q_auto,f_auto/");
+};
+
+const imageToShow = img.isNew
+  ? img.url
+  : getOptimizedUrl(img.url || img);
                       return (
                         <Draggable key={idx} draggableId={`img-${idx}`} index={idx}>
                           {(provided) => (
