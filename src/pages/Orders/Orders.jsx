@@ -224,8 +224,7 @@ const fetchOrders = async () => {
     console.error("Fetch Orders Error:", err);
     toast.error(language === "ar" ? "فشل في جلب الطلبات" : "Failed to fetch orders");
   } finally {
-    // 6. لا نوقف الـ loading إلا لو الطلب مكملش للأخر أو فشل فعلياً
-    // (اختياري: ممكن تسيبها زي ما هي لو مش عاوز الـ Spinner يختفي ويظهر بسرعة)
+   
     setLoading(false);
   }
 };
