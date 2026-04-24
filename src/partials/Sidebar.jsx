@@ -24,20 +24,33 @@ const Sidebar = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
+ useEffect(() => {
+  if (window.innerWidth >= 1024) {
+    setSidebarOpen(true);
+  }
+}, []);
+
+useEffect(() => {
+  const onResize = () => {
     if (window.innerWidth >= 1024) {
       setSidebarOpen(true);
+      document.body.style.overflow = "auto";
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    const closeOnDesktopResize = () => {
-      if (window.innerWidth >= 1024) setSidebarOpen(true);
-    };
+  window.addEventListener("resize", onResize);
+  return () => window.removeEventListener("resize", onResize);
+}, []);
 
-    window.addEventListener("resize", closeOnDesktopResize);
-    return () => window.removeEventListener("resize", closeOnDesktopResize);
-  }, []);
+useEffect(() => {
+  if (window.innerWidth < 1024) {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "auto";
+  }
+
+  return () => {
+    document.body.style.overflow = "auto";
+  };
+}, [sidebarOpen]);
 
   const navLinks = useMemo(
     () => [
@@ -117,20 +130,20 @@ const Sidebar = () => {
       </header>
 
       {/* SIDEBAR */}
-      <aside
-        className={`fixed top-0 h-full z-50 w-[280px] sm:w-[300px] lg:w-[290px]
-        transition-all duration-300 ease-out border
-        ${sidebarBg}
-        ${
-          sidebarOpen
-            ? "translate-x-0"
-            : isRTL
-            ? "translate-x-full"
-            : "-translate-x-full"
-        }
-        ${isRTL ? "right-0 border-l" : "left-0 border-r"}
-        lg:translate-x-0`}
-      >
+     <aside
+  className={`fixed top-0 h-full overflow-hidden z-50 w-[280px] sm:w-[300px] lg:w-[290px]
+  transition-all duration-300 ease-out border
+  ${sidebarBg}
+  ${
+    sidebarOpen
+      ? "translate-x-0"
+      : isRTL
+      ? "translate-x-full"
+      : "-translate-x-full"
+  }
+  ${isRTL ? "right-0 border-l" : "left-0 border-r"}
+  lg:translate-x-0`}
+>
         {/* HEADER */}
         <div className="h-16 lg:h-auto px-4 lg:px-6 pt-3 lg:pt-7 pb-3 border-b border-inherit flex items-center justify-between">
           <div>
@@ -155,7 +168,7 @@ const Sidebar = () => {
         </div>
 
         {/* NAV */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 pb-32">
+       <nav className="h-full overflow-y-auto px-3 py-3 space-y-1.5 pb-32 pt-2">
           {navLinks.map((link) => {
             const isActive = location.pathname === link.to;
 
