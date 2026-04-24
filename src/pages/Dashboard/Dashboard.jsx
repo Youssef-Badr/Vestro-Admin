@@ -1,21 +1,30 @@
-import React, { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import axios from "../../api/axiosInstance";
 import { useLanguage } from "../../../src/context/LanguageContext";
 import { useTheme } from "../../../src/context/ThemeContext";
-import { 
-  TrendingUp, Package, Users, ShoppingBag, 
-  Truck, DollarSign, Activity, Zap, Calendar, ChevronDown 
+import {
+  Package,
+  Users,
+  ShoppingBag,
+  Truck,
+  DollarSign,
+  Zap,
+  Calendar,
+  RefreshCw,
 } from "lucide-react";
-import { ORDER_STATUS_CONFIG } from "../../constants/orderConstants"; 
+import { ORDER_STATUS_CONFIG } from "../../constants/orderConstants";
 
 const RevenueChart = lazy(() => import("../../components/RevenueChart"));
 
 function Dashboard() {
   const { language } = useLanguage();
-  const { theme } = useTheme(); 
-  const isDark = theme === "dark"; 
+  const { theme } = useTheme();
+
   const isRTL = language === "ar";
-  
+  const isDark = theme === "dark";
+
+  const [loading, setLoading] = useState(false);
+
   const [filters, setFilters] = useState({
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
@@ -23,155 +32,252 @@ function Dashboard() {
   });
 
   const [dashboardStats, setDashboardStats] = useState({
-    products: 0, orders: 0, customers: 0, revenue: 0, netSales: 0, totalShipping: 0,
-    statusSummary: {}, chartData: []
+    products: 0,
+    orders: 0,
+    customers: 0,
+    revenue: 0,
+    netSales: 0,
+    totalShipping: 0,
+    statusSummary: {},
+    chartData: [],
   });
 
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+
+      const res = await axios.get("orders/stats", {
+        params: filters,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      setDashboardStats(res.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await axios.get("orders/stats", {
-          params: { ...filters },
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        setDashboardStats(res.data);
-      } catch (error) { console.error("Dashboard error:", error); }
-    };
     fetchStats();
   }, [filters]);
 
-  const stats = [
-    { 
-        title: isRTL ? "صافي المبيعات (Delivered)" : "Net Sales (Delivered)", 
-        value: dashboardStats.netSales?.toLocaleString() || 0, 
-        icon: <Zap size={22} fill={isDark ? "#000" : "#fff"} strokeWidth={0} />, 
-        style: "bg-[#86FE05] text-black shadow-[0_20px_50px_rgba(134,254,5,0.25)] border-transparent scale-105 z-10" 
-    },
-    { 
-        title: isRTL ? "إجمالي الإيرادات" : "Total Revenue", 
-        value: dashboardStats.revenue?.toLocaleString() || 0, 
-        icon: <DollarSign size={22} className="text-[#86FE05]" />, 
-        style: isDark ? "bg-[#0A0A0A] border-white/5 text-white" : "bg-white border-slate-200 text-slate-900 shadow-sm"
-    },
-    { 
-        title: isRTL ? "عوائد الشحن المحصلة" : "Shipping Fees (Delivered)", 
-        value: dashboardStats.totalShipping?.toLocaleString() || 0, 
-        icon: <Truck size={22} className="opacity-40" />, 
-        style: isDark ? "bg-[#0D0D0D]/50 border-white/[0.03] text-white/50" : "bg-slate-50 border-slate-200 text-slate-500 shadow-sm" 
-    },
-    { 
-        title: isRTL ? "إجمالي الطلبات" : "Total Orders", 
-        value: dashboardStats.orders || 0, 
-        icon: <Package size={22} />, 
-        style: isDark ? "bg-[#0A0A0A] border-white/5 text-white" : "bg-white border-slate-200 text-slate-900 shadow-sm" 
-    },
-    { 
-        title: isRTL ? "المنتجات" : "Products", 
-        value: dashboardStats.products || 0, 
-        icon: <ShoppingBag size={22} />, 
-        style: isDark ? "bg-[#0A0A0A] border-white/5 text-white" : "bg-white border-slate-200 text-slate-900 shadow-sm" 
-    },
-    { 
-        title: isRTL ? "العملاء" : "Customers", 
-        value: dashboardStats.customers || 0, 
-        icon: <Users size={22} />, 
-        style: isDark ? "bg-[#0A0A0A] border-white/5 text-white" : "bg-white border-slate-200 text-slate-900 shadow-sm" 
-    },
-  ];
+  const num = (value) => Number(value || 0).toLocaleString();
+
+  const pageBg = isDark ? "bg-black text-white" : "bg-white text-black";
+  const cardDark = "bg-[#0c0c0c] border-white/10 text-white";
+  const cardLight = "bg-white border-slate-200 text-black shadow-sm";
+  const card = isDark ? cardDark : cardLight;
+
+  const stats = useMemo(
+    () => [
+      {
+        title: isRTL ? "صافي البيع" : "Net Sales",
+        value: num(dashboardStats.netSales),
+        icon: <Zap size={16} />,
+        red: true,
+      },
+      {
+        title: isRTL ? "الإيراد" : "Revenue",
+        value: num(dashboardStats.revenue),
+        icon: <DollarSign size={16} />,
+      },
+      {
+        title: isRTL ? "الشحن" : "Shipping",
+        value: num(dashboardStats.totalShipping),
+        icon: <Truck size={16} />,
+      },
+      {
+        title: isRTL ? "الطلبات" : "Orders",
+        value: num(dashboardStats.orders),
+        icon: <Package size={16} />,
+      },
+      {
+        title: isRTL ? "المنتجات" : "Products",
+        value: num(dashboardStats.products),
+        icon: <ShoppingBag size={16} />,
+      },
+      {
+        title: isRTL ? "العملاء" : "Customers",
+        value: num(dashboardStats.customers),
+        icon: <Users size={16} />,
+      },
+    ],
+    [dashboardStats, isRTL]
+  );
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"} className={`min-h-screen px-4 md:px-8 pb-10 transition-colors duration-500 ${isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'}`}>
-      
-      <div className="h-28 md:h-20 w-full"></div>
+    <div
+      dir={isRTL ? "rtl" : "ltr"}
+      className={`min-h-screen px-3 sm:px-4 md:px-6 pb-6 transition-all ${pageBg}`}
+    >
+      {/* top spacing */}
+      <div className="h-20 md:h-16" />
 
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-10">
+      {/* header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic leading-none">
-            Vestro <span className="opacity-20 font-light not-italic text-xl md:text-2xl">{isRTL ? "القيادة" : "Control"}</span>
+          <h1 className="text-2xl md:text-4xl font-black tracking-tight leading-none">
+            Vestro{" "}
+            <span className="text-red-700">
+              {isRTL ? "لوحة التحكم" : "Dashboard"}
+            </span>
           </h1>
-          <p className="text-[10px] mt-2 font-bold uppercase tracking-[0.4em] opacity-40">
-             {isRTL ? "تحليلات الأرباح المحققة فقط" : "Verified Revenue Analytics Only"}
+
+          <p className="text-[12px] md:text-[10px] mt-1 uppercase tracking-[0.25em] opacity-50 font-bold">
+            {isRTL ? "ملخص سريع للأداء" : "Fast Business Overview"}
           </p>
         </div>
 
-        {/* Filters */}
-        <div className={`flex flex-col sm:flex-row items-stretch gap-3 p-1.5 rounded-2xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
-          <div className={`relative flex items-center px-4 py-2 rounded-xl border ${isDark ? 'bg-black/40 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-            <Calendar size={14} className="text-[#86FE05] mx-2" />
-            <select 
+        {/* controls */}
+        <div className="grid grid-cols-3 gap-2">
+          <div
+            className={`h-10 rounded-xl border flex items-center px-2 gap-2 ${card}`}
+          >
+            <Calendar size={13} className="text-red-700" />
+
+            <select
               value={filters.year}
-              onChange={(e) => setFilters({...filters, year: e.target.value})}
-              className="bg-transparent text-[11px] font-black uppercase outline-none cursor-pointer appearance-none pr-6"
+              onChange={(e) =>
+                setFilters({ ...filters, year: Number(e.target.value) })
+              }
+              className="bg-transparent w-full text-[11px] font-bold outline-none"
             >
-              {[2024, 2025, 2026].map(y => <option key={y} value={y} className="text-black">{y}</option>)}
+              {[2024, 2025, 2026, 2027].map((y) => (
+                <option key={y} value={y} className="text-black">
+                  {y}
+                </option>
+              ))}
             </select>
           </div>
 
-          <div className={`flex rounded-xl p-0.5 ${isDark ? 'bg-black/40' : 'bg-slate-100'}`}>
-            {["monthly", "weekly"].map((type) => (
-              <button 
-                key={type}
-                onClick={() => setFilters({...filters, viewType: type})}
-                className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${
-                    filters.viewType === type ? "bg-[#86FE05] text-black shadow-lg" : "text-slate-500"
-                }`}
-              >
-                {isRTL ? (type === "monthly" ? "شهري" : "أسبوعي") : type}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() =>
+              setFilters({
+                ...filters,
+                viewType:
+                  filters.viewType === "monthly" ? "weekly" : "monthly",
+              })
+            }
+            className="h-10 rounded-xl bg-red-700 text-white text-[10px] font-black uppercase"
+          >
+            {filters.viewType === "monthly"
+              ? isRTL
+                ? "شهري"
+                : "Monthly"
+              : isRTL
+              ? "أسبوعي"
+              : "Weekly"}
+          </button>
+
+          <button
+            onClick={fetchStats}
+            className={`h-10 rounded-xl border flex items-center justify-center ${card}`}
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
-        {stats.map((stat, index) => (
-          <div key={index} className={`relative p-5 md:p-6 rounded-[2.5rem] border-t-2 transition-all duration-500 hover:-translate-y-2 ${stat.style}`}>
-             <div className="flex flex-col h-full justify-between gap-6 md:gap-8">
-                <div className={`p-2.5 w-fit rounded-xl ${index === 0 ? 'bg-black/10' : 'bg-slate-500/10'}`}>{stat.icon}</div>
-                <div>
-                   <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${index === 0 ? 'text-black/50' : 'opacity-40'}`}>{stat.title}</p>
-                   <h3 className="text-xl md:text-3xl font-black tracking-tighter leading-none">{stat.value}</h3>
-                </div>
-             </div>
+      {/* stats */}
+      <div className="grid grid-cols-3 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
+        {stats.map((item, i) => (
+          <div
+            key={i}
+            className={`rounded-2xl border p-2 ${
+              item.red
+                ? "bg-red-700 border-red-700 text-white"
+                : card
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 rounded-lg bg-black/10 flex items-center justify-center">
+                {item.icon}
+              </div>
+
+              <span className="text-[9px] font-black uppercase opacity-60">
+                #{i + 1}
+              </span>
+            </div>
+
+            <p className="text-[14px] uppercase font-black opacity-60 mb-1 truncate">
+              {item.title}
+            </p>
+
+            <h3 className="text-base md:text-xl font-black leading-none">
+              {loading ? "..." : item.value}
+            </h3>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mt-10">
-        {/* Logistics */}
-        <div className={`xl:col-span-1 p-6 md:p-8 rounded-[3rem] border ${isDark ? 'bg-[#080808] border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
-           <h4 className="text-[10px] font-black uppercase tracking-[0.4em] mb-8 opacity-30 italic">{isRTL ? "إحصائيات الحالات" : "Logistics"}</h4>
-           <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-             {Object.entries(dashboardStats.statusSummary || {}).map(([key, count]) => {
-                const config = ORDER_STATUS_CONFIG[key] || { ar: key, en: key, color: "#444", icon: "•" };
+      {/* bottom */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mt-4">
+        {/* status */}
+        <div className={`rounded-3xl border p-4 ${card}`}>
+          <div className="mb-3">
+            <h4 className="text-[10px] uppercase font-black tracking-[0.2em] opacity-50">
+              {isRTL ? "حالات الطلبات" : "Order Status"}
+            </h4>
+          </div>
+
+          <div className="space-y-2 max-h-[320px] overflow-y-auto">
+            {Object.entries(dashboardStats.statusSummary || {}).map(
+              ([key, count]) => {
+                const config = ORDER_STATUS_CONFIG[key] || {
+                  ar: key,
+                  en: key,
+                  icon: "•",
+                };
+
                 return (
-                  <div key={key} className={`flex justify-between items-center p-4 rounded-[1.8rem] border border-transparent hover:bg-white/5 transition-all ${isDark ? '' : 'bg-slate-50'}`}>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xl opacity-60">{config.icon}</span>
-                      <p className="text-[10px] font-black uppercase">{isRTL ? config.ar : config.en}</p>
+                  <div
+                    key={key}
+                    className="rounded-2xl bg-red-700 text-white px-3 py-2 flex justify-between items-center"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span>{config.icon}</span>
+
+                      <span className="text-[10px] font-black truncate">
+                        {isRTL ? config.ar : config.en}
+                      </span>
                     </div>
-                    <span className="text-xl font-black tracking-tighter text-[#86FE05]">{count}</span>
+
+                    <span className="text-sm font-black">{count}</span>
                   </div>
                 );
-             })}
-           </div>
+              }
+            )}
+          </div>
         </div>
 
-        {/* Growth Chart */}
-        <div className={`xl:col-span-2 p-6 md:p-8 rounded-[3rem] border ${isDark ? 'bg-[#080808] border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
-           <div className="flex justify-between items-center mb-8">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">{isRTL ? "مخطط النمو المالي" : "Financial Growth"}</h4>
-              <div className="text-[9px] font-black bg-[#86FE05]/10 px-3 py-1 rounded-full text-[#86FE05]">
-                {isRTL ? "صافي الربح الفعلي" : "Real Net Profit"}
-              </div>
-           </div>
-           <Suspense fallback={<div className="h-72 animate-pulse bg-slate-500/10 rounded-3xl" />}>
-              <div dir="ltr" className="h-[300px] md:h-[380px] w-full"> 
-                 <RevenueChart data={dashboardStats.chartData} viewType={filters.viewType} />
-              </div>
-           </Suspense>
+        {/* chart */}
+        <div className={`xl:col-span-2 rounded-3xl border p-4 ${card}`}>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-[10px] uppercase font-black tracking-[0.2em] opacity-50">
+              {isRTL ? "نمو الإيرادات" : "Revenue Growth"}
+            </h4>
+
+            <span className="px-2 py-1 rounded-full bg-red-700 text-white text-[9px] font-black">
+              LIVE
+            </span>
+          </div>
+
+          <Suspense
+            fallback={
+              <div className="h-[220px] rounded-2xl bg-slate-200 dark:bg-white/5 animate-pulse" />
+            }
+          >
+            <div dir="ltr" className="h-[220px] md:h-[320px]">
+              <RevenueChart
+                data={dashboardStats.chartData}
+                viewType={filters.viewType}
+              />
+            </div>
+          </Suspense>
         </div>
       </div>
     </div>
