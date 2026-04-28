@@ -1241,7 +1241,7 @@ const pageCount = useMemo(() => {
             <div className="grid grid-cols-4 lg:grid-cols-2 gap-1.5 lg:w-fit mx-auto w-full">
               <button onClick={() => handleConfirmOrder(order._id)} className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 lg:w-8 rounded-lg bg-red-700 text-white lg:bg-red-700/10 lg:text-red-700 hover:bg-red-700 hover:text-white transition-all">
                 <span className="text-[12px] lg:text-[10px]">🚚 </span>
-                <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">{language === "ar" ? "شحن" : "Ship"}</span>
+                <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">{language === "ar" ? "تأكيد" : "Confitm"}</span>
               </button>
               <button onClick={() => openEditModal(order)} className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 lg:w-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all">
                 <span className="text-[12px] lg:text-[10px]">✏</span>
