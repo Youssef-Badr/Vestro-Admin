@@ -1184,14 +1184,28 @@ const pageCount = useMemo(() => {
             <span className={`text-[12px] lg:text-[13px] font-black uppercase truncate tracking-tight ${darkMode ? 'text-white/40' : 'text-black/60'}`}>
               📍 {formatCompactAddress(order.shippingAddress)}
             </span>
-            {/* في الموبايل حالة بوسطة تظهر بجانب العنوان */}
-            <div className="lg:hidden">
-              {order.bostaInfo?.currentState && (
-                <div className={`px-2 py-0.5 rounded-md text-[9px] font-[1000] uppercase ${order.bostaInfo.currentState.group === "delivered" ? "bg-green-500/10 text-green-500" : "bg-blue-500/10 text-blue-500"}`}>
-                  {language === "ar" ? order.bostaInfo.currentState.ar : order.bostaInfo.currentState.en}
-                </div>
-              )}
-            </div>
+          {/* في الموبايل حالة بوسطة تظهر بجانب العنوان */}
+<div className="lg:hidden">
+  {order.bostaInfo?.currentState?.en ? (
+    <div
+      className={`px-2 py-0.5 rounded-md text-[9px] font-[1000] uppercase ${
+        order.bostaInfo.currentState.code === 45
+          ? "bg-green-500/10 text-green-500"
+          : order.bostaInfo.currentState.code === 41
+          ? "bg-orange-500/10 text-orange-500"
+          : order.bostaInfo.currentState.code === 47
+          ? "bg-red-500/10 text-red-500"
+          : "bg-blue-500/10 text-blue-500"
+      }`}
+    >
+      {language === "ar"
+        ? order.bostaInfo.currentState.ar
+        : order.bostaInfo.currentState.en}
+    </div>
+  ) : (
+    <span className="text-[9px] opacity-30">—</span>
+  )}
+</div>
           </div>
 
           {/* 4. Total (يظهر فقط في الديسكتوب) */}
@@ -1219,21 +1233,27 @@ const pageCount = useMemo(() => {
   </div>
 
   {/* 6. Bosta Status */}
-  <div className="flex-1 flex items-center justify-center lg:col-span-1">
-    {order.bostaInfo?.currentState ? (
-      <div className={`w-full text-center px-2 py-2 rounded-xl text-[9px] font-black ${
-        order.bostaInfo.currentState.group === "delivered"
+<div className="flex-1 flex items-center justify-center lg:col-span-1">
+  {order.bostaInfo?.currentState?.en ? (
+    <div
+      className={`w-full text-center px-2 py-2 rounded-xl text-[9px] font-black ${
+        order.bostaInfo.currentState.code === 45
           ? "bg-green-500/10 text-green-500"
+          : order.bostaInfo.currentState.code === 41
+          ? "bg-orange-500/10 text-orange-500"
+          : order.bostaInfo.currentState.code === 47
+          ? "bg-red-500/10 text-red-500"
           : "bg-blue-500/10 text-blue-500"
-      }`}>
-        {language === "ar"
-          ? order.bostaInfo.currentState.ar
-          : order.bostaInfo.currentState.en}
-      </div>
-    ) : (
-      <span className="text-[10px] font-black opacity-20">—</span>
-    )}
-  </div>
+      }`}
+    >
+      {language === "ar"
+        ? order.bostaInfo.currentState.ar
+        : order.bostaInfo.currentState.en}
+    </div>
+  ) : (
+    <span className="text-[10px] font-black opacity-20">—</span>
+  )}
+</div>
 
 </div>
           {/* 7. Manage Buttons */}
