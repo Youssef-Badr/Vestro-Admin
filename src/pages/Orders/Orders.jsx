@@ -1234,7 +1234,7 @@ const pageCount = useMemo(() => {
 
   {/* 6. Bosta Status */}
 <div className="flex-1 flex items-center justify-center lg:col-span-1">
-  {order.bostaInfo?.currentState?.en ? (
+  {order.bostaInfo?.currentState?.ar ? (
     <div
       className={`w-full text-center px-2 py-2 rounded-xl text-[9px] font-black ${
         order.bostaInfo.currentState.code === 45
