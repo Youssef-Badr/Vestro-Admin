@@ -1102,7 +1102,27 @@ const pageCount = useMemo(() => {
     <div className="col-span-1 text-center">{language === "ar" ? "بوسطة" : "Bosta"}</div>
     <div className="col-span-1 text-center">{language === "ar" ? "الإدارة" : "Manage"}</div>
   </div>
+  
+{/* 📱 MOBILE SELECT ALL BAR (ABOVE CARDS) */}
+<div className="lg:hidden w-full mb-3">
+  <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${
+    darkMode ? "bg-[#0D0D0D] border-white/10" : "bg-white border-black/10"
+  }`}>
 
+    <input
+      type="checkbox"
+      onChange={(e) => handleSelectAll(e.target.checked)}
+      className="w-5 h-5 accent-red-700"
+    />
+
+    <span className={`text-[12px] font-black uppercase ${
+      darkMode ? "text-white/80" : "text-black"
+    }`}>
+      {language === "ar" ? "تحديد الكل" : "Select All"}
+    </span>
+
+  </div>
+</div>
   {/* 📦 ROWS / CARDS */}
   <div className={`divide-y ${darkMode ? 'divide-white/[0.05]' : 'divide-black/[0.05]'}`}>
     {allOrdersToShow?.map((order) => {
