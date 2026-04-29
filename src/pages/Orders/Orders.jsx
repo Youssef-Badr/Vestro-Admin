@@ -1184,9 +1184,9 @@ const pageCount = useMemo(() => {
             <span className={`text-[12px] lg:text-[13px] font-black uppercase truncate tracking-tight ${darkMode ? 'text-white/40' : 'text-black/60'}`}>
               📍 {formatCompactAddress(order.shippingAddress)}
             </span>
-          {/* في الموبايل حالة بوسطة تظهر بجانب العنوان */}
+      {/* في الموبايل حالة بوسطة تظهر بجانب العنوان */}
 <div className="lg:hidden">
-  {order.bostaInfo?.currentState?.en ? (
+  {order.bostaInfo?.currentState?.code ? (
     <div
       className={`px-2 py-0.5 rounded-md text-[9px] font-[1000] uppercase ${
         order.bostaInfo.currentState.code === 45
@@ -1199,8 +1199,8 @@ const pageCount = useMemo(() => {
       }`}
     >
       {language === "ar"
-        ? order.bostaInfo.currentState.ar
-        : order.bostaInfo.currentState.en}
+        ? order.bostaInfo.currentState.ar || "غير معروف"
+        : order.bostaInfo.currentState.en || "Unknown"}
     </div>
   ) : (
     <span className="text-[9px] opacity-30">—</span>
@@ -1232,9 +1232,9 @@ const pageCount = useMemo(() => {
     </select>
   </div>
 
-  {/* 6. Bosta Status */}
+ {/* 6. Bosta Status */}
 <div className="flex-1 flex items-center justify-center lg:col-span-1">
-  {order.bostaInfo?.currentState?.ar ? (
+  {order.bostaInfo?.currentState?.code !== undefined ? (
     <div
       className={`w-full text-center px-2 py-2 rounded-xl text-[9px] font-black ${
         order.bostaInfo.currentState.code === 45
@@ -1243,12 +1243,14 @@ const pageCount = useMemo(() => {
           ? "bg-orange-500/10 text-orange-500"
           : order.bostaInfo.currentState.code === 47
           ? "bg-red-500/10 text-red-500"
+          : order.bostaInfo.currentState.code === 46
+          ? "bg-purple-500/10 text-purple-500"
           : "bg-blue-500/10 text-blue-500"
       }`}
     >
       {language === "ar"
-        ? order.bostaInfo.currentState.ar
-        : order.bostaInfo.currentState.en}
+        ? order.bostaInfo.currentState.ar || "غير معروف"
+        : order.bostaInfo.currentState.en || "Unknown"}
     </div>
   ) : (
     <span className="text-[10px] font-black opacity-20">—</span>

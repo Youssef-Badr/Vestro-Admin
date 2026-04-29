@@ -40,7 +40,7 @@ export const ORDER_STATUS_CONFIG = {
   },
 
   Shipped: {
-    ar: "تم الشحن",
+    ar: "تم إرسال الشحنة" ,
     en: "Shipped",
     color: "#7C3AED",
     icon: "🚚",
