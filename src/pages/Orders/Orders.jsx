@@ -29,7 +29,7 @@ const [statusFilter, setStatusFilter] = useState("all");
 const [startDate, setStartDate] = useState("");
 const [endDate, setEndDate] = useState("");
 const [currentPage, setCurrentPage] = useState(1);
-const [pageSize, setPageSize] = useState(20); // القيمة الافتراضية اللي طلبها العميل
+const [pageSize, setPageSize] = useState(30); // القيمة الافتراضية اللي طلبها العميل
 const [totalOrders, setTotalOrders] = useState(0); // العدد الإجمالي اللي جاي من السيرفر  const openEditModal = (order) => {
 const filters = {
   statusFilter,
@@ -881,7 +881,7 @@ const { name, price } = getProductInfo(productId);
 
 const pageCount = useMemo(() => {
   return totalOrders > 0
-    ? Math.ceil(totalOrders / (pageSize || 20))
+    ? Math.ceil(totalOrders / (pageSize || 30))
     : 0;
 }, [totalOrders, pageSize]);
 
