@@ -1083,7 +1083,7 @@ return (
               placeholder={language === "ar" ? "اسم المنتج" : "Product Name"}
               value={data.name}
               onChange={(e) => setData({ ...data, name: e.target.value })}
-              className="w-full p-3.5 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none shadow-sm transition-all"
+              className="w-full notranslate p-3.5 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none shadow-sm transition-all"
             />
             <textarea
               placeholder={
@@ -1904,7 +1904,7 @@ const imageToShow = img.isNew
                           alt={product.name}
                         />
                       </td>
-                      <td className="px-6 py-4 font-bold text-sm text-gray-700 dark:text-gray-200">{product.name}</td>
+                      <td className="px-6 py-4 notranslate font-bold text-sm text-gray-700 dark:text-gray-200">{product.name}</td>
                       <td className="px-6 py-4 text-sm font-semibold">
                         {product.salePrice > 0 ? (
                           <div className="flex flex-col">
