@@ -518,6 +518,14 @@ const deliveryMap = useMemo(() => {
 };
 
 const handleConfirmOrder = async (orderId, showToast = true) => {
+   if (
+      !window.confirm(
+        language === "ar"
+          ? "هل أنت متأكد من حذف هذا الطلب؟"
+          : "Are you sure you want to delete this order?",
+      )
+    )
+      return;
   try {
     // ❌ ممنوع تغيير الحالة من الفرونت
 
