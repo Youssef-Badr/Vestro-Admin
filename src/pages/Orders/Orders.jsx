@@ -40,6 +40,12 @@ const filters = {
   showArchived,
   debouncedSearch,
 };
+const formatWhatsappNumber = (phone) => {
+  if (!phone) return "";
+  return phone.replace(/\D/g, ""); // يشيل + وأي رموز
+};
+
+
   const openEditModal = (order) => {
     setEditingOrder(JSON.parse(JSON.stringify(order))); // نسخة عميقة للأوردر
     fetchCoupons(); // تحديث الأكواد
@@ -1126,8 +1132,11 @@ const pageCount = useMemo(() => {
   {/* 📦 ROWS / CARDS */}
   <div className={`divide-y ${darkMode ? 'divide-white/[0.05]' : 'divide-black/[0.05]'}`}>
     {allOrdersToShow?.map((order) => {
+      
       const finalTotal = order.totalPrice ?? computeFinalTotal(order);
       const statusColor = ORDER_STATUS_CONFIG[order.status]?.color || "#888";
+      const waPhone = formatWhatsappNumber(order.guestInfo?.phone);
+const waSecondary = formatWhatsappNumber(order.guestInfo?.secondaryPhone);
 
       return (
         <div key={order._id} className={`group p-3 md:p-6 lg:p-4 flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-2 lg:items-center transition-all duration-300 ${darkMode ? 'hover:bg-white/[0.02]' : 'hover:bg-black/[0.02]'}`}>
@@ -1166,9 +1175,10 @@ const pageCount = useMemo(() => {
     <div className="flex items-center gap-1.5 min-w-fit">
         <span className={`font-black text-[12px] lg:text-[13px] tracking-widest ${darkMode ? 'text-white/80' : 'text-black/70'}`}>
             {order.guestInfo?.phone || "—"}
+            
         </span>
         <a 
-            href={`https://wa.me/2${order.guestInfo?.phone}`} 
+          href={`https://wa.me/${waPhone}`}
             target="_blank" 
             rel="noreferrer" 
             className="text-[#25D366] hover:scale-110 transition-transform"
@@ -1192,7 +1202,7 @@ const pageCount = useMemo(() => {
                 {order.guestInfo.secondaryPhone}
             </span>
             <a 
-                href={`https://wa.me/2${order.guestInfo.secondaryPhone}`} 
+                href={`https://wa.me/${waSecondary}`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="text-[#25D366] hover:scale-110 transition-transform"
