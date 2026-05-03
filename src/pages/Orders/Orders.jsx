@@ -388,20 +388,26 @@ const deliveryMap = useMemo(() => {
     }
   };
 
-  const updateStatus = async (id, newStatus) => {
+const updateStatus = async (id, newStatus) => {
   try {
-    // لازم نبعت الـ status والـ ids (حتى لو أوردر واحد نحطه في array)
     await axios.put(`/orders/${id}/status`, { 
       status: newStatus,
-      ids: [id] // الباكيند بتاعك بيقرأ targetIds من هنا
+      ids: [id]
     });
-    toast.success(language === "ar" ? "تم تحديث الحالة" : "Status updated");
-    fetchOrders();
+
+    // ✅ تحديث محلي بدل ما تعمل fetch
+    setOrders((prev) =>
+      prev.map((order) =>
+        order._id === id
+          ? { ...order, status: newStatus }
+          : order
+      )
+    );
+
   } catch (error) {
     toast.error(language === "ar" ? "فشل في تحديث الحالة" : "Failed");
   }
 };
-
   // const fetchArchivedOrders = async () => {
   //   try {
   //     const token = localStorage.getItem("token");
@@ -551,72 +557,6 @@ const handleConfirmOrder = async (orderId, showToast = true) => {
   }
 };
  
-// const handleShipToBosta = async (orderId, showToast = true) => {
-//   try {
-//     // console.log(`--- [START] Shipping Order ID: ${orderId} to Bosta ---`);
-
-//     const res = await axios.post(`/orders/${orderId}/ship-bosta`);
-
-//     // console.log("--- [SUCCESS] Bosta Response Data:", res.data);
-
-//     // بنظهر توست النجاح "فقط" لو showToast بـ true
-//     if (res.data.success && showToast) {
-//       toast.success(res.data.message);
-//     }
-
-//     // بنحدث الجدول فقط لو مش Bulk عشان ميحصلش ريندر كتير
-//     if (showToast) fetchOrders();
-
-//     return res.data; // بنرجع الداتا عشان نحتاجها في الـ Bulk
-
-//   } catch (err) {
-//     console.error("--- [ERROR] Bosta Shipping Failed ---");
-//     const errorMessage = err.response?.data?.message || "حدث خطأ في النظام";
-
-//     // بنظهر توست الخطأ "فقط" لو showToast بـ true
-//     if (showToast) {
-//       if (err.response?.status === 400) {
-//         toast.warning(errorMessage);
-//       } else {
-//         toast.error(errorMessage);
-//       }
-//     }
-
-//     // ضروري نـ throw الخطأ عشان الـ Bulk Confirm يحس بيه
-//     throw { id: orderId, message: errorMessage };
-//   }
-// };
-
-// const handleConfirmOrder = async (orderId, showToast = true) => {
-//   try {
-//     // 1. تحديث الحالة
-//     const statusRes = await axios.put(`/orders/${orderId}/status`, { status: "Shipped" });
-    
-//     // إظهار نجاح الحالة فقط في الزرار المنفرد
-//     if (showToast) {
-//       // toast.success(statusRes.data.message || "تم التأكيد"); // ممكن تشيل دي لو مش عاوز رسايل كتير
-//     }
-
-//     // 2. استدعاء دالة الشحن (هي اللي هتطلع توست النجاح أو التحذير)
-//     await handleShipToBosta(orderId, showToast);
-
-//     // تحديث الجدول في حالة الزرار المنفرد
-//     if (showToast) fetchOrders();
-
-//   } catch (err) {
-//     const msg = err.response?.data?.message || "Confirm failed";
-
-//     // لو ده زرار منفرد (showToast = true)
-//     if (showToast) {
-//       // إحنا مش هنطلع toast.error هنا لأن handleShipToBosta طلعت الـ toast بتاعها خلاص
-//       console.error("Single confirm handled error:", msg);
-//       fetchOrders(); // حدث الجدول عشان يظهر التغيير
-//     } else {
-//       // لو إحنا في Bulk، بنرمي الخطأ عشان دالة الـ Bulk تجمع الـ IDs الفاشلة
-//       throw { id: orderId, message: msg };
-//     }
-//   }
-// };
 
 // bulk actions
 const handleBulkConfirm = async () => {
