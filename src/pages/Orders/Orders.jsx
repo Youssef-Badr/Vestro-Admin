@@ -840,6 +840,87 @@ const pageCount = useMemo(() => {
 }, [totalOrders, pageSize]);
 
 
+const buildWhatsAppMessage = (order) => {
+  const name = order.customerName || order.guestInfo?.name || "";
+  const phone = order.guestInfo?.phone || "";
+  
+  const city =
+    order.shippingAddress?.cityName ||
+    order.shippingAddress?.cityOtherName ||
+    "";
+
+  const address = `
+${city}
+${order.shippingAddress?.districtName || ""}
+${order.shippingAddress?.address || ""}
+عمارة: ${order.shippingAddress?.buildingNumber || "-"}
+دور: ${order.shippingAddress?.floor || "-"}
+شقة: ${order.shippingAddress?.apartment || "-"}
+`;
+
+  // 🛍️ المنتجات
+  const itemsText = order.orderItems
+    ?.map((item, index) => {
+      // 🟣 BUNDLE
+      if (item.isBundle) {
+        const bundleItems = item.bundleItems
+          ?.map(
+            (b) => `   - ${b.name} (${b.size || "-"} / ${b.color || "-"})`
+          )
+          .join("\n");
+
+        return `📦 عرض ${index + 1}
+${item.name}
+السعر: ${item.price} جنيه
+الكمية: ${item.quantity}
+
+المحتويات:
+${bundleItems}`;
+      }
+
+      // 🟢 منتج عادي
+      return `🛍️ منتج ${index + 1}
+${item.name}
+المقاس: ${item.size || "-"}
+اللون: ${item.color || "-"}
+السعر: ${item.price} جنيه
+الكمية: ${item.quantity}`;
+    })
+    .join("\n\n");
+
+  // 💰 الحسابات
+  const shipping = order.shippingFee || 0;
+  const total = order.totalPrice || 0;
+
+  const message = `
+اهلا ب حضرتك ي فندم 🥰
+مع حضرتك خدمة عملاء Vestro
+
+حضرتك طالب اوردر على بيانات 👇🏻
+
+👤 الاسم:
+${name}
+
+📞 الهاتف:
+${phone}
+
+📍 العنوان:
+${address}
+
+🛒 تفاصيل الاوردر:
+${itemsText}
+
+💰 ملخص الطلب:
+سعر المنتجات: ${total - shipping} جنيه
+الشحن: ${shipping} جنيه
+الإجمالي: ${total} جنيه
+
+يرجي اخبارنا ب الوزن والطول للتأكيد علي المقاس 🙏
+`;
+
+  return encodeURIComponent(message);
+};
+
  return (
     <div
       className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen pt-4 md:pt-0 text-gray-900 dark:text-gray-100"
@@ -1083,8 +1164,24 @@ const pageCount = useMemo(() => {
       
       const finalTotal = order.totalPrice ?? computeFinalTotal(order);
       const statusColor = ORDER_STATUS_CONFIG[order.status]?.color || "#888";
-      const waPhone = formatWhatsappNumber(order.guestInfo?.phone);
-const waSecondary = formatWhatsappNumber(order.guestInfo?.secondaryPhone);
+      const getOrderPhone = (order) => {
+  return (
+    order?.guestInfo?.phone ||          // 👈 guest
+    order?.client?.phone ||             // 👈 لو ضفت phone في client
+    order?.user?.phone ||               // 👈 لو موجود في user
+    ""
+  );
+};
+
+const getOrderSecondaryPhone = (order) => {
+  return (
+    order?.guestInfo?.secondaryPhone ||
+    order?.client?.secondaryPhone ||
+    ""
+  );
+};
+      const waPhone = formatWhatsappNumber(getOrderPhone(order));
+const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
 
       return (
         <div key={order._id} className={`group p-3 md:p-6 lg:p-4 flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-2 lg:items-center transition-all duration-300 ${darkMode ? 'hover:bg-white/[0.02]' : 'hover:bg-black/[0.02]'}`}>
@@ -1126,7 +1223,7 @@ const waSecondary = formatWhatsappNumber(order.guestInfo?.secondaryPhone);
             
         </span>
         <a 
-          href={`https://wa.me/${waPhone}`}
+          href={`https://wa.me/${waPhone}?text=${buildWhatsAppMessage(order)}`}
             target="_blank" 
             rel="noreferrer" 
             className="text-[#25D366] hover:scale-110 transition-transform"
@@ -1150,7 +1247,7 @@ const waSecondary = formatWhatsappNumber(order.guestInfo?.secondaryPhone);
                 {order.guestInfo.secondaryPhone}
             </span>
             <a 
-                href={`https://wa.me/${waSecondary}`} 
+               href={`https://wa.me/${waSecondary}?text=${buildWhatsAppMessage(order)}`}
                 target="_blank" 
                 rel="noreferrer" 
                 className="text-[#25D366] hover:scale-110 transition-transform"
