@@ -521,7 +521,7 @@ const handleConfirmOrder = async (orderId, showToast = true) => {
    if (
       !window.confirm(
         language === "ar"
-          ? "هل أنت متأكد من حذف هذا الطلب؟"
+          ? "هل أنت متأكد من شحن هذا الطلب؟"
           : "Are you sure you want to delete this order?",
       )
     )
