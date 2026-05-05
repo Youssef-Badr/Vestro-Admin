@@ -219,6 +219,7 @@ const Discounts = lazy(() => import("./pages/Discounts/Discounts"));
 const Settings = lazy(() => import("./pages/Settings/Settings"));
 const Login = lazy(() => import("./pages/Login/Login"));
 const Logout = lazy(() => import("./pages/Logout/Logout"));
+const inventory = lazy(() => import("./pages/Inventory/Inventory"));
 const HomeSettings = lazy(() => import("./pages/HomeSettings/HomeSettings"));
 const Announcements = lazy(() =>
   import("./pages/Announcements/Announcements")
@@ -266,6 +267,7 @@ function App() {
       <Routes>
         <Route path="/" element={wrap(Dashboard)} />
         <Route path="/products" element={wrap(Products)} />
+        <Route path="/inventory" element={wrap(inventory)} />
         <Route path="/orders" element={wrap(Orders)} />
         <Route path="/customers" element={wrap(Customers)} />
         <Route path="/payments" element={wrap(Payments)} />

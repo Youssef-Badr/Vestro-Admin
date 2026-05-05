@@ -13,6 +13,7 @@ const { theme } = useTheme();
   const darkMode = theme === "dark";
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [bundles, setBundles] = useState([]);
   const [deliveryCharges, setDeliveryCharges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -843,15 +844,17 @@ const pageCount = useMemo(() => {
 const buildWhatsAppMessage = (order) => {
   const name = order.customerName || order.guestInfo?.name || "";
   const phone = order.guestInfo?.phone || "";
-  
+    const discount = Number(order.discount?.amount) || 0;
+
   const city =
     order.shippingAddress?.cityName ||
     order.shippingAddress?.cityOtherName ||
     "";
 
   const address = `
-${city}
-${order.shippingAddress?.districtName || ""}
+مدينة: ${city} 
+مركز: ${order.shippingAddress?.districtName || ""}
+العنوان بالكامل 
 ${order.shippingAddress?.address || ""}
 عمارة: ${order.shippingAddress?.buildingNumber || "-"}
 دور: ${order.shippingAddress?.floor || "-"}
@@ -913,6 +916,7 @@ ${itemsText}
 💰 ملخص الطلب:
 سعر المنتجات: ${total - shipping} جنيه
 الشحن: ${shipping} جنيه
+${discount > 0 ? `الخصم: -${discount} جنيه` : `الخصم: 0 جنيه`}
 الإجمالي: ${total} جنيه
 
 يرجي اخبارنا ب الوزن والطول للتأكيد علي المقاس 🙏
@@ -1395,6 +1399,8 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
     </div>
   </div>
 )}
+
+
 
  {isEditModalOpen && editingOrder && (
   <div className="fixed inset-0 z-[100] backdrop-blur-md bg-black/80 flex justify-center items-center p-4 animate-in fade-in duration-300">
@@ -2068,6 +2074,15 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
     </div>
   </div>
 )}
+
+
+
+
+
+
+
+
+
 
     </div> 
   );
