@@ -496,6 +496,28 @@ const updateStatus = async (id, newStatus) => {
     }
   };
 
+const updateAllowToOpenPackage = async (id, value) => {
+  // 1. تحديث فوري في الواجهة (بدون API delay)
+  setOrders((prev) =>
+    prev.map((o) =>
+      o._id === id ? { ...o, allowToOpenPackage: value } : o
+    )
+  );
+
+  try {
+    // 2. تحديث في السيرفر
+    await axios.put(`/orders/${id}`, {
+      allowToOpenPackage: value,
+    });
+  } catch (err) {
+    // 3. لو فشل → ارجع الحالة القديمة
+    setOrders((prev) =>
+      prev.map((o) =>
+        o._id === id ? { ...o, allowToOpenPackage: !value } : o
+      )
+    );
+  }
+};
 
   const handleShipToBosta = async (orderId, showToast = true) => {
   try {
@@ -1263,34 +1285,43 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
         </div>
     )}
 </div>
-          {/* 3. Address Section */}
-          <div className="flex items-center justify-between lg:col-span-2">
-            <span className={`text-[12px] lg:text-[13px] font-black uppercase truncate tracking-tight ${darkMode ? 'text-white/40' : 'text-black/60'}`}>
-              📍 {formatCompactAddress(order.shippingAddress)}
-            </span>
-      {/* في الموبايل حالة بوسطة تظهر بجانب العنوان */}
-<div className="lg:hidden">
-  {order.bostaInfo?.currentState?.code ? (
-    <div
-      className={`px-2 py-0.5 rounded-md text-[9px] font-[1000] uppercase ${
-        order.bostaInfo.currentState.code === 45
-          ? "bg-green-500/10 text-green-500"
-          : order.bostaInfo.currentState.code === 41
-          ? "bg-orange-500/10 text-orange-500"
-          : order.bostaInfo.currentState.code === 47
-          ? "bg-red-500/10 text-red-500"
-          : "bg-blue-500/10 text-blue-500"
-      }`}
-    >
-      {language === "ar"
-        ? order.bostaInfo.currentState.ar || "غير معروف"
-        : order.bostaInfo.currentState.en || "Unknown"}
-    </div>
-  ) : (
-    <span className="text-[9px] opacity-30">—</span>
-  )}
+       {/* 3. Address Section */}
+<div className="flex items-center justify-between lg:col-span-2 gap-2">
+
+  {/* Address */}
+  <span className={`text-[12px] lg:text-[13px] font-black uppercase truncate tracking-tight
+    ${darkMode ? 'text-white/40' : 'text-black/60'}`}>
+    📍 {formatCompactAddress(order.shippingAddress)}
+  </span>
+
+  {/* 🔥 OPEN PACKAGE (MOBILE ONLY - NEXT TO ADDRESS) */}
+  <div className="flex lg:hidden items-center gap-2 shrink-0">
+
+    <label className="relative inline-flex items-center cursor-pointer scale-75">
+
+      <input
+        type="checkbox"
+        checked={order.allowToOpenPackage}
+        disabled={order.bostaInfo?.deliveryId}
+        onChange={(e) =>
+          updateAllowToOpenPackage(order._id, e.target.checked)
+        }
+        className="sr-only peer"
+      />
+
+      <div className="w-7 h-4 bg-gray-300 rounded-full peer peer-checked:bg-red-700 transition-all"></div>
+
+      <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-all peer-checked:translate-x-3"></div>
+
+    </label>
+
+    <span className="text-[14px] font-black uppercase opacity-60 whitespace-nowrap">
+      {language === "ar" ? "فتح الشحنة" : "Open Package"}
+    </span>
+
+  </div>
+
 </div>
-          </div>
 
           {/* 4. Total (يظهر فقط في الديسكتوب) */}
           <div className={`hidden lg:block lg:col-span-1 text-center font-[1000] italic text-[14px] ${darkMode ? 'text-red-700/50' : 'text-black'}`}>
@@ -1344,27 +1375,68 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
 </div>
           {/* 7. Manage Buttons */}
           <div className="flex items-center justify-between border-t lg:border-0 pt-1 lg:pt-0 border-white/5 lg:col-span-1">
-            <div className="grid grid-cols-4 lg:grid-cols-2 gap-1.5 lg:w-fit mx-auto w-full">
-              <button onClick={() => handleConfirmOrder(order._id)} className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 lg:w-8 rounded-lg bg-red-700 text-white lg:bg-red-700/10 lg:text-red-700 hover:bg-red-700 hover:text-white transition-all">
-                <span className="text-[12px] lg:text-[10px]">🚚 </span>
-                <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">{language === "ar" ? "تأكيد" : "Confitm"}</span>
-              </button>
-              <button onClick={() => openEditModal(order)} className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 lg:w-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all">
-                <span className="text-[12px] lg:text-[10px]">✏</span>
-                <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">  {language === "ar" ? "تعديل" : "Edit"}
-</span>
-              </button>
-              <button onClick={() => toggleArchive(order._id, order.archived)} className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 lg:w-8 rounded-lg bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500 hover:text-white transition-all">
-                <span className="text-[12px] lg:text-[10px]">📦</span>
-                <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">  {language === "ar" ? "أرشيف" : "Arch"}
-</span>
-              </button>
-              <button onClick={() => deleteOrder(order._id)} className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 lg:w-8 rounded-lg bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all">
-                <span className="text-[12px] lg:text-[10px]">🗑</span>
-                <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">  {language === "ar" ? "حذف" : "Del"}
-</span>
-              </button>
-            </div>
+          <div className="flex flex-col lg:gap-2 lg:w-fit mx-auto w-full">
+
+  {/* 🔥 OPEN PACKAGE (DESKTOP ONLY - ABOVE) */}
+  <div className="hidden lg:flex items-center gap-2 px-2 mb-1">
+
+    <input
+      type="checkbox"
+      checked={order.allowToOpenPackage}
+      disabled={order.bostaInfo?.deliveryId}
+      onChange={(e) =>
+        updateAllowToOpenPackage(order._id, e.target.checked)
+      }
+      className="w-6 h-6 accent-red-700"
+    />
+
+    <span className="text-[14px] font-black uppercase opacity-60">
+      {language === "ar" ? "فتح الشحنة" : "Open Package"}
+    </span>
+
+  </div>
+
+  {/* 🔥 ACTION BUTTONS GRID */}
+  <div className="grid grid-cols-4 lg:grid-cols-4 gap-1.5 items-center">
+
+    {/* CONFIRM */}
+    <button onClick={() => handleConfirmOrder(order._id)}
+      className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 rounded-lg bg-red-700 text-white lg:bg-red-700/10 lg:text-red-700 hover:bg-red-700 hover:text-white transition-all">
+      <span className="text-[12px] lg:text-[10px]">🚚</span>
+      <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">
+        {language === "ar" ? "تأكيد" : "Confirm"}
+      </span>
+    </button>
+
+    {/* EDIT */}
+    <button onClick={() => openEditModal(order)}
+      className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all">
+      <span className="text-[12px] lg:text-[10px]">✏</span>
+      <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">
+        {language === "ar" ? "تعديل" : "Edit"}
+      </span>
+    </button>
+
+    {/* ARCHIVE */}
+    <button onClick={() => toggleArchive(order._id, order.archived)}
+      className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 rounded-lg bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500 hover:text-white transition-all">
+      <span className="text-[12px] lg:text-[10px]">📦</span>
+      <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">
+        {language === "ar" ? "أرشيف" : "Arch"}
+      </span>
+    </button>
+
+    {/* DELETE */}
+    <button onClick={() => deleteOrder(order._id)}
+      className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 rounded-lg bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all">
+      <span className="text-[12px] lg:text-[10px]">🗑</span>
+      <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">
+        {language === "ar" ? "حذف" : "Del"}
+      </span>
+    </button>
+
+  </div>
+</div>
           </div>
 
         </div>
