@@ -1387,7 +1387,7 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
       onChange={(e) =>
         updateAllowToOpenPackage(order._id, e.target.checked)
       }
-      className="w-6 h-6 accent-red-700"
+      className="w-4 h-4 accent-red-700"
     />
 
     <span className="text-[14px] font-black uppercase opacity-60">
