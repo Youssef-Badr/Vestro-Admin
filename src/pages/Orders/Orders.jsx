@@ -519,6 +519,31 @@ const updateAllowToOpenPackage = async (id, value) => {
   }
 };
 
+// flexship
+const updateFlexShipping = async (id, value) => {
+  await axios.put(`/orders/${id}`, {
+    flexShippingInfo: {
+      amountToBeCollected: value,
+      overriddenByAdmin: true
+    }
+  });
+
+  setOrders((prev) =>
+    prev.map((o) =>
+      o._id === id
+        ? {
+            ...o,
+            flexShippingInfo: {
+              ...o.flexShippingInfo,
+              amountToBeCollected: value,
+              overriddenByAdmin: true
+            }
+          }
+        : o
+    )
+  );
+};
+
   const handleShipToBosta = async (orderId, showToast = true) => {
   try {
     const res = await axios.post(`/orders/${orderId}/ship-bosta`);
@@ -1285,16 +1310,42 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
         </div>
     )}
 </div>
-       {/* 3. Address Section */}
+     {/* 3. Address Section */}
 <div className="flex items-center justify-between lg:col-span-2 gap-2">
 
-  {/* Address */}
+  {/* 📍 Address */}
   <span className={`text-[12px] lg:text-[13px] font-black uppercase truncate tracking-tight
     ${darkMode ? 'text-white/40' : 'text-black/60'}`}>
     📍 {formatCompactAddress(order.shippingAddress)}
   </span>
 
-  {/* 🔥 OPEN PACKAGE (MOBILE ONLY - NEXT TO ADDRESS) */}
+  {/* 🔥 MOBILE CENTER FLEX SHIPPING */}
+  <div className="flex lg:hidden items-center justify-center flex-1">
+
+    <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+
+      <span className="text-[11px] font-black uppercase opacity-80">
+        {language === "ar" ? "فليكس شيب" : "Ship"}
+      </span>
+
+    <input
+  type="number"
+  value={order.flexShippingInfo?.amountToBeCollected ?? order.shippingFee}
+  onChange={(e) =>
+    updateFlexShipping(order._id, Number(e.target.value))
+  }
+  disabled={order.bostaInfo?.deliveryId}
+  className="w-12 h-6 bg-transparent text-center text-[11px] font-black text-black
+  border border-black/20 rounded-md
+  focus:border-red-600 focus:ring-1 focus:ring-red-600/30
+  outline-none transition"
+/>
+
+    </div>
+
+  </div>
+
+  {/* 🔥 OPEN PACKAGE (MOBILE ONLY - RIGHT SIDE) */}
   <div className="flex lg:hidden items-center gap-2 shrink-0">
 
     <label className="relative inline-flex items-center cursor-pointer scale-75">
@@ -1315,7 +1366,7 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
 
     </label>
 
-    <span className="text-[14px] font-black uppercase opacity-60 whitespace-nowrap">
+    <span className="text-[13px] font-black uppercase opacity-80 whitespace-nowrap">
       {language === "ar" ? "فتح الشحنة" : "Open Package"}
     </span>
 
@@ -1375,10 +1426,32 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
 </div>
           {/* 7. Manage Buttons */}
           <div className="flex items-center justify-between border-t lg:border-0 pt-1 lg:pt-0 border-white/5 lg:col-span-1">
-          <div className="flex flex-col lg:gap-2 lg:w-fit mx-auto w-full">
+        <div className="flex flex-col lg:gap-3 lg:w-fit mx-auto w-full">
+
+  {/* 🔥 FLEX SHIPPING (DESKTOP ONLY - ABOVE OPEN PACKAGE) */}
+  <div className="hidden lg:flex items-center justify-between gap-3 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+
+    <span className="text-[10px] font-black uppercase opacity-60">
+      {language === "ar" ? "فليكس شحن" : "Flex Ship"}
+    </span>
+
+    <input
+      type="number"
+      value={order.flexShippingInfo?.amountToBeCollected ?? order.shippingFee}
+      onChange={(e) =>
+        updateFlexShipping(order._id, Number(e.target.value))
+      }
+      disabled={order.bostaInfo?.deliveryId}
+      className="w-16 h-7 px-2 rounded-md bg-black/30 text-white text-[12px] font-black outline-none border border-white/10 text-center"
+    />
+  </div>
 
   {/* 🔥 OPEN PACKAGE (DESKTOP ONLY - ABOVE) */}
-  <div className="hidden lg:flex items-center gap-2 px-2 mb-1">
+  <div className="hidden lg:flex items-center justify-between gap-3 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+
+    <span className="text-[10px] font-black uppercase opacity-60">
+      {language === "ar" ? "فتح الشحنة" : "Open Package"}
+    </span>
 
     <input
       type="checkbox"
@@ -1389,19 +1462,16 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
       }
       className="w-4 h-4 accent-red-700"
     />
-
-    <span className="text-[14px] font-black uppercase opacity-60">
-      {language === "ar" ? "فتح الشحنة" : "Open Package"}
-    </span>
-
   </div>
 
   {/* 🔥 ACTION BUTTONS GRID */}
-  <div className="grid grid-cols-4 lg:grid-cols-4 gap-1.5 items-center">
+  <div className="grid grid-cols-4 lg:grid-cols-4 gap-2 items-center">
 
     {/* CONFIRM */}
-    <button onClick={() => handleConfirmOrder(order._id)}
-      className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 rounded-lg bg-red-700 text-white lg:bg-red-700/10 lg:text-red-700 hover:bg-red-700 hover:text-white transition-all">
+    <button
+      onClick={() => handleConfirmOrder(order._id)}
+      className="flex flex-col items-center justify-center h-10 lg:h-9 rounded-lg bg-red-700 text-white lg:bg-red-700/10 lg:text-red-700 hover:bg-red-700 hover:text-white transition-all"
+    >
       <span className="text-[12px] lg:text-[10px]">🚚</span>
       <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">
         {language === "ar" ? "تأكيد" : "Confirm"}
@@ -1409,8 +1479,10 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
     </button>
 
     {/* EDIT */}
-    <button onClick={() => openEditModal(order)}
-      className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all">
+    <button
+      onClick={() => openEditModal(order)}
+      className="flex flex-col items-center justify-center h-10 lg:h-9 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all"
+    >
       <span className="text-[12px] lg:text-[10px]">✏</span>
       <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">
         {language === "ar" ? "تعديل" : "Edit"}
@@ -1418,8 +1490,10 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
     </button>
 
     {/* ARCHIVE */}
-    <button onClick={() => toggleArchive(order._id, order.archived)}
-      className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 rounded-lg bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500 hover:text-white transition-all">
+    <button
+      onClick={() => toggleArchive(order._id, order.archived)}
+      className="flex flex-col items-center justify-center h-10 lg:h-9 rounded-lg bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500 hover:text-white transition-all"
+    >
       <span className="text-[12px] lg:text-[10px]">📦</span>
       <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">
         {language === "ar" ? "أرشيف" : "Arch"}
@@ -1427,8 +1501,10 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
     </button>
 
     {/* DELETE */}
-    <button onClick={() => deleteOrder(order._id)}
-      className="flex flex-col lg:flex-row items-center justify-center h-10 lg:h-8 rounded-lg bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all">
+    <button
+      onClick={() => deleteOrder(order._id)}
+      className="flex flex-col items-center justify-center h-10 lg:h-9 rounded-lg bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all"
+    >
       <span className="text-[12px] lg:text-[10px]">🗑</span>
       <span className="lg:hidden text-[8px] font-[1000] uppercase mt-1">
         {language === "ar" ? "حذف" : "Del"}
