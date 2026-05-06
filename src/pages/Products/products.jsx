@@ -622,7 +622,7 @@ category: [], // 🔥 لازم Array      originalPrice: "",
       options: [
         { name: "Color", values: [] },
         { name: "Size", values: [] },
-        { name: "Type", values: [] },
+        // { name: "Type", values: [] },
       ],
       variants: [], // هتتولد تلقائياً
       customSections: [], // الأقسام الديناميكية
