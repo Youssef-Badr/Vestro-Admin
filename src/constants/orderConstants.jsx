@@ -12,7 +12,7 @@ export const ORDER_STATUS_CONFIG = {
   },
 
   Confirmed: {
-    ar: "تم تأكيد الطلب",
+    ar: "تم ارسال الشحنة ",
     en: "Confirmed",
     color: "#00E5FF",
     icon: "✔️",
