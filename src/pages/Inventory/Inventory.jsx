@@ -59,37 +59,67 @@ const Inventory = () => {
     }));
   };
 
-  // 👇 حفظ التعديلات مرة واحدة
-  const saveStock = async () => {
-    try {
-      const updates = editData.variants.map((v) => ({
+ const saveStock = async () => {
+  try {
+    // ✅ هنبعت التغييرات فقط
+    const updates = editData.variants
+      .filter((variant) => {
+        const originalVariant = activeProduct.variants.find(
+          (v) => v._id === variant._id
+        );
+
+        return (
+          Number(originalVariant?.stock || 0) !==
+          Number(variant.stock || 0)
+        );
+      })
+      .map((variant) => ({
         productId: editData._id,
-        variantId: v._id,
-        stock: v.stock,
+        variantId: variant._id,
+        stock: Number(variant.stock),
       }));
 
-      await Promise.all(
-        updates.map((u) =>
-          axios.put("/products/stock/update", u)
-        )
+    // ✅ لو مفيش تغيير
+    if (updates.length === 0) {
+      toast.info(
+        isArabic
+          ? "لا يوجد تغييرات"
+          : "No changes detected"
       );
 
-      // تحديث UI
-      setProducts((prev) =>
-        prev.map((p) =>
-          p._id === editData._id ? editData : p
-        )
-      );
-
-      setActiveProduct(null);
-      setEditData({});
-
-      toast.success(isArabic ? "تم التحديث" : "Updated");
-    } catch (err) {
-      console.error(err);
-      toast.error(isArabic ? "فشل التحديث" : "Update failed");
+      return;
     }
-  };
+
+    // ✅ Request واحدة فقط
+    await axios.put("/products/stock/update", {
+      updates,
+    });
+
+    // ✅ تحديث UI
+    setProducts((prev) =>
+      prev.map((p) =>
+        p._id === editData._id ? editData : p
+      )
+    );
+
+    setActiveProduct(null);
+    setEditData({});
+
+    toast.success(
+      isArabic
+        ? "تم تحديث المخزون"
+        : "Stock updated"
+    );
+  } catch (err) {
+    console.error(err);
+
+    toast.error(
+      isArabic
+        ? "فشل تحديث المخزون"
+        : "Failed to update stock"
+    );
+  }
+};
 
   if (loading) {
     return (
