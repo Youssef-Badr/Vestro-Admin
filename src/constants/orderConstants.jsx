@@ -25,12 +25,12 @@ export const ORDER_STATUS_CONFIG = {
     icon: "⚙️",
   },
 
-  Packed: {
-    ar: "تم التعبئة",
-    en: "Packed",
-    color: "#FFA500",
-    icon: "📦",
-  },
+  // Packed: {
+  //   ar: "تم التعبئة",
+  //   en: "Packed",
+  //   color: "#FFA500",
+  //   icon: "📦",
+  // },
 
   Ready_For_Shipment: {
     ar: "جاهز للشحن",
@@ -64,12 +64,12 @@ export const ORDER_STATUS_CONFIG = {
   // 💳 PAYMENT
   // =========================
 
-  Pending_Payment: {
-    ar: "في انتظار الدفع",
-    en: "Pending Payment",
-    color: "#FFA500",
-    icon: "⏳",
-  },
+  // Pending_Payment: {
+  //   ar: "في انتظار الدفع",
+  //   en: "Pending Payment",
+  //   color: "#FFA500",
+  //   icon: "⏳",
+  // },
 
   Paid: {
     ar: "تم الدفع",
@@ -78,26 +78,26 @@ export const ORDER_STATUS_CONFIG = {
     icon: "💰",
   },
 
-  Payment_Failed: {
-    ar: "فشل الدفع",
-    en: "Payment Failed",
-    color: "#EF4444",
-    icon: "❌",
-  },
+  // Payment_Failed: {
+  //   ar: "فشل الدفع",
+  //   en: "Payment Failed",
+  //   color: "#EF4444",
+  //   icon: "❌",
+  // },
 
-  Refunded: {
-    ar: "تم رد المبلغ",
-    en: "Refunded",
-    color: "#60A5FA",
-    icon: "💸",
-  },
+  // Refunded: {
+  //   ar: "تم رد المبلغ",
+  //   en: "Refunded",
+  //   color: "#60A5FA",
+  //   icon: "💸",
+  // },
 
-  Partially_Refunded: {
-    ar: "استرجاع جزئي",
-    en: "Partially Refunded",
-    color: "#38BDF8",
-    icon: "↩️",
-  },
+  // Partially_Refunded: {
+  //   ar: "استرجاع جزئي",
+  //   en: "Partially Refunded",
+  //   color: "#38BDF8",
+  //   icon: "↩️",
+  // },
 
   // =========================
   // ⚠️ ISSUES / OPERATIONS
@@ -124,25 +124,33 @@ export const ORDER_STATUS_CONFIG = {
     icon: "🚫",
   },
 
-  Address_Issue: {
-    ar: "مشكلة في العنوان",
-    en: "Address Issue",
-    color: "#FB7185",
-    icon: "📍",
-  },
+  // Address_Issue: {
+  //   ar: "مشكلة في العنوان",
+  //   en: "Address Issue",
+  //   color: "#FB7185",
+  //   icon: "📍",
+  // },
 
-  Customer_Unreachable: {
-    ar: "العميل غير متاح",
-    en: "Customer Unreachable",
-    color: "#9CA3AF",
-    icon: "📵",
-  },
+  // Customer_Unreachable: {
+  //   ar: "العميل غير متاح",
+  //   en: "Customer Unreachable",
+  //   color: "#9CA3AF",
+  //   icon: "📵",
+  // },
 
   Rescheduled: {
     ar: "تم إعادة الجدولة",
     en: "Rescheduled",
     color: "#A78BFA",
     icon: "🔁",
+  },
+
+
+  Rejected_at_the_store: {
+    ar: "ملغي داخل المتجر",
+    en: "Rejected at the store",
+    color: "#EF4444",
+    icon: "❌",
   },
 
   // =========================
@@ -202,19 +210,19 @@ export const ORDER_STATUS_CONFIG = {
     icon: "🏭",
   },
 
-  Quality_Check: {
-    ar: "فحص الجودة",
-    en: "Quality Check",
-    color: "#06B6D4",
-    icon: "🔬",
-  },
+  // Quality_Check: {
+  //   ar: "فحص الجودة",
+  //   en: "Quality Check",
+  //   color: "#06B6D4",
+  //   icon: "🔬",
+  // },
 
-  Packaging: {
-    ar: "جاري التغليف",
-    en: "Packaging",
-    color: "#EAB308",
-    icon: "📦",
-  },
+  // Packaging: {
+  //   ar: "جاري التغليف",
+  //   en: "Packaging",
+  //   color: "#EAB308",
+  //   icon: "📦",
+  // },
 
   Assigned_To_Courier: {
     ar: "تم إسناده للمندوب",

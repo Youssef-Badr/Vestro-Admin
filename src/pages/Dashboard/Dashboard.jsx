@@ -1,3 +1,4 @@
+
 // import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 // import axios from "../../api/axiosInstance";
 // import { useLanguage } from "../../../src/context/LanguageContext";
@@ -14,6 +15,7 @@
 // } from "lucide-react";
 // import { ORDER_STATUS_CONFIG } from "../../constants/orderConstants";
 
+// // الشارت الجديد
 // const RevenueChart = lazy(() => import("../../components/RevenueChart"));
 
 // function Dashboard() {
@@ -25,12 +27,14 @@
 
 //   const [loading, setLoading] = useState(false);
 
+//   // الفلاتر كما هي
 //   const [filters, setFilters] = useState({
 //     year: new Date().getFullYear(),
 //     month: new Date().getMonth() + 1,
 //     viewType: "monthly",
 //   });
 
+//   // تحديث الـ State لتشمل الـ analytics الجديدة
 //   const [dashboardStats, setDashboardStats] = useState({
 //     products: 0,
 //     orders: 0,
@@ -39,14 +43,13 @@
 //     netSales: 0,
 //     totalShipping: 0,
 //     statusSummary: {},
-//     chartData: [],
+//     analytics: null, // الحقل الجديد للشارت
 //   });
 
 //   const fetchStats = async () => {
 //     try {
 //       setLoading(true);
-
-//       const res = await axios.get("orders/stats", {
+//       const res = await axios.get("dashboard/stats", {
 //         params: filters,
 //         headers: {
 //           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -55,7 +58,7 @@
 
 //       setDashboardStats(res.data);
 //     } catch (error) {
-//       console.error(error);
+//       console.error("Error fetching stats:", error);
 //     } finally {
 //       setLoading(false);
 //     }
@@ -114,10 +117,9 @@
 //       dir={isRTL ? "rtl" : "ltr"}
 //       className={`min-h-screen px-3 sm:px-4 md:px-6 xl:px-8 2xl:px-10 pb-6 transition-all ${pageBg}`}
 //     >
-//       {/* top spacing */}
 //       <div className="h-5 md:h-16" />
 
-//       {/* header */}
+//       {/* Header */}
 //       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-5">
 //         <div>
 //           <h1 className="text-2xl md:text-3xl xl:text-4xl font-black leading-none">
@@ -126,19 +128,17 @@
 //               {isRTL ? "لوحة التحكم" : "Dashboard"}
 //             </span>
 //           </h1>
-
 //           <p className="text-[12px] md:text-[10px] mt-1 uppercase opacity-50 font-bold">
 //             {isRTL ? "ملخص سريع للأداء" : "Fast Business Overview"}
 //           </p>
 //         </div>
 
-//         {/* controls */}
+//         {/* Controls */}
 //         <div className="grid grid-cols-3 gap-2 w-full lg:w-auto lg:min-w-[360px]">
 //           <div
 //             className={`h-10 rounded-xl border flex items-center px-2 gap-2 ${card}`}
 //           >
 //             <Calendar size={13} className="text-red-700" />
-
 //             <select
 //               value={filters.year}
 //               onChange={(e) =>
@@ -158,19 +158,14 @@
 //             onClick={() =>
 //               setFilters({
 //                 ...filters,
-//                 viewType:
-//                   filters.viewType === "monthly" ? "weekly" : "monthly",
+//                 viewType: filters.viewType === "monthly" ? "weekly" : "monthly",
 //               })
 //             }
 //             className="h-10 rounded-xl bg-red-700 text-white text-[10px] font-black uppercase"
 //           >
 //             {filters.viewType === "monthly"
-//               ? isRTL
-//                 ? "شهري"
-//                 : "Monthly"
-//               : isRTL
-//               ? "أسبوعي"
-//               : "Weekly"}
+//               ? isRTL ? "شهري" : "Monthly"
+//               : isRTL ? "أسبوعي" : "Weekly"}
 //           </button>
 
 //           <button
@@ -182,31 +177,26 @@
 //         </div>
 //       </div>
 
-//       {/* stats */}
+//       {/* Stats Cards */}
 //       <div className="grid grid-cols-3 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
 //         {stats.map((item, i) => (
 //           <div
 //             key={i}
 //             className={`rounded-2xl border p-2 xl:p-3 ${
-//               item.red
-//                 ? "bg-red-700 border-red-700 text-white"
-//                 : card
+//               item.red ? "bg-red-700 border-red-700 text-white" : card
 //             }`}
 //           >
 //             <div className="flex items-center justify-between mb-2">
 //               <div className="w-7 h-7 rounded-lg bg-black/10 flex items-center justify-center">
 //                 {item.icon}
 //               </div>
-
 //               <span className="text-[9px] font-black uppercase opacity-60">
 //                 #{i + 1}
 //               </span>
 //             </div>
-
 //             <p className="text-[14px] xl:text-[12px] uppercase font-black opacity-60 mb-1 truncate">
 //               {item.title}
 //             </p>
-
 //             <h3 className="text-base md:text-lg xl:text-xl font-black leading-none">
 //               {loading ? "..." : item.value}
 //             </h3>
@@ -214,89 +204,75 @@
 //         ))}
 //       </div>
 
-//       {/* bottom */}
+//       {/* Bottom Section */}
 //       <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mt-4">
-//         {/* status */}
+//         {/* Status Summary */}
 //         <div className={`rounded-3xl border p-3 ${card}`}>
 //           <div className="mb-3">
 //             <h4 className="text-[13px] uppercase font-black opacity-50">
 //               {isRTL ? "حالات الطلبات" : "Order Status"}
 //             </h4>
 //           </div>
-
-//       <div className="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-1 gap-1.5 max-h-[420px] overflow-y-auto">
-//   {Object.entries(dashboardStats.statusSummary || {}).map(
-//     ([key, count]) => {
-//       const config = ORDER_STATUS_CONFIG[key] || {
-//         ar: key,
-//         en: key,
-//         icon: "•",
-//         color: "#999",
-//       };
-
-//       const color = config.color;
-
-//       return (
-//         <div
-//           key={key}
-//           className="rounded-xl px-1.5 py-2 flex flex-col items-center justify-center text-center gap-1 min-h-[70px] transition-all duration-300"
-//           style={{
-//             backgroundColor: color,
-//             color: "white",
-//           }}
-//         >
-//           {/* icon */}
-//           <span className="text-[11px] leading-none">
-//             {config.icon}
-//           </span>
-
-//           {/* label */}
-//           <span className="text-[13px] font-black leading-tight truncate w-full px-0.5">
-//             {isRTL ? config.ar : config.en}
-//           </span>
-
-//           {/* count */}
-//           <span className="text-[11px] font-black leading-none">
-//             {count}
-//           </span>
-//         </div>
-//       );
-//     }
-//   )}
-// </div>
-//         </div>
-
-//         {/* chart */}
-//         <div className={`xl:col-span-2 rounded-3xl border p-4 ${card}`}>
-//           <div className="flex items-center justify-between mb-3">
-//             <h4 className="text-[13px] uppercase font-black opacity-50">
-//               {isRTL ? "نمو الإيرادات" : "Revenue Growth"}
-//             </h4>
-
-//             <span className="px-2 py-1 rounded-full bg-red-700 text-white text-[9px] font-black">
-//               LIVE
-//             </span>
+//           <div className="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-1 gap-1.5 max-h-[420px] overflow-y-auto">
+//             {Object.entries(dashboardStats.statusSummary || {}).map(
+//               ([key, count]) => {
+//                 const config = ORDER_STATUS_CONFIG[key] || {
+//                   ar: key, en: key, icon: "•", color: "#999",
+//                 };
+//                 return (
+//                   <div
+//                     key={key}
+//                     className="rounded-xl px-1.5 py-2 flex flex-col items-center justify-center text-center gap-1 min-h-[70px] transition-all duration-300"
+//                     style={{ backgroundColor: config.color, color: "white" }}
+//                   >
+//                     <span className="text-[11px] leading-none">{config.icon}</span>
+//                     <span className="text-[13px] font-black leading-tight truncate w-full px-0.5">
+//                       {isRTL ? config.ar : config.en}
+//                     </span>
+//                     <span className="text-[11px] font-black leading-none">{count}</span>
+//                   </div>
+//                 );
+//               }
+//             )}
 //           </div>
-
-//           <Suspense
-//             fallback={
-//               <div className="h-[220px] md:h-[260px] xl:h-[320px] rounded-2xl bg-slate-200 dark:bg-white/5 animate-pulse" />
-//             }
-//           >
-//             <div dir="ltr" className="h-[220px] md:h-[260px] xl:h-[320px]">
-//               <RevenueChart
-//                 data={dashboardStats.chartData}
-//                 viewType={filters.viewType}
-//               />
-//             </div>
-//           </Suspense>
 //         </div>
+
+//    {/* New Revenue Chart Section */}
+// <div className={`xl:col-span-2 rounded-3xl border p-4 ${card}`}>
+//   <div className="flex items-center justify-between mb-3">
+//     <h4 className="text-[13px] uppercase font-black opacity-50">
+//       {isRTL
+//         ? "تحليل الإيرادات والمقارنة"
+//         : "Revenue Analysis & Comparison"}
+//     </h4>
+
+//     <span className="px-2 py-1 rounded-full bg-red-700 text-white text-[9px] font-black">
+//       LIVE
+//     </span>
+//   </div>
+
+//   <Suspense
+//     fallback={
+//       <div
+//         className={`h-[360px] rounded-2xl animate-pulse ${
+//           isDark ? "bg-white/5" : "bg-slate-200"
+//         }`}
+//       />
+//     }
+//   >
+//     <div dir="ltr" className="w-full">
+//       <RevenueChart analytics={dashboardStats.analytics} />
+//     </div>
+//   </Suspense>
+// </div>
 //       </div>
 //     </div>
 //   );
 // }
 
 // export default Dashboard;
+// --------------------------------------------------------------
+
 
 import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import axios from "../../api/axiosInstance";
