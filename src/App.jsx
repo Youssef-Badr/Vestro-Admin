@@ -208,6 +208,7 @@ import { useAuth } from "./context/auth";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import AdminLayout from "./pages/layouts/AdminLayout";
 
+
 // Lazy imports
 const Dashboard = lazy(() => import("./pages/Dashboard/Dashboard"));
 const Products = lazy(() => import("./pages/Products/products"));
@@ -223,6 +224,18 @@ const inventory = lazy(() => import("./pages/Inventory/Inventory"));
 const HomeSettings = lazy(() => import("./pages/HomeSettings/HomeSettings"));
 const Announcements = lazy(() =>
   import("./pages/Announcements/Announcements")
+
+);
+const Campaigns = lazy(() =>
+  import("./pages/Campaigns/Campaigns")
+);
+
+const CreateCampaign = lazy(() =>
+  import("./pages/Campaigns/CreateCampaign")
+);
+
+const CampaignDetails = lazy(() =>
+  import("./pages/Campaigns/CampaignDetails")
 );
 const AuditLogs = lazy(() =>
   import("./pages/AuditLogsPage/AuditLogsPage")
@@ -238,6 +251,12 @@ const UserManagement = lazy(() =>
 );
 const AbandonedOrders = lazy(() =>
   import("./pages/AbandonedOrders/AbandonedOrders")
+);
+const WhatsAppSettings = lazy(() =>
+  import("./pages/WhatsAppSettings/WhatsAppSettings")
+);
+const MessageLogs = lazy(() =>
+  import("./pages/MessageLogs/MessageLogs")
 );
 
 function App() {
@@ -281,6 +300,11 @@ function App() {
         <Route path="/bundles" element={wrap(AdminBundles)} />
         <Route path="/user-management" element={wrap(UserManagement)} />
         <Route path="/home-settings" element={wrap(HomeSettings)} />
+        <Route path="/whatsapp-settings" element={wrap(WhatsAppSettings)} />
+        <Route path="/message-logs" element={wrap(MessageLogs)} />
+        {/* <Route path="/campaigns" element={wrap(Campaigns)} />
+<Route path="/campaigns/create" element={wrap(CreateCampaign)} />
+<Route path="/campaigns/:id" element={wrap(CampaignDetails)} /> */}
         <Route path="/logout" element={wrap(Logout)} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

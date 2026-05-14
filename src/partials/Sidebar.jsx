@@ -8,6 +8,8 @@ import {
   Languages,
   LayoutDashboard,
   ChevronRight,
+  Megaphone,
+  PlusCircle 
 } from "lucide-react";
 
 import { useTheme } from "../context/ThemeContext";
@@ -85,28 +87,45 @@ useEffect(() => {
         label: isRTL ? "الإعلانات" : "Ads",
         icon: "📢",
       },
-      {
-        to: "/home-settings",
-        label: isRTL ? "الرئيسية" : "Home Settings",
-        icon: "⚙️",
-      },
-      {
-        to: "/user-management",
-        label: isRTL ? "المستخدمين" : "Users",
-        icon: "👥",
-      },
-      { to: "/audit-logs", label: isRTL ? "السجل" : "Logs", icon: "📜" },
-      { to: "/logout", label: isRTL ? "خروج" : "Logout", icon: "🚪" },
+//       {
+  //   to: "/campaigns",
+  //   label: isRTL ? "الحملات" : "Campaigns",
+//   icon: <Megaphone size={18} />,
+// },
+// {
+  //   to: "/campaigns/create",
+  //   label: isRTL ? "إنشاء حملة" : "Create Campaign",
+  //   icon: <PlusCircle size={18} />,
+  // },
+  
+  {
+    to: "/home-settings",
+    label: isRTL ? "الرئيسية" : "Home Settings",
+    icon: "⚙️",
+  },
+  {
+    to: "/user-management",
+    label: isRTL ? "المستخدمين" : "Users",
+    icon: "👥",
+  },
+  { to: "/audit-logs", label: isRTL ? "السجل" : "Logs", icon: "📜" },
+
+
+
+  { to: "/whatsapp-settings", label: isRTL ? "إعدادات واتساب" : "WhatsApp Settings", icon: "⚙️" },
+  { to: "/message-logs", label: isRTL ? "سجلات الرسائل" : "Message Logs", icon: "📜" },
+
+  { to: "/logout", label: isRTL ? "خروج" : "Logout", icon: "🚪" },
     ],
     [isRTL]
   );
-
+  
   const sidebarBg = isDark
-    ? "bg-black border-white/10 text-white"
-    : "bg-white border-slate-200 text-black";
-
+  ? "bg-black border-white/10 text-white"
+  : "bg-white border-slate-200 text-black";
+  
   const hoverBg = isDark ? "hover:bg-white/5" : "hover:bg-slate-100";
-
+  
   const activeStyle = "bg-red-700 text-white shadow-lg";
 
   return (
