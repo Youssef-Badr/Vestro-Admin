@@ -4869,6 +4869,64 @@ return (
       </div>
     )}
 
+      {/* ================= BUNDLE ================= */}
+{item.isBundle && (
+  <div className="flex flex-col gap-2 flex-1">
+    
+    {/* HEADER */}
+    <div className="flex items-center justify-between">
+      <div className="text-[10px] md:text-xs font-black uppercase text-red-700 tracking-wide">
+        Bundle Items
+      </div>
+
+      <div className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full bg-red-700/10 text-red-700 font-bold">
+        {item.bundleItems?.length || 0} items
+      </div>
+    </div>
+
+    {/* ITEMS */}
+    <div className="flex flex-col gap-2">
+      {item.bundleItems?.map((bItem, i) => (
+        <div
+          key={i}
+          className="flex items-center justify-between p-2 rounded-xl border 
+                     bg-white/5 backdrop-blur-md 
+                     hover:border-red-700/40 transition-all duration-300"
+        >
+          
+          {/* LEFT: NAME */}
+          <div className="flex flex-col">
+            <span className="font-bold text-[10px] md:text-xs uppercase tracking-wide">
+              {bItem.name}
+            </span>
+
+            <span className="text-[8px] opacity-60">
+              Bundle product #{i + 1}
+            </span>
+          </div>
+
+          {/* RIGHT: VARIANTS */}
+          <div className="flex items-center gap-2">
+
+            {/* COLOR BADGE */}
+            <span className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full 
+                             bg-black text-white font-bold uppercase">
+              {bItem.Color || bItem.color || "NO COLOR"}
+            </span>
+
+            {/* SIZE BADGE */}
+            <span className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full 
+                             bg-red-700 text-white font-bold uppercase">
+              {bItem.Size || bItem.size || "NO SIZE"}
+            </span>
+
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
     {/* ================= BOTTOM: QTY + DELETE ================= */}
     <div className="flex items-center gap-2">
 
