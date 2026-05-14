@@ -226,17 +226,7 @@ const Announcements = lazy(() =>
   import("./pages/Announcements/Announcements")
 
 );
-const Campaigns = lazy(() =>
-  import("./pages/Campaigns/Campaigns")
-);
 
-const CreateCampaign = lazy(() =>
-  import("./pages/Campaigns/CreateCampaign")
-);
-
-const CampaignDetails = lazy(() =>
-  import("./pages/Campaigns/CampaignDetails")
-);
 const AuditLogs = lazy(() =>
   import("./pages/AuditLogsPage/AuditLogsPage")
 );
@@ -302,9 +292,7 @@ function App() {
         <Route path="/home-settings" element={wrap(HomeSettings)} />
         <Route path="/whatsapp-settings" element={wrap(WhatsAppSettings)} />
         <Route path="/message-logs" element={wrap(MessageLogs)} />
-        {/* <Route path="/campaigns" element={wrap(Campaigns)} />
-<Route path="/campaigns/create" element={wrap(CreateCampaign)} />
-<Route path="/campaigns/:id" element={wrap(CampaignDetails)} /> */}
+      
         <Route path="/logout" element={wrap(Logout)} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
