@@ -209,7 +209,7 @@ const handleSendReply = async () => {
                          <div className="max-w-[200px] lg:max-w-xs">
                            <p className="text-xs font-medium truncate opacity-70    leading-relaxed">
       {msg.type === 'audio' ? (
-        <span className="flex items-center gap-1.5 text-red-700"><Mic size="{14}"/> {isRTL ? "رسالة صوتية" : "Voice Note"}</span>
+        <span className="flex items-center gap-1.5 text-red-700">  <Mic size={14}/> {isRTL ? "رسالة صوتية" : "Voice Note"}</span>
       ) : msg.type === 'image' ? (
         <span className="flex items-center gap-1.5 text-blue-500"><MessageCircle size="{14}"/> {isRTL ? "صورة" : "Photo"}</span>
       ) : (msg.text || msg.templateName)}
@@ -266,9 +266,10 @@ const handleSendReply = async () => {
     const isMe = msg.direction === "outbound";
     const isAudio = msg.type === "audio";
     const isImage = msg.type === "image";
-    
-    // تأكد أن الرابط يبدأ بـ /api أو المسار اللي أنت عامله في الـ Proxy
-    const mediaFullUrl = `http://localhost:5000${msg.mediaUrl}`;
+
+   const mediaFullUrl = msg.mediaUrl
+  ? axios.defaults.baseURL.replace("/api", "") + msg.mediaUrl
+  : "";
 
     return (
       <div key={msg._id || idx} className={`flex ${isMe ? "justify-end" : "justify-start"} w-full animate-in slide-in-from-bottom-2 duration-300`}>
@@ -286,6 +287,8 @@ const handleSendReply = async () => {
                 <audio
                   src={mediaFullUrl}
                   controls
+                    playsInline
+
                   className="w-full h-8 custom-audio-player" // يمكنك إضافة CSS لتصغير حجمه
                   preload="metadata"
                 />
