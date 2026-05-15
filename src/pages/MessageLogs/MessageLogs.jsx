@@ -43,33 +43,7 @@ export default function MessageLogs() {
     const handler = setTimeout(fetchLogs, 500);
     return () => clearTimeout(handler);
   }, [search]);
-// التحديث التلقائي للشات المفتوح واللوجز
-useEffect(() => {
-  const interval = setInterval(() => {
-    // تحديث اللوجز الخارجية
-    fetchLogs();
-    
-    // لو فيه شات مفتوح، حدث الرسايل اللي جواه
-    if (replyTarget) {
-      updateActiveChat(replyTarget.phone);
-    }
-  }, 2000); // كل 5 ثواني (تقدر تخليها 3000 لو السيرفر سريع)
 
-  return () => clearInterval(interval);
-}, [replyTarget, search]);
-
-// دالة مخصصة لتحديث الشات النشط فقط بدون مسح الشاشة
-const updateActiveChat = async (phone) => {
-  try {
-    const { data } = await axios.get(`/whatsapp/chat/${phone}`);
-    if (data.success) {
-      // بنقارن الطول عشان ما نحدثش الـ State لو مفيش جديد (عشان الأداء)
-      setActiveChat(data.messages);
-    }
-  } catch (err) {
-    console.error("Auto-sync failed", err);
-  }
-};
   const openChat = async (msg) => {
     setReplyTarget(msg);
     setActiveChat([]); 
