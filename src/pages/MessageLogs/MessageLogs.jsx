@@ -89,63 +89,119 @@ export default function MessageLogs() {
     }
   };
 
-  const renderMedia = (msg, isMe) => {
-    // بفضل Cloudinary، الـ mediaUrl هو الرابط النهائي المباشر
-    const mediaUrl = msg.mediaUrl;
-if (!mediaUrl) return <p className="text-sm italic opacity-50">Media missing</p>;
+ const renderMedia = (msg, isMe) => {
+  // 1. تنظيف الرابط من أي تداخلات (بتاعة السيرفر أو روابط مكررة)
+  let mediaUrl = msg.mediaUrl;
+  if (mediaUrl && mediaUrl.includes('http')) {
+    // بناخد آخر ظهور لـ http لضمان الحصول على رابط Cloudinary الصافي
+    mediaUrl = mediaUrl.substring(mediaUrl.lastIndexOf('http'));
+  }
 
-    if (msg.type === "audio") {
-      return (
-        <div className="flex flex-col gap-2 min-w-[220px] md:min-w-[280px] p-1">
-          <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${isMe ? "bg-white/20 text-white" : "bg-red-700 text-white"}`}>
-              <Mic size={18}/>
-            </div>
-            {/* نستخدم التاج الأصلي مباشرة ونمرر الرابط الصافي */}
-            <audio 
-              key={mediaUrl} // مفتاح فريد عشان المتصفح ميعلقش على ريكورد قديم
-              src={mediaUrl} 
-              controls 
-              className="w-full h-8 accent-red-700" 
-              preload="metadata"
-            />
+  // 2. إذا كانت الرسالة نصية (Text) - اظهر النص فوراً واخرج
+  // ده بيحل مشكلة ظهور "Media missing" لما تكون الرسالة عبارة عن كلام بس
+  if (msg.type === "text" || !mediaUrl) {
+    return (
+      <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">
+        {msg.text || (isMe ? "Sent" : "Received")}
+      </p>
+    );
+  }
+
+  // 3. معالجة الرسائل الصوتية (Audio / Voice)
+  if (msg.type === "audio" || msg.type === "voice") {
+    return (
+      <div className="flex flex-col gap-2 min-w-[220px] md:min-w-[280px] p-1">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${isMe ? "bg-white/20 text-white" : "bg-red-700 text-white"}`}>
+            <Mic size={18}/>
           </div>
-        </div>
-      );
-    }
-
-   if (msg.type === "image") {
-      return (
-        <div className="group relative">
-          <img 
+          <audio 
+            key={mediaUrl} // لضمان عدم تعليق المتصفح على ريكورد قديم
             src={mediaUrl} 
-            alt="Vestro Chat Media" 
-            className="rounded-xl max-h-72 w-full object-cover cursor-zoom-in border border-black/5 dark:border-white/5 shadow-sm" 
-            onClick={() => window.open(mediaUrl, '_blank')}
-            // لو الصورة فشلت في التحميل بسبب الرابط المكسور، جرب تفتح الرابط الصافي
-            onError={(e) => {
-                if(mediaUrl.includes('http')) {
-                    e.target.src = mediaUrl.split('http')[1] ? 'http' + mediaUrl.split('http')[1] : mediaUrl;
-                }
-            }}
+            controls 
+            className="w-full h-8 accent-red-700 custom-audio-player" 
+            preload="metadata"
           />
-          {msg.text && msg.text !== "📷 Photo Received" && (
-            <p className="text-sm mt-2 opacity-90">{msg.text}</p>
-          )}
         </div>
-      );
-    }
-    if (msg.type === "video") {
-      return (
+        {/* اظهر النص المصاحب للصوت لو موجود */}
+        {msg.text && msg.text !== "🎤 Voice message" && (
+          <p className="text-xs mt-1 opacity-70 italic">{msg.text}</p>
+        )}
+      </div>
+    );
+  }
+
+  // 4. معالجة الصور (Image)
+  if (msg.type === "image") {
+    return (
+      <div className="group relative">
+        <img 
+          src={mediaUrl} 
+          alt="Vestro Store Media" 
+          className="rounded-xl max-h-80 w-full object-cover cursor-zoom-in border border-black/5 dark:border-white/5 shadow-sm transition-transform hover:scale-[1.01]" 
+          onClick={() => window.open(mediaUrl, '_blank')}
+          onError={(e) => {
+             // محاولة أخيرة لإصلاح الرابط إذا فشل التحميل
+             if(mediaUrl.includes('http')) {
+                const retryUrl = 'http' + mediaUrl.split('http').pop();
+                if(e.target.src !== retryUrl) e.target.src = retryUrl;
+             }
+          }}
+        />
+        {msg.text && msg.text !== "📷 Photo Received" && (
+          <p className="text-sm mt-2 font-medium leading-snug">{msg.text}</p>
+        )}
+      </div>
+    );
+  }
+
+  // 5. معالجة الفيديو (Video)
+  if (msg.type === "video") {
+    return (
+      <div className="space-y-2">
         <div className="rounded-xl overflow-hidden bg-black aspect-video max-w-sm border border-white/10 shadow-lg">
-          <video src={mediaUrl} className="w-full h-full" controls preload="metadata" />
+          <video 
+            src={mediaUrl} 
+            className="w-full h-full" 
+            controls 
+            preload="metadata" 
+          />
         </div>
-      );
-    }
+        {msg.text && <p className="text-sm opacity-90">{msg.text}</p>}
+      </div>
+    );
+  }
 
-    return <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{msg.text}</p>;
-  };
+  // 6. معالجة المستندات والملفات (Document)
+  if (msg.type === "document") {
+    return (
+      <a 
+        href={mediaUrl} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 p-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 transition-colors border border-dashed border-black/20"
+      >
+        <div className="p-2 bg-red-700 text-white rounded">
+          <FileText size={20} />
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <p className="text-sm font-semibold truncate">{msg.text || "Download Document"}</p>
+          <p className="text-[10px] opacity-50 uppercase">{mediaUrl.split('.').pop()}</p>
+        </div>
+      </a>
+    );
+  }
 
+  // 7. حالة احتياطية لأي نوع غير معروف
+  return (
+    <div className="space-y-1">
+       <p className="text-sm leading-relaxed">{msg.text}</p>
+       <a href={mediaUrl} target="_blank" className="text-[10px] text-blue-500 underline break-all">
+         {mediaUrl}
+       </a>
+    </div>
+  );
+};
   return (
     <div className={`min-h-screen pt-16 md:pt-24 pb-10 px-4 bg-white dark:bg-[#050505] transition-all ${isRTL ? "font-arabic" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
       <div className="max-w-7xl mx-auto">
