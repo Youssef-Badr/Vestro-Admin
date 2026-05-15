@@ -1,42 +1,96 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import axios from "../../api/axiosInstance";
 import { useLanguage } from "../../context/LanguageContext";
+import { io } from "socket.io-client";
 import { 
-  Search, Reply, MessageCircle, CheckCheck, Check, 
-  Clock, AlertCircle, X, User, Send, Mic, Headset, Image as ImageIcon, Video, Play
+  Search, CheckCheck, Check, User, Send, Headset, 
+  MessageCircle, ChevronLeft, MoreVertical, Paperclip
 } from "lucide-react";
+
+const SOCKET_URL = import.meta.env.VITE_API_URL ;
 
 export default function MessageLogs() {
   const { language } = useLanguage();
   const isRTL = language === "ar";
 
   const [logs, setLogs] = useState([]); 
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [activeChat, setActiveChat] = useState([]); 
   const [replyTarget, setReplyTarget] = useState(null); 
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
+  const [search, setSearch] = useState("");
 
+  const socket = useRef(null);
   const chatEndRef = useRef(null);
+  
+ // 1. المرجع لمراقبة الشات الحالي
+  const activePhoneRef = useRef(null);
+  useEffect(() => {
+    activePhoneRef.current = replyTarget?.phone;
+  }, [replyTarget]);
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // 2. إعداد السوكيت
+  useEffect(() => {
+   socket.current = io(SOCKET_URL, {
+
+    
+
+  transports: ["websocket", "polling"],
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+});
+
+socket.current.on("connect", () => {
+  console.log("🟢 SOCKET CONNECTED");
+});
+
+socket.current.on("disconnect", (reason) => {
+  console.log("🔴 SOCKET DISCONNECTED:", reason);
+});
+
+socket.current.on("connect_error", (err) => {
+  console.log("❌ SOCKET ERROR:", err.message);
+});
+    socket.current.on("receive-message", (newMessage) => {
+      console.log("New Message Received:", newMessage);
+
+      // ✅ التحديث اللحظي للقائمة الجانبية (Logs)
+      setLogs((currentLogs) => {
+        // حذف النسخة القديمة من العميل لو موجودة
+        const otherLogs = currentLogs.filter(l => l.phone !== newMessage.phone);
+        // وضع الرسالة الجديدة في أول القائمة
+        return [newMessage, ...otherLogs];
+      });
+
+      // ✅ التحديث اللحظي للشات المفتوح (بدون خروج ودخول)
+      if (activePhoneRef.current === newMessage.phone) {
+        setActiveChat((currentActive) => {
+          // التأكد من عدم تكرار الرسالة (بناءً على ID)
+          const isDuplicate = currentActive.some(m => m._id === newMessage._id);
+          if (isDuplicate) return currentActive;
+          return [...currentActive, newMessage];
+        });
+      }
+    });
+
+    return () => { if (socket.current) socket.current.disconnect(); };
+  }, []); // المصفوفة فارغة لضمان ثبات الاتصال
+  const scrollToBottom = (behavior = "smooth") => {
+    chatEndRef.current?.scrollIntoView({ behavior });
   };
 
   useEffect(() => {
-    if (activeChat.length > 0) scrollToBottom();
+    if (activeChat.length > 0) {
+      setTimeout(() => scrollToBottom("smooth"), 100);
+    }
   }, [activeChat]);
 
   const fetchLogs = async () => {
     try {
-      setLoading(true);
       const { data } = await axios.get("/messages", { params: { search } });
       setLogs(data.messages);
-    } catch (err) { 
-      console.error("Error fetching logs:", err); 
-    } finally { setLoading(false); }
+    } catch (err) { console.error(err); }
   };
 
   useEffect(() => {
@@ -55,18 +109,16 @@ export default function MessageLogs() {
 
   const handleSendReply = async () => {
     if (!replyText.trim() || sending) return;
-    const tempMsgContent = replyText;
+    const content = replyText;
     setSending(true);
     try {
       const res = await axios.post("/whatsapp/send", { 
-        phone: replyTarget.phone, 
-        message: tempMsgContent, 
-        type: "text" 
+        phone: replyTarget.phone, message: content, type: "text" 
       });
       if (res.data.success) {
         const newMessage = {
-          _id: res.data.dbId || Date.now().toString(),
-          text: tempMsgContent,
+          _id: Date.now().toString(),
+          text: content,
           direction: "outbound",
           status: "sent",
           createdAt: new Date().toISOString(),
@@ -74,303 +126,165 @@ export default function MessageLogs() {
         };
         setActiveChat((prev) => [...prev, newMessage]);
         setReplyText("");
-        setTimeout(scrollToBottom, 100);
       }
-    } catch (err) { alert(isRTL ? "فشل الإرسال" : "Send failed"); }
+    } catch (err) { console.error(err); }
     finally { setSending(false); }
   };
 
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case "read": return { color: "text-sky-500", icon: <CheckCheck size={14} />, label: isRTL ? "مقروء" : "READ", bg: "bg-sky-500/10" };
-      case "delivered": return { color: "text-green-500", icon: <Check size={14} />, label: isRTL ? "مستلم" : "DELIVERED", bg: "bg-green-500/10" };
-      case "failed": return { color: "text-red-600", icon: <AlertCircle size={14} />, label: isRTL ? "فشل" : "FAILED", bg: "bg-red-600/10" };
-      default: return { color: "text-slate-400", icon: <Clock size={14} />, label: isRTL ? "مرسل" : "SENT", bg: "bg-slate-400/10" };
+  // ✅ وظيفة عرض الميديا (تم تعديل الأوديو ليظهر فوراً)
+  const renderMedia = (msg) => {
+    let mediaUrl = msg.mediaUrl;
+    if (mediaUrl?.includes('http')) mediaUrl = mediaUrl.substring(mediaUrl.lastIndexOf('http'));
+
+    if (msg.type === "text" || !mediaUrl) {
+      return <p className="text-[14.5px] leading-relaxed break-words">{msg.text}</p>;
     }
+
+    if (msg.type === "image") {
+      return <img src={mediaUrl} className="rounded-lg max-h-72 object-cover cursor-pointer" alt="img" onClick={() => window.open(mediaUrl)}/>;
+    }
+
+    if (msg.type === "audio" || msg.type === "voice") {
+      return (
+        <div className="pt-2 pb-1 min-w-[240px]"> 
+          <audio 
+            src={mediaUrl} 
+            controls 
+            preload="metadata" // يخلي المتصفح يجهز الملف فوراً
+            className="w-full h-10 custom-audio" 
+          />
+        </div>
+      );
+    }
+    return <p className="text-xs    opacity-50">Media: {msg.type}</p>;
   };
 
- const renderMedia = (msg, isMe) => {
-  // 1. تنظيف الرابط من أي تداخلات (بتاعة السيرفر أو روابط مكررة)
-  let mediaUrl = msg.mediaUrl;
-  if (mediaUrl && mediaUrl.includes('http')) {
-    // بناخد آخر ظهور لـ http لضمان الحصول على رابط Cloudinary الصافي
-    mediaUrl = mediaUrl.substring(mediaUrl.lastIndexOf('http'));
-  }
-
-  // 2. إذا كانت الرسالة نصية (Text) - اظهر النص فوراً واخرج
-  // ده بيحل مشكلة ظهور "Media missing" لما تكون الرسالة عبارة عن كلام بس
-  if (msg.type === "text" || !mediaUrl) {
-    return (
-      <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">
-        {msg.text || (isMe ? "Sent" : "Received")}
-      </p>
-    );
-  }
-
-  // 3. معالجة الرسائل الصوتية (Audio / Voice)
-  if (msg.type === "audio" || msg.type === "voice") {
-    return (
-      <div className="flex flex-col gap-2 min-w-[220px] md:min-w-[280px] p-1">
-        <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${isMe ? "bg-white/20 text-white" : "bg-red-700 text-white"}`}>
-            <Mic size={18}/>
-          </div>
-          <audio 
-            key={mediaUrl} // لضمان عدم تعليق المتصفح على ريكورد قديم
-            src={mediaUrl} 
-            controls 
-            className="w-full h-8 accent-red-700 custom-audio-player" 
-            preload="metadata"
-          />
-        </div>
-        {/* اظهر النص المصاحب للصوت لو موجود */}
-        {msg.text && msg.text !== "🎤 Voice message" && (
-          <p className="text-xs mt-1 opacity-70 italic">{msg.text}</p>
-        )}
-      </div>
-    );
-  }
-
-  // 4. معالجة الصور (Image)
-  if (msg.type === "image") {
-    return (
-      <div className="group relative">
-        <img 
-          src={mediaUrl} 
-          alt="Vestro Store Media" 
-          className="rounded-xl max-h-80 w-full object-cover cursor-zoom-in border border-black/5 dark:border-white/5 shadow-sm transition-transform hover:scale-[1.01]" 
-          onClick={() => window.open(mediaUrl, '_blank')}
-          onError={(e) => {
-             // محاولة أخيرة لإصلاح الرابط إذا فشل التحميل
-             if(mediaUrl.includes('http')) {
-                const retryUrl = 'http' + mediaUrl.split('http').pop();
-                if(e.target.src !== retryUrl) e.target.src = retryUrl;
-             }
-          }}
-        />
-        {msg.text && msg.text !== "📷 Photo Received" && (
-          <p className="text-sm mt-2 font-medium leading-snug">{msg.text}</p>
-        )}
-      </div>
-    );
-  }
-
-  // 5. معالجة الفيديو (Video)
-  if (msg.type === "video") {
-    return (
-      <div className="space-y-2">
-        <div className="rounded-xl overflow-hidden bg-black aspect-video max-w-sm border border-white/10 shadow-lg">
-          <video 
-            src={mediaUrl} 
-            className="w-full h-full" 
-            controls 
-            preload="metadata" 
-          />
-        </div>
-        {msg.text && <p className="text-sm opacity-90">{msg.text}</p>}
-      </div>
-    );
-  }
-
-  // 6. معالجة المستندات والملفات (Document)
-  if (msg.type === "document") {
-    return (
-      <a 
-        href={mediaUrl} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="flex items-center gap-3 p-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 transition-colors border border-dashed border-black/20"
-      >
-        <div className="p-2 bg-red-700 text-white rounded">
-          <FileText size={20} />
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <p className="text-sm font-semibold truncate">{msg.text || "Download Document"}</p>
-          <p className="text-[10px] opacity-50 uppercase">{mediaUrl.split('.').pop()}</p>
-        </div>
-      </a>
-    );
-  }
-
-  // 7. حالة احتياطية لأي نوع غير معروف
   return (
-    <div className="space-y-1">
-       <p className="text-sm leading-relaxed">{msg.text}</p>
-       <a href={mediaUrl} target="_blank" className="text-[10px] text-blue-500 underline break-all">
-         {mediaUrl}
-       </a>
-    </div>
-  );
-};
-  return (
-    <div className={`min-h-screen pt-16 md:pt-24 pb-10 px-4 bg-white dark:bg-[#050505] transition-all ${isRTL ? "font-arabic" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
-      <div className="max-w-7xl mx-auto">
+    <div className={`flex flex-col h-screen bg-[#f0f2f5] dark:bg-[#0c0c0c] ${isRTL ? "font-arabic" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
+      <div className="flex flex-1 overflow-hidden pt-16 md:pt-20">
         
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-red-700 flex items-center gap-3 italic">
-              <Headset className="w-8 h-8 md:w-10 md:h-10" /> VESTRO STORE LOGS
+        {/* SIDEBAR */}
+        <div className={`w-full md:w-[400px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 ${replyTarget ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-4 space-y-4">
+            <h1 className="text-2xl font-black text-red-700    flex items-center gap-2">
+                <Headset />   VESTRO WhatsApp 
             </h1>
-            <p className="text-[10px] uppercase tracking-[0.4em] opacity-40 font-bold ml-1">Secure Communication Hub</p>
-          </div>
-          <div className="relative w-full md:w-80 group">
-            <Search className={`absolute ${isRTL ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-red-700 transition-colors`} size={18} />
-            <input
-              type="text"
-              placeholder={isRTL ? "بحث برقم الهاتف..." : "Search phone numbers..."}
-              className="w-full pr-12 pl-12 py-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl outline-none focus:ring-2 ring-red-700/30 transition-all shadow-sm"
-              value={search} onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* LOGS TABLE CONTAINER */}
-        <div className="bg-white dark:bg-black border border-gray-200 dark:border-white/10 rounded-[2rem] overflow-hidden shadow-2xl shadow-black/5">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-start hidden md:table">
-              <thead className="bg-gray-50 dark:bg-white/5 text-gray-400 uppercase text-[9px] font-black tracking-widest border-b border-gray-100 dark:border-white/5">
-                <tr>
-                  <th className="px-8 py-6 text-start">{isRTL ? "العميل" : "Customer"}</th>
-                  <th className="px-8 py-6 text-start">{isRTL ? "آخر تفاعل" : "Last Activity"}</th>
-                  <th className="px-8 py-6 text-start">{isRTL ? "الحالة" : "Status"}</th>
-                  <th className="px-8 py-6 text-center">{isRTL ? "فتح الشات" : "Open Chat"}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {loading ? (
-                   <tr><td colSpan="4" className="py-32 text-center">
-                     <div className="flex flex-col items-center gap-3">
-                       <div className="w-10 h-10 border-4 border-red-700 border-t-transparent animate-spin rounded-full"/>
-                       <span className="text-[10px] font-black uppercase tracking-widest text-red-700 italic">Syncing VESTRO Hub...</span>
-                     </div>
-                   </td></tr>
-                ) : logs.length === 0 ? (
-                  <tr><td colSpan="4" className="py-20 text-center opacity-40 uppercase font-bold text-xs tracking-widest">No logs found</td></tr>
-                ) : logs.map((msg) => (
-                  <tr key={msg._id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-all group cursor-pointer" onClick={() => openChat(msg)}>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white font-black shadow-lg transition-transform group-hover:scale-105 ${msg.direction === 'inbound' ? 'bg-zinc-800' : 'bg-red-700'}`}>
-                          {msg.customer?.name?.charAt(0) || <User size={18}/>}
-                        </div>
-                        <div>
-                          <div className="font-black text-sm uppercase tracking-tight">{msg.customer?.name || "New Lead"}</div>
-                          <div className="text-[10px] opacity-40 font-bold tabular-nums">+{msg.phone}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="max-w-[220px] truncate opacity-70 italic text-xs font-medium">
-                        {msg.type === 'audio' ? 'Voice Message 🎤' : msg.type === 'image' ? 'Sent an Image 📸' : msg.text}
-                      </div>
-                      <span className="text-[9px] opacity-30 block mt-1">{new Date(msg.createdAt).toLocaleString()}</span>
-                    </td>
-                    <td className="px-8 py-5">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[9px] tracking-widest uppercase ${getStatusStyle(msg.status).bg} ${getStatusStyle(msg.status).color}`}>
-                        {getStatusStyle(msg.status).icon} {getStatusStyle(msg.status).label}
-                      </span>
-                    </td>
-                    <td className="px-8 py-5 text-center">
-                      <button className="w-10 h-10 inline-flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-xl group-hover:bg-red-700 group-hover:text-white transition-all shadow-sm">
-                        <Reply size={18}/>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Mobile View Card List */}
-            <div className="md:hidden divide-y divide-gray-100 dark:divide-white/5">
-              {logs.map(msg => (
-                <div key={msg._id} className="p-5 flex items-center justify-between active:bg-gray-50 dark:active:bg-white/5 transition-colors" onClick={() => openChat(msg)}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-red-700 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-red-700/20">{msg.customer?.name?.charAt(0)}</div>
-                    <div>
-                      <h4 className="text-sm font-black uppercase tracking-tight">{msg.customer?.name || "Client"}</h4>
-                      <p className="text-[10px] opacity-40 font-bold">+{msg.phone}</p>
-                      <p className="text-[10px] mt-1 italic opacity-60 truncate max-w-[150px]">{msg.type === 'text' ? msg.text : msg.type}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className="text-[8px] opacity-30 font-bold">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    <Reply size={16} className="text-red-700" />
-                  </div>
-                </div>
-              ))}
+            <div className="relative">
+              <Search className={`${isRTL ? "right-3" : "left-3"} absolute top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+              <input 
+                type="text" 
+                placeholder={isRTL ? "بحث..." : "Search..."}
+                className={`w-full bg-gray-100 dark:bg-white/5 rounded-xl py-2 ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} text-sm outline-none`}
+                value={search} onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* --- CHAT MODAL --- */}
-      {replyTarget && (
-        <div className="fixed inset-0 z-[999] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/90 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#0b0b0b] w-full md:max-w-2xl h-[92vh] md:h-[85vh] rounded-t-[2.5rem] md:rounded-[3rem] flex flex-col overflow-hidden border border-white/5 shadow-2xl animate-in slide-in-from-bottom duration-300">
-            {/* Header */}
-            <div className="p-5 md:p-6 border-b border-gray-100 dark:border-white/5 flex items-center justify-between bg-white dark:bg-black">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-red-700 flex items-center justify-center text-white font-black text-xl shadow-xl shadow-red-700/20">
-                  {replyTarget.customer?.name?.charAt(0) || "V"}
+          <div className="flex-1 overflow-y-auto">
+            {logs.map((msg) => (
+              <div 
+                key={msg._id} 
+                onClick={() => openChat(msg)}
+                className={`flex items-center gap-4 p-4 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] ${replyTarget?.phone === msg.phone ? 'bg-gray-100 dark:bg-white/5' : ''}`}
+              >
+                <div className="w-12 h-12 rounded-full bg-red-700 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
+                    {msg.customer?.name?.charAt(0) || <User size={20}/>}
                 </div>
-                <div>
-                  <h3 className="font-black text-base uppercase text-red-700 tracking-tight italic">VESTRO SUPPORT</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <p className="text-[10px] font-bold opacity-40 tracking-widest">+{replyTarget.phone}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <h3 className="text-sm font-bold truncate dark:text-gray-200">{msg.customer?.name || msg.phone}</h3>
+                    <span className="text-[10px] text-gray-400">
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
+                  <p className="text-xs text-gray-500 truncate   ">{msg.text || (msg.type !== 'text' && 'Media Message')}</p>
                 </div>
               </div>
-              <button onClick={() => setReplyTarget(null)} className="w-11 h-11 flex items-center justify-center hover:bg-red-700/10 rounded-full text-red-700 transition-all">
-                <X size={24}/>
-              </button>
-            </div>
+            ))}
+          </div>
+        </div>
 
-            {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-6 bg-gray-50/50 dark:bg-[#080808] custom-scrollbar">
-              {activeChat.map((msg, idx) => {
-                const isMe = msg.direction === "outbound";
-                return (
-                  <div key={msg._id || idx} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                    <div className={`relative max-w-[85%] md:max-w-[80%] p-4 rounded-[1.5rem] shadow-sm transition-all hover:shadow-md ${
-                      isMe ? "bg-red-700 text-white rounded-tr-none" : "bg-white dark:bg-zinc-800 text-black dark:text-white rounded-tl-none border border-black/5 dark:border-white/5"
-                    }`}>
-                      {renderMedia(msg, isMe)}
-                      <div className={`text-[8px] mt-2 flex items-center gap-1 opacity-60 font-black uppercase ${isMe ? "justify-end" : "justify-start"}`}>
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        {isMe && (msg.status === "read" ? <CheckCheck size={10} className="text-sky-300"/> : <Check size={10}/>)}
+        {/* CHAT WINDOW */}
+        <div className={`flex-1 flex flex-col relative ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
+          {replyTarget ? (
+            <>
+              {/* Header */}
+              <div className="h-16 flex items-center justify-between px-4 bg-white dark:bg-[#111] border-b border-gray-200 dark:border-white/5 z-10 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setReplyTarget(null)} className="md:hidden p-1 rounded-full"><ChevronLeft size={24} className={isRTL ? "rotate-180" : ""} /></button>
+                  <div className="w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold">{replyTarget.customer?.name?.charAt(0) || "V"}</div>
+                  <div>
+                    <h2 className="text-sm font-black dark:text-white uppercase">{replyTarget.customer?.name || replyTarget.phone}</h2>
+                    <p className="text-[10px] text-green-500 font-bold animate-pulse">LIVE CONNECTED</p>
+                  </div>
+                </div>
+                <MoreVertical className="opacity-40" size={20} />
+              </div>
+
+              {/* Messages Body */}
+              <div 
+                className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 bg-[#e5ddd5] dark:bg-[#0b0b0b] relative"
+                style={{ 
+                    backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
+                    backgroundBlendMode: 'overlay', backgroundSize: '400px'
+                }}
+              >
+                {activeChat.map((msg, idx) => {
+                  const isMe = msg.direction === "outbound";
+                  return (
+                    <div key={msg._id || idx} className={`flex w-full mb-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                      <div className={`relative max-w-[85%] md:max-w-[70%] px-3 py-2 shadow-sm rounded-lg ${isMe ? "bg-[#d9fdd3] dark:bg-[#005c4b] rounded-tr-none" : "bg-white dark:bg-[#202c33] rounded-tl-none"}`}>
+                        {renderMedia(msg)}
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className="text-[10px] opacity-50">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          {isMe && (msg.status === "read" ? <CheckCheck size={14} className="text-blue-400"/> : <Check size={14} className="text-gray-400"/>)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-              <div ref={chatEndRef} />
-            </div>
+                  );
+                })}
+                <div ref={chatEndRef} />
+              </div>
 
-            {/* Input Box */}
-            <div className="p-5 md:p-8 bg-white dark:bg-black border-t border-gray-100 dark:border-white/5">
-              <div className="flex items-center gap-4 bg-gray-100 dark:bg-zinc-900 p-2 rounded-[1.8rem] border border-transparent focus-within:border-red-700/40 focus-within:bg-white dark:focus-within:bg-zinc-900 transition-all shadow-inner">
-                <textarea 
-                  rows="1"
-                  placeholder={isRTL ? "أجب على عميل فيسترو..." : "Reply to VESTRO client..."}
-                  className="flex-1 bg-transparent border-none outline-none py-3 px-4 text-sm font-medium placeholder:opacity-30 resize-none"
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
-                />
+              {/* Input Area */}
+              <div className="p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-end gap-2 z-10">
+                <Paperclip className="mb-3 text-gray-500 cursor-pointer" size={22} />
+                <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden">
+                    <textarea 
+                        rows="1"
+                        placeholder={isRTL ? "اكتب رسالة..." : "Type a message..."}
+                        className="w-full bg-transparent border-none outline-none py-3 px-4 text-[15px] dark:text-white resize-none"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
+                    />
+                </div>
                 <button 
                   disabled={sending || !replyText.trim()}
                   onClick={handleSendReply}
-                  className="w-12 h-12 bg-red-700 text-white rounded-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all disabled:opacity-20 shadow-lg shadow-red-700/30"
+                  className="mb-1 w-12 h-12 bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 disabled:opacity-50"
                 >
-                  {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={20} />}
+                  {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={20} className={isRTL ? "rotate-180" : ""} />}
                 </button>
               </div>
+            </>
+          ) : (
+            <div key={replyTarget?.phone || 'empty'} className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#111] opacity-40">
+              <MessageCircle size={64} />
+              <h2 className="text-xl font-black mt-4 uppercase">{isRTL ? "اختر محادثة" : "Select a conversation"}</h2>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .font-arabic { font-family: 'Cairo', sans-serif; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        /* استايل مشغل الصوت */
+        .custom-audio::-webkit-media-controls-enclosure { background-color: transparent; }
+        .dark .custom-audio { filter: invert(100%) hue-rotate(180deg) brightness(1.5); }
+      `}} />
     </div>
   ); 
 }
