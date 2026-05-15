@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import axios from "../../api/axiosInstance";
 import { useLanguage } from "../../context/LanguageContext";
 import { io } from "socket.io-client";
 import { 
   Search, CheckCheck, Check, User, Send, Headset, 
-  MessageCircle, ChevronLeft, MoreVertical, Paperclip
+  MessageCircle, ChevronLeft, MoreVertical, Paperclip, 
+  Clock, CheckCircle2
 } from "lucide-react";
 
-const SOCKET_URL = import.meta.env.VITE_API_URL ;
+const SOCKET_URL = import.meta.env.VITE_API_URL;
 
 export default function MessageLogs() {
   const { language } = useLanguage();
@@ -22,79 +23,83 @@ export default function MessageLogs() {
 
   const socket = useRef(null);
   const chatEndRef = useRef(null);
-  
- // 1. المرجع لمراقبة الشات الحالي
   const activePhoneRef = useRef(null);
+
+  // تحديث المرجع للهاتف النشط لمتابعة السوكيت
   useEffect(() => {
     activePhoneRef.current = replyTarget?.phone;
   }, [replyTarget]);
 
-  // 2. إعداد السوكيت
+  // دالة لعرض أيقونة الحالة
+  const StatusIcon = ({ status, size = 16 }) => {
+    if (status === "read") return <CheckCheck size={size} className="text-blue-500" />;
+    if (status === "delivered") return <CheckCheck size={size} className="text-gray-400" />;
+    if (status === "sent") return <Check size={size} className="text-gray-400" />;
+    if (status === "failed") return <span className="text-red-500 text-[10px]">⚠️</span>;
+    return <Clock size={size - 2} className="text-gray-300" />;
+  };
+
+  // إعداد السوكيت
   useEffect(() => {
-   socket.current = io(SOCKET_URL, {
+    socket.current = io(SOCKET_URL, {
+      transports: ["websocket"],
+      reconnection: true,
+    });
 
-    
+    socket.current.on("message_status_update", (update) => {
+      // 1. تحديث الرسالة داخل الشات المفتوح
+      setActiveChat((prev) => prev.map(msg => {
+        const isMatch = msg._id === update.messageId || 
+                        (msg.whatsappMessageId && msg.whatsappMessageId === update.whatsappMessageId);
+        return isMatch ? { ...msg, status: update.status } : msg;
+      }));
 
-  transports: ["websocket", "polling"],
-  reconnection: true,
-  reconnectionAttempts: Infinity,
-  reconnectionDelay: 1000,
-});
+      // 2. تحديث الحالة في القائمة الجانبية (Sidebar)
+      setLogs((prev) => prev.map(log => {
+        const isMatch = log.whatsappMessageId === update.whatsappMessageId;
+        return isMatch ? { ...log, status: update.status } : log;
+      }));
+    });
 
-socket.current.on("connect", () => {
-  console.log("🟢 SOCKET CONNECTED");
-});
-
-socket.current.on("disconnect", (reason) => {
-  console.log("🔴 SOCKET DISCONNECTED:", reason);
-});
-
-socket.current.on("connect_error", (err) => {
-  console.log("❌ SOCKET ERROR:", err.message);
-});
     socket.current.on("receive-message", (newMessage) => {
-      console.log("New Message Received:", newMessage);
-
-      // ✅ التحديث اللحظي للقائمة الجانبية (Logs)
-      setLogs((currentLogs) => {
-        // حذف النسخة القديمة من العميل لو موجودة
-        const otherLogs = currentLogs.filter(l => l.phone !== newMessage.phone);
-        // وضع الرسالة الجديدة في أول القائمة
-        return [newMessage, ...otherLogs];
+      // تحديث القائمة الجانبية فوراً وجلب الرسالة الجديدة للأعلى
+      setLogs((prev) => {
+        const filtered = prev.filter(l => l.phone !== newMessage.phone);
+        return [newMessage, ...filtered];
       });
 
-      // ✅ التحديث اللحظي للشات المفتوح (بدون خروج ودخول)
+      // إذا كانت المحادثة مفتوحة، أضف الرسالة للشات
       if (activePhoneRef.current === newMessage.phone) {
-        setActiveChat((currentActive) => {
-          // التأكد من عدم تكرار الرسالة (بناءً على ID)
-          const isDuplicate = currentActive.some(m => m._id === newMessage._id);
-          if (isDuplicate) return currentActive;
-          return [...currentActive, newMessage];
+        setActiveChat((prev) => {
+          if (prev.some(m => m._id === newMessage._id)) return prev;
+          return [...prev, newMessage];
         });
       }
     });
 
-    return () => { if (socket.current) socket.current.disconnect(); };
-  }, []); // المصفوفة فارغة لضمان ثبات الاتصال
-  const scrollToBottom = (behavior = "smooth") => {
+    return () => socket.current?.disconnect();
+  }, []);
+
+  const scrollToBottom = useCallback((behavior = "smooth") => {
     chatEndRef.current?.scrollIntoView({ behavior });
-  };
+  }, []);
 
   useEffect(() => {
     if (activeChat.length > 0) {
-      setTimeout(() => scrollToBottom("smooth"), 100);
+      const timer = setTimeout(() => scrollToBottom("smooth"), 100);
+      return () => clearTimeout(timer);
     }
-  }, [activeChat]);
+  }, [activeChat, scrollToBottom]);
 
   const fetchLogs = async () => {
     try {
       const { data } = await axios.get("/messages", { params: { search } });
       setLogs(data.messages);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error("Error fetching logs:", err); }
   };
 
   useEffect(() => {
-    const handler = setTimeout(fetchLogs, 500);
+    const handler = setTimeout(fetchLogs, 400);
     return () => clearTimeout(handler);
   }, [search]);
 
@@ -110,94 +115,111 @@ socket.current.on("connect_error", (err) => {
   const handleSendReply = async () => {
     if (!replyText.trim() || sending) return;
     const content = replyText;
+    const tempId = Date.now().toString();
+    
     setSending(true);
+    setReplyText("");
+
     try {
       const res = await axios.post("/whatsapp/send", { 
         phone: replyTarget.phone, message: content, type: "text" 
       });
+      
       if (res.data.success) {
         const newMessage = {
-          _id: Date.now().toString(),
+          _id: res.data.messageId || tempId,
+          whatsappMessageId: res.data.whatsappMessageId,
           text: content,
           direction: "outbound",
           status: "sent",
           createdAt: new Date().toISOString(),
           type: "text"
         };
+
+        // 1. تحديث الشات المفتوح فوراً
         setActiveChat((prev) => [...prev, newMessage]);
-        setReplyText("");
+
+        // 2. تحديث القائمة الجانبية (Sidebar) لتصبح الرسالة المرسلة هي الأخيرة
+        setLogs((prev) => {
+          const filtered = prev.filter(l => l.phone !== replyTarget.phone);
+          const updatedLog = { ...replyTarget, text: content, status: 'sent', createdAt: newMessage.createdAt, direction: 'outbound', whatsappMessageId: res.data.whatsappMessageId };
+          return [updatedLog, ...filtered];
+        });
       }
-    } catch (err) { console.error(err); }
-    finally { setSending(false); }
+    } catch (err) { 
+      console.error(err);
+    } finally { 
+      setSending(false); 
+    }
   };
 
-  // ✅ وظيفة عرض الميديا (تم تعديل الأوديو ليظهر فوراً)
   const renderMedia = (msg) => {
-    let mediaUrl = msg.mediaUrl;
-    if (mediaUrl?.includes('http')) mediaUrl = mediaUrl.substring(mediaUrl.lastIndexOf('http'));
-
-    if (msg.type === "text" || !mediaUrl) {
-      return <p className="text-[14.5px] leading-relaxed break-words">{msg.text}</p>;
+    if (msg.type === "text" || !msg.mediaUrl) {
+      return <p className="text-[14.5px] leading-tight whitespace-pre-wrap">{msg.text}</p>;
     }
+    const mediaUrl = msg.mediaUrl.includes('http') ? msg.mediaUrl.substring(msg.mediaUrl.lastIndexOf('http')) : msg.mediaUrl;
 
     if (msg.type === "image") {
-      return <img src={mediaUrl} className="rounded-lg max-h-72 object-cover cursor-pointer" alt="img" onClick={() => window.open(mediaUrl)}/>;
+      return <img src={mediaUrl} className="rounded-md max-h-80 w-full object-cover cursor-zoom-in" alt="media" onClick={() => window.open(mediaUrl)}/>;
     }
-
     if (msg.type === "audio" || msg.type === "voice") {
       return (
-        <div className="pt-2 pb-1 min-w-[240px]"> 
-          <audio 
-            src={mediaUrl} 
-            controls 
-            preload="metadata" // يخلي المتصفح يجهز الملف فوراً
-            className="w-full h-10 custom-audio" 
-          />
+        <div className="pt-1 min-w-[220px]">
+          <audio src={mediaUrl} controls preload="metadata" className="w-full h-8 custom-audio" />
         </div>
       );
     }
-    return <p className="text-xs    opacity-50">Media: {msg.type}</p>;
+    return <div className="p-2 bg-black/5 rounded text-xs">📎 Attachment: {msg.type}</div>;
   };
 
   return (
-    <div className={`flex flex-col h-screen bg-[#f0f2f5] dark:bg-[#0c0c0c] ${isRTL ? "font-arabic" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
+    <div className={`flex flex-col h-screen bg-[#f0f2f5] dark:bg-[#0c0c0c] text-slate-900 dark:text-slate-100 ${isRTL ? "font-arabic" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
       <div className="flex flex-1 overflow-hidden pt-16 md:pt-20">
         
         {/* SIDEBAR */}
-        <div className={`w-full md:w-[400px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 ${replyTarget ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-4 space-y-4">
-            <h1 className="text-2xl font-black text-red-700    flex items-center gap-2">
-                <Headset />   VESTRO WhatsApp 
-            </h1>
-            <div className="relative">
-              <Search className={`${isRTL ? "right-3" : "left-3"} absolute top-1/2 -translate-y-1/2 text-gray-400`} size={18} />
+        <div className={`w-full md:w-[380px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 ${replyTarget ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-black text-red-700 flex items-center gap-2">
+                <Headset size={24}/> VESTRO <span className="text-xs bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">LIVE</span>
+              </h1>
+            </div>
+            <div className="relative group">
+              <Search className={`${isRTL ? "right-3" : "left-3"} absolute top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-600 transition-colors`} size={18} />
               <input 
                 type="text" 
-                placeholder={isRTL ? "بحث..." : "Search..."}
-                className={`w-full bg-gray-100 dark:bg-white/5 rounded-xl py-2 ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} text-sm outline-none`}
+                placeholder={isRTL ? "بحث في المحادثات..." : "Search conversations..."}
+                className={`w-full bg-gray-100 dark:bg-white/5 rounded-xl py-2.5 ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} text-sm outline-none border border-transparent focus:border-red-500/50 transition-all`}
                 value={search} onChange={(e) => setSearch(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
             {logs.map((msg) => (
               <div 
                 key={msg._id} 
                 onClick={() => openChat(msg)}
-                className={`flex items-center gap-4 p-4 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] ${replyTarget?.phone === msg.phone ? 'bg-gray-100 dark:bg-white/5' : ''}`}
+                className={`flex items-center gap-3 p-3.5 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors ${replyTarget?.phone === msg.phone ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
               >
-                <div className="w-12 h-12 rounded-full bg-red-700 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
-                    {msg.customer?.name?.charAt(0) || <User size={20}/>}
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-md">
+                  {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name.charAt(0).toUpperCase() : <User size={22}/>}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-baseline mb-1">
-                    <h3 className="text-sm font-bold truncate dark:text-gray-200">{msg.customer?.name || msg.phone}</h3>
-                    <span className="text-[10px] text-gray-400">
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <div className="flex justify-between items-center mb-0.5">
+                    <h3 className="text-[14px] font-bold truncate">
+                      {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name : msg.phone}
+                    </h3>
+                    <span className="text-[10px] text-gray-400 tabular-nums">
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 truncate   ">{msg.text || (msg.type !== 'text' && 'Media Message')}</p>
+                  <div className="flex items-center gap-1.5">
+                    {msg.direction === "outbound" && <StatusIcon status={msg.status} size={14} />}
+                    <p className={`text-xs truncate ${msg.status === 'read' ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400 font-medium'}`}>
+                      {msg.text || '📷 Media'}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -205,39 +227,56 @@ socket.current.on("connect_error", (err) => {
         </div>
 
         {/* CHAT WINDOW */}
-        <div className={`flex-1 flex flex-col relative ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`flex-1 flex flex-col relative bg-[#f0f2f5] dark:bg-[#0c0c0c] ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
           {replyTarget ? (
             <>
               {/* Header */}
-              <div className="h-16 flex items-center justify-between px-4 bg-white dark:bg-[#111] border-b border-gray-200 dark:border-white/5 z-10 shadow-sm">
+              <div className="h-16 flex items-center justify-between px-4 bg-white/80 dark:bg-[#111]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-20 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setReplyTarget(null)} className="md:hidden p-1 rounded-full"><ChevronLeft size={24} className={isRTL ? "rotate-180" : ""} /></button>
-                  <div className="w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold">{replyTarget.customer?.name?.charAt(0) || "V"}</div>
+                  <button onClick={() => setReplyTarget(null)} className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors">
+                    <ChevronLeft size={24} className={isRTL ? "rotate-180" : ""} />
+                  </button>
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold shadow-inner">
+                      {replyTarget.customer?.name?.charAt(0) || "V"}
+                    </div>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
+                  </div>
                   <div>
-                    <h2 className="text-sm font-black dark:text-white uppercase">{replyTarget.customer?.name || replyTarget.phone}</h2>
-                    <p className="text-[10px] text-green-500 font-bold animate-pulse">LIVE CONNECTED</p>
+                    <h2 className="text-sm font-black dark:text-white leading-tight">
+                      {replyTarget.customer?.name || replyTarget.phone}
+                    </h2>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                      <p className="text-[10px] text-green-500 font-bold tracking-wider">ONLINE</p>
+                    </div>
                   </div>
                 </div>
-                <MoreVertical className="opacity-40" size={20} />
+                <div className="flex items-center gap-2">
+                   <div className="hidden sm:flex flex-col items-end px-3 border-e border-gray-200 dark:border-white/10">
+                      <span className="text-[10px] font-bold text-gray-400">CUSTOMER PHONE</span>
+                      <span className="text-[11px] font-mono">{replyTarget.phone}</span>
+                   </div>
+                   <MoreVertical className="text-gray-400 cursor-pointer hover:text-red-600 transition-colors" size={20} />
+                </div>
               </div>
 
               {/* Messages Body */}
-              <div 
-                className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 bg-[#e5ddd5] dark:bg-[#0b0b0b] relative"
-                style={{ 
-                    backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
-                    backgroundBlendMode: 'overlay', backgroundSize: '400px'
-                }}
-              >
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
+                <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.03] pointer-events-none" 
+                     style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '350px' }} />
+                
                 {activeChat.map((msg, idx) => {
                   const isMe = msg.direction === "outbound";
                   return (
-                    <div key={msg._id || idx} className={`flex w-full mb-1 ${isMe ? "justify-end" : "justify-start"}`}>
-                      <div className={`relative max-w-[85%] md:max-w-[70%] px-3 py-2 shadow-sm rounded-lg ${isMe ? "bg-[#d9fdd3] dark:bg-[#005c4b] rounded-tr-none" : "bg-white dark:bg-[#202c33] rounded-tl-none"}`}>
+                    <div key={msg._id || idx} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-1 duration-300`}>
+                      <div className={`relative max-w-[85%] md:max-w-[70%] px-3 pt-2 pb-1.5 shadow-sm rounded-xl ${isMe ? "bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none" : "bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none"}`}>
                         {renderMedia(msg)}
-                        <div className="flex items-center justify-end gap-1 mt-1">
-                          <span className="text-[10px] opacity-50">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          {isMe && (msg.status === "read" ? <CheckCheck size={14} className="text-blue-400"/> : <Check size={14} className="text-gray-400"/>)}
+                        <div className="flex items-center justify-end gap-1.5 mt-1 select-none">
+                          <span className="text-[9px] font-medium opacity-60 uppercase">
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {isMe && <StatusIcon status={msg.status} size={13} />}
                         </div>
                       </div>
                     </div>
@@ -247,13 +286,15 @@ socket.current.on("connect_error", (err) => {
               </div>
 
               {/* Input Area */}
-              <div className="p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-end gap-2 z-10">
-                <Paperclip className="mb-3 text-gray-500 cursor-pointer" size={22} />
-                <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden">
+              <div className="p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-end gap-2.5 z-20 border-t border-gray-200 dark:border-white/5">
+                <div className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500">
+                  <Paperclip size={22} />
+                </div>
+                <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-2xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/30 transition-all">
                     <textarea 
                         rows="1"
                         placeholder={isRTL ? "اكتب رسالة..." : "Type a message..."}
-                        className="w-full bg-transparent border-none outline-none py-3 px-4 text-[15px] dark:text-white resize-none"
+                        className="w-full bg-transparent border-none outline-none py-3.5 px-4 text-[15px] dark:text-white resize-none max-h-32 custom-scrollbar"
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
@@ -262,29 +303,42 @@ socket.current.on("connect_error", (err) => {
                 <button 
                   disabled={sending || !replyText.trim()}
                   onClick={handleSendReply}
-                  className="mb-1 w-12 h-12 bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 disabled:opacity-50"
+                  className="mb-0.5 w-12 h-12 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
                 >
-                  {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={20} className={isRTL ? "rotate-180" : ""} />}
+                  {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={20} className={isRTL ? "rotate-180" : "ml-0.5"} />}
                 </button>
               </div>
             </>
           ) : (
-            <div key={replyTarget?.phone || 'empty'} className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#111] opacity-40">
-              <MessageCircle size={64} />
-              <h2 className="text-xl font-black mt-4 uppercase">{isRTL ? "اختر محادثة" : "Select a conversation"}</h2>
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50 dark:bg-[#0c0c0c]">
+              <div className="w-24 h-24 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 mb-6 animate-bounce shadow-xl shadow-red-500/10">
+                <MessageCircle size={48} />
+              </div>
+              <h2 className="text-2xl font-black mb-2 dark:text-white tracking-tight uppercase">
+                {isRTL ? "منصة فيسترو للمحادثات" : "VESTRO CHAT HUB"}
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 max-w-xs text-sm leading-relaxed">
+                {isRTL ? "اختر محادثة من القائمة الجانبية لبدء الرد على العملاء بشكل مباشر" : "Select a conversation from the sidebar to start responding to customers in real-time."}
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style>{`
         .font-arabic { font-family: 'Cairo', sans-serif; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-        /* استايل مشغل الصوت */
-        .custom-audio::-webkit-media-controls-enclosure { background-color: transparent; }
-        .dark .custom-audio { filter: invert(100%) hue-rotate(180deg) brightness(1.5); }
-      `}} />
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); }
+        
+        .custom-audio::-webkit-media-controls-panel { background-color: #f1f3f4; }
+        .dark .custom-audio { filter: invert(100%) hue-rotate(180deg) brightness(1.8) contrast(0.9); }
+        .custom-audio { border-radius: 30px; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
+      `}</style>
     </div>
   ); 
 }
