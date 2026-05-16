@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 import { 
   Search, CheckCheck, Check, User, Send, Headset, 
   MessageCircle, ChevronLeft, MoreVertical, Paperclip, 
-  Clock
+  Clock, Trash2, ShoppingBag, Hash
 } from "lucide-react";
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
@@ -39,9 +39,9 @@ export default function MessageLogs() {
     return <Clock size={size - 2} className="text-gray-300" />;
   };
 
-  // 🌟 تعديل حرج: دالة إرسال إشارة القراءة مستقرة ولا يعاد بناؤها لتجنب فصل السوكيت
+  // دالة إرسال إشارة القراءة
   const markAsRead = useCallback((phone) => {
-    if (socket.current && socket.current.connected) {
+    if (socket.current?.connected) {
       socket.current.emit("mark_as_read", { phone });
     }
     setLogs((prev) =>
@@ -51,57 +51,107 @@ export default function MessageLogs() {
     );
   }, []);
 
-  // إعداد السوكيت (يعمل مرة واحدة فقط عند التحميل وعزل اعتمادات الدالة)
+  // دالة مسح أو إخفاء المحادثة (Soft Delete)
+  const handleClearChat = async (phone) => {
+    if (!window.confirm(isRTL ? "هل أنت متأكد من رغبتك في إخفاء هذه المحادثة؟" : "Are you sure you want to hide this chat?")) return;
+    try {
+      const res = await axios.delete(`/messages/clear/${phone}`);
+      if (res.data.success) {
+        if (activePhoneRef.current === phone) {
+          setReplyTarget(null);
+          setActiveChat([]);
+        }
+        setLogs((prev) => prev.filter((log) => log.phone !== phone));
+      }
+    } catch (err) {
+      console.error("Failed to clear chat:", err);
+    }
+  };
+
+  // إعداد وإدارة السوكيت بشكل آمن ومقاوم للتكرار والتسريب
   useEffect(() => {
     socket.current = io(SOCKET_URL, {
       transports: ["websocket"],
       reconnection: true,
     });
 
-    // استقبال تحديثات حالة الرسائل الصادرة (sent -> delivered -> read)
-    socket.current.on("message_status_update", (update) => {
+    const currentSocket = socket.current;
+
+    // 1. تحديث حالة الرسائل المقروءة والمستلمة لايف
+    currentSocket.on("message_status_updated", (update) => {
+      console.log("💡 Received status update from socket:", update);
+      
+      const updateIdStr = update.messageId?.toString();
+      const updateWamIdStr = update.whatsappMessageId?.toString();
+
       setActiveChat((prev) => prev.map(msg => {
-        const isMatch = msg._id === update.messageId || 
-                        (msg.whatsappMessageId && msg.whatsappMessageId === update.whatsappMessageId);
+        const msgIdStr = msg._id?.toString();
+        const msgWamIdStr = msg.whatsappMessageId?.toString();
+
+        const isMatch = (updateIdStr && msgIdStr === updateIdStr) || 
+                        (updateWamIdStr && msgWamIdStr === updateWamIdStr);
         return isMatch ? { ...msg, status: update.status } : msg;
       }));
 
       setLogs((prev) => prev.map(log => {
-        // تحديث حالة الـ الـ الأخير الظاهر في الـ Sidebar إذا تطابق الآيدي
-        const isMatch = log._id === update.messageId || log.whatsappMessageId === update.whatsappMessageId;
-        return isMatch ? { ...log, status: update.status } : log;
+        const logIdStr = log._id?.toString();
+        const logWamIdStr = log.whatsappMessageId?.toString();
+
+        const isMatch = (updateIdStr && logIdStr === updateIdStr) || 
+                        (updateWamIdStr && logWamIdStr === updateWamIdStr);
+        return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
       }));
     });
 
-    // استقبال رسالة جديدة من عميل أو تحديث من السيرفر
-    socket.current.on("receive-message", (newMessage) => {
+    // 2. الاستماع لحدث مسح الشات لايف لو تم مسحه من جهاز آخر
+    currentSocket.on("chat_cleared", (data) => {
+      console.log(`📡 Socket received "chat_cleared" for phone: ${data.phone}`);
+      if (activePhoneRef.current === data.phone) {
+        setReplyTarget(null);
+        setActiveChat([]);
+      }
+      setLogs((prev) => prev.filter((log) => log.phone !== data.phone));
+    });
+
+    // 3. استقبال رسالة جديدة من عميل أو تحديث من السيرفر
+    currentSocket.on("receive-message", (newMessage) => {
       const isChatOpen = activePhoneRef.current === newMessage.phone;
 
-      if (isChatOpen) {
-        // تنفيذ التصفير الفوري بالسيرفر
-        if (socket.current && socket.current.connected) {
-          socket.current.emit("mark_as_read", { phone: newMessage.phone });
-        }
+      if (isChatOpen && currentSocket.connected) {
+        currentSocket.emit("mark_as_read", { phone: newMessage.phone });
+      }
 
+      if (isChatOpen) {
         setActiveChat((prev) => {
-          // 🌟 منع التكرار للرسائل الصادرة والواردة معاً لمنع الازدواجية البصرية
-          const isAlreadyExists = prev.some(
-            (msg) => msg._id === newMessage._id || 
-                     (msg.whatsappMessageId && msg.whatsappMessageId === newMessage.whatsappMessageId)
-          );
-          
-          if (isAlreadyExists) {
-            // إذا كانت الرسالة موجودة مسبقاً (صادرة مثلاً) نقوم فقط بتحديث حالتها إن لزم الأمر
-            return prev.map(msg => 
-              (msg._id === newMessage._id || msg.whatsappMessageId === newMessage.whatsappMessageId)
-                ? { ...msg, ...newMessage } : msg
-            );
+          if (newMessage.direction === "outbound") {
+            const hasTemp = prev.some(msg => msg._id?.toString().startsWith("temp_"));
+            if (hasTemp) {
+              let replaced = false;
+              return prev.map((msg) => {
+                if (!replaced && msg._id?.toString().startsWith("temp_") && msg.text === newMessage.text) {
+                  replaced = true;
+                  return { ...newMessage, isRead: true };
+                }
+                return msg;
+              });
+            }
           }
+
+          const newMsgIdStr = newMessage._id?.toString();
+          const newWamIdStr = newMessage.whatsappMessageId?.toString();
+
+          const isAlreadyExists = prev.some(msg => {
+            const msgIdStr = msg._id?.toString();
+            const msgWamIdStr = msg.whatsappMessageId?.toString();
+            return (newMsgIdStr && msgIdStr === newMsgIdStr) || (newWamIdStr && msgWamIdStr === newWamIdStr);
+          });
+
+          if (isAlreadyExists) return prev;
           return [...prev, { ...newMessage, isRead: true }];
         });
       }
 
-      // تحديث القائمة الجانبية وجعل الرسالة الجديدة في الأعلى دائماً
+      // تحديث القائمة الجانبية وترتيبها
       setLogs((prev) => {
         const existingLog = prev.find(l => l.phone === newMessage.phone);
         const currentUnread = existingLog?.unreadCount || 0;
@@ -116,13 +166,17 @@ export default function MessageLogs() {
         return [updatedLog, ...filtered];
       });
     });
-
-    return () => {
-      if (socket.current) {
-        socket.current.disconnect();
+return () => {
+      currentSocket.off("message_status_updated");
+      currentSocket.off("chat_cleared");
+      currentSocket.off("receive-message");
+      
+      // لا تفصل السوكيت بعنف إلا لو كان متصلاً بالفعل لتجنب أخطاء الفريم ورك في الـ Console
+      if (currentSocket.connected) {
+        currentSocket.disconnect();
       }
     };
-  }, []); // 🌟 مصفوفة فارغة تضمن ثبات الاتصال وعدم حدوث ريفريش للسوكيت مع الضغط
+  }, []); 
 
   const scrollToBottom = useCallback((behavior = "smooth") => {
     chatEndRef.current?.scrollIntoView({ behavior });
@@ -153,8 +207,6 @@ export default function MessageLogs() {
   const openChat = async (msg) => {
     setReplyTarget(msg);
     setActiveChat([]); 
-    
-    // تصفير العداد وإرسال حدث القراءة فور الضغط على المحادثة
     markAsRead(msg.phone);
 
     try {
@@ -170,14 +222,13 @@ export default function MessageLogs() {
   const handleSendReply = async () => {
     if (!replyText.trim() || sending) return;
     const content = replyText;
-    const tempId = "temp_" + Date.now().toString(); // تمييز الآيدي المؤقت بوضوح
+    const tempId = "temp_" + Date.now().toString(); 
     
     setSending(true);
     setReplyText("");
 
-    // إضافة الرسالة في الـ UI فوراً لتجربة مستخدم سريعة جداً (Optimistic UI Update)
     const optimisticMessage = {
-      ...tempId,
+      _id: tempId,
       text: content,
       direction: "outbound",
       status: "pending",
@@ -202,9 +253,8 @@ export default function MessageLogs() {
           type: "text"
         };
 
-        // استبدال الرسالة المؤقتة بالرسالة الحقيقية القادمة من السيرفر
         setActiveChat((prev) => 
-          prev.map(msg => msg._id === tempId ? finalMessage : msg)
+          prev.map(msg => msg._id?.toString() === tempId ? finalMessage : msg)
         );
 
         setLogs((prev) => {
@@ -223,9 +273,8 @@ export default function MessageLogs() {
       }
     } catch (err) { 
       console.error(err);
-      // في حال فشل الإرسال، نقوم بتحويل حالة الرسالة المؤقتة إلى فاشلة
       setActiveChat((prev) => 
-        prev.map(msg => msg._id === tempId ? { ...msg, status: "failed" } : msg)
+        prev.map(msg => msg._id?.toString() === tempId ? { ...msg, status: "failed" } : msg)
       );
     } finally { 
       setSending(false); 
@@ -233,9 +282,83 @@ export default function MessageLogs() {
   };
 
   const renderMedia = (msg) => {
-    if (msg.type === "text" || !msg.mediaUrl) {
+    if (msg.type === "text" && !msg.mediaUrl) {
       return <p className="text-[14.5px] leading-tight whitespace-pre-wrap">{msg.text}</p>;
     }
+
+    // 📥 معالجة وعرض كارت الأوردر القادم من الكاتالوج بشكل فاخر احترافي
+    if (msg.type === "order") {
+      const items = msg.orderDetails?.product_items || [];
+      const totalCartPrice = items.reduce((sum, item) => sum + (item.item_price * item.quantity), 0);
+      const currencyStr = items[0]?.currency || (isRTL ? "ج.م" : "EGP");
+
+      return (
+        <div className="w-full min-w-[260px] max-w-sm rounded-xl overflow-hidden bg-white/95 dark:bg-[#182229] border border-red-500/10 dark:border-red-500/20 shadow-md">
+          {/* Header الكارت */}
+          <div className="bg-gradient-to-r from-red-800 to-red-600 px-3.5 py-2.5 flex items-center justify-between text-white shadow-sm">
+            <div className="flex items-center gap-2">
+              <ShoppingBag size={18} className="animate-pulse" />
+              <span className="text-[13px] font-black tracking-wide uppercase">
+                {isRTL ? "طلب شراء جديد" : "NEW CATALOG ORDER"}
+              </span>
+            </div>
+            {msg.orderDetails?.catalog_id && (
+              <div className="flex items-center gap-0.5 text-[10px] bg-black/20 px-1.5 py-0.5 rounded font-mono" title="Catalog ID">
+                <Hash size={10} />
+                <span>{msg.orderDetails.catalog_id.slice(-6)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* قائمة المنتجات المطلوبة */}
+          <div className="p-3.5 space-y-2.5 max-h-60 overflow-y-auto custom-scrollbar">
+            {items.length > 0 ? (
+              items.map((item, index) => (
+                <div key={index} className="flex items-center justify-between gap-4 text-xs border-b border-gray-100 dark:border-white/5 pb-2 last:border-0 last:pb-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono font-bold text-slate-900 dark:text-slate-100 truncate" title={item.product_retailer_id}>
+                      {item.product_retailer_id}
+                    </p>
+                    <p className="text-gray-400 dark:text-gray-500 text-[11px] mt-0.5 tabular-nums">
+                      {isRTL ? "الكمية:" : "Qty:"} <span className="font-bold text-red-600 dark:text-red-400">{item.quantity}</span>
+                    </p>
+                  </div>
+                  <div className="text-end shrink-0 tabular-nums">
+                    <span className="font-black text-slate-800 dark:text-slate-200">
+                      {(item.item_price * item.quantity).toLocaleString()}
+                    </span>
+                    <span className="text-[10px] opacity-60 ms-1">{currencyStr}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-gray-400 text-center py-2">{isRTL ? "لا توجد تفاصيل للمنتجات" : "No product items included"}</p>
+            )}
+          </div>
+
+          {/* لو العميل كاتب كومنت مع الأوردر */}
+          {msg.orderDetails?.text && (
+            <div className="mx-3.5 mb-3.5 p-2 bg-gray-50 dark:bg-black/20 border-s-2 border-red-500 rounded text-[12.5px] italic text-slate-600 dark:text-slate-300">
+              "{msg.orderDetails.text}"
+            </div>
+          )}
+
+          {/* الإجمالي السفلي للكارت */}
+          <div className="bg-gray-50 dark:bg-black/30 px-3.5 py-2.5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold shadow-inner">
+            <span className="text-gray-500 dark:text-gray-400">{isRTL ? "إجمالي قيمة المنتجات:" : "Total Price:"}</span>
+            <span className="text-[14px] font-black text-red-700 dark:text-red-400 tabular-nums">
+              {totalCartPrice.toLocaleString()} <span className="text-[10px] font-bold opacity-80">{currencyStr}</span>
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // حماية إضافية لو الـ mediaUrl مش موجود نهائياً لأي سبب لكي لا يحدث كراش
+    if (!msg.mediaUrl) {
+      return <p className="text-[14.5px] leading-tight text-gray-400 italic">{isRTL ? "ملف وسائط غير صالح" : "Invalid media file"}</p>;
+    }
+
     const mediaUrl = msg.mediaUrl.includes('http') ? msg.mediaUrl.substring(msg.mediaUrl.lastIndexOf('http')) : msg.mediaUrl;
 
     if (msg.type === "image") {
@@ -330,7 +453,7 @@ export default function MessageLogs() {
               {/* Header */}
               <div className="h-16 flex items-center justify-between px-4 bg-white/80 dark:bg-[#111]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-20 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setReplyTarget(null)} className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors">
+                  <button onClick={() => setReplyTarget(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors">
                     <ChevronLeft size={24} className={isRTL ? "rotate-180" : ""} />
                   </button>
                   <div className="relative">
@@ -349,11 +472,18 @@ export default function MessageLogs() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
                    <div className="hidden sm:flex flex-col items-end px-3 border-e border-gray-200 dark:border-white/10">
                       <span className="text-[10px] font-bold text-gray-400">CUSTOMER PHONE</span>
                       <span className="text-[11px] font-mono">{replyTarget.phone}</span>
                    </div>
+                   <button 
+                     onClick={() => handleClearChat(replyTarget.phone)} 
+                     title={isRTL ? "إخفاء المحادثة" : "Hide Chat"}
+                     className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all"
+                   >
+                     <Trash2 size={20} />
+                   </button>
                    <MoreVertical className="text-gray-400 cursor-pointer hover:text-red-600 transition-colors" size={20} />
                 </div>
               </div>
@@ -365,11 +495,19 @@ export default function MessageLogs() {
                 
                 {activeChat.map((msg, idx) => {
                   const isMe = msg.direction === "outbound";
+                  const isOrder = msg.type === "order";
                   return (
                     <div key={msg._id || idx} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-1 duration-300`}>
-                      <div className={`relative max-w-[85%] md:max-w-[70%] px-3 pt-2 pb-1.5 shadow-sm rounded-xl ${isMe ? "bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none" : "bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none"}`}>
+                      <div className={`relative max-w-[85%] md:max-w-[70%] shadow-sm rounded-xl 
+                        ${isOrder 
+                          ? "p-1 bg-transparent border-0 shadow-none" 
+                          : isMe 
+                            ? "px-3 pt-2 pb-1.5 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none" 
+                            : "px-3 pt-2 pb-1.5 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none"
+                        }`}
+                      >
                         {renderMedia(msg)}
-                        <div className="flex items-center justify-end gap-1.5 mt-1 select-none">
+                        <div className={`flex items-center justify-end gap-1.5 mt-1 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
                           <span className="text-[9px] font-medium opacity-60 uppercase">
                             {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                           </span>
