@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 import { 
   Search, CheckCheck, Check, User, Send, Headset, 
   MessageCircle, ChevronLeft, MoreVertical, Paperclip, 
-  Clock, CheckCircle2
+  Clock
 } from "lucide-react";
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
@@ -25,12 +25,12 @@ export default function MessageLogs() {
   const chatEndRef = useRef(null);
   const activePhoneRef = useRef(null);
 
-  // تحديث المرجع للهاتف النشط لمتابعة السوكيت
+  // تحديث المرجع للهاتف النشط لمتابعة السوكيت فوراً وبدون رندر إضافي
   useEffect(() => {
     activePhoneRef.current = replyTarget?.phone;
   }, [replyTarget]);
 
-  // دالة لعرض أيقونة الحالة
+  // دالة لعرض أيقونة الحالة (للرسائل الصادرة)
   const StatusIcon = ({ status, size = 16 }) => {
     if (status === "read") return <CheckCheck size={size} className="text-blue-500" />;
     if (status === "delivered") return <CheckCheck size={size} className="text-gray-400" />;
@@ -39,46 +39,90 @@ export default function MessageLogs() {
     return <Clock size={size - 2} className="text-gray-300" />;
   };
 
-  // إعداد السوكيت
+  // 🌟 تعديل حرج: دالة إرسال إشارة القراءة مستقرة ولا يعاد بناؤها لتجنب فصل السوكيت
+  const markAsRead = useCallback((phone) => {
+    if (socket.current && socket.current.connected) {
+      socket.current.emit("mark_as_read", { phone });
+    }
+    setLogs((prev) =>
+      prev.map((log) =>
+        log.phone === phone ? { ...log, unreadCount: 0 } : log
+      )
+    );
+  }, []);
+
+  // إعداد السوكيت (يعمل مرة واحدة فقط عند التحميل وعزل اعتمادات الدالة)
   useEffect(() => {
     socket.current = io(SOCKET_URL, {
       transports: ["websocket"],
       reconnection: true,
     });
 
+    // استقبال تحديثات حالة الرسائل الصادرة (sent -> delivered -> read)
     socket.current.on("message_status_update", (update) => {
-      // 1. تحديث الرسالة داخل الشات المفتوح
       setActiveChat((prev) => prev.map(msg => {
         const isMatch = msg._id === update.messageId || 
                         (msg.whatsappMessageId && msg.whatsappMessageId === update.whatsappMessageId);
         return isMatch ? { ...msg, status: update.status } : msg;
       }));
 
-      // 2. تحديث الحالة في القائمة الجانبية (Sidebar)
       setLogs((prev) => prev.map(log => {
-        const isMatch = log.whatsappMessageId === update.whatsappMessageId;
+        // تحديث حالة الـ الـ الأخير الظاهر في الـ Sidebar إذا تطابق الآيدي
+        const isMatch = log._id === update.messageId || log.whatsappMessageId === update.whatsappMessageId;
         return isMatch ? { ...log, status: update.status } : log;
       }));
     });
 
+    // استقبال رسالة جديدة من عميل أو تحديث من السيرفر
     socket.current.on("receive-message", (newMessage) => {
-      // تحديث القائمة الجانبية فوراً وجلب الرسالة الجديدة للأعلى
-      setLogs((prev) => {
-        const filtered = prev.filter(l => l.phone !== newMessage.phone);
-        return [newMessage, ...filtered];
-      });
+      const isChatOpen = activePhoneRef.current === newMessage.phone;
 
-      // إذا كانت المحادثة مفتوحة، أضف الرسالة للشات
-      if (activePhoneRef.current === newMessage.phone) {
+      if (isChatOpen) {
+        // تنفيذ التصفير الفوري بالسيرفر
+        if (socket.current && socket.current.connected) {
+          socket.current.emit("mark_as_read", { phone: newMessage.phone });
+        }
+
         setActiveChat((prev) => {
-          if (prev.some(m => m._id === newMessage._id)) return prev;
-          return [...prev, newMessage];
+          // 🌟 منع التكرار للرسائل الصادرة والواردة معاً لمنع الازدواجية البصرية
+          const isAlreadyExists = prev.some(
+            (msg) => msg._id === newMessage._id || 
+                     (msg.whatsappMessageId && msg.whatsappMessageId === newMessage.whatsappMessageId)
+          );
+          
+          if (isAlreadyExists) {
+            // إذا كانت الرسالة موجودة مسبقاً (صادرة مثلاً) نقوم فقط بتحديث حالتها إن لزم الأمر
+            return prev.map(msg => 
+              (msg._id === newMessage._id || msg.whatsappMessageId === newMessage.whatsappMessageId)
+                ? { ...msg, ...newMessage } : msg
+            );
+          }
+          return [...prev, { ...newMessage, isRead: true }];
         });
       }
+
+      // تحديث القائمة الجانبية وجعل الرسالة الجديدة في الأعلى دائماً
+      setLogs((prev) => {
+        const existingLog = prev.find(l => l.phone === newMessage.phone);
+        const currentUnread = existingLog?.unreadCount || 0;
+        const newUnreadCount = isChatOpen ? 0 : currentUnread + 1;
+
+        const filtered = prev.filter(l => l.phone !== newMessage.phone);
+        const updatedLog = {
+          ...newMessage,
+          unreadCount: newUnreadCount,
+          customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" }
+        };
+        return [updatedLog, ...filtered];
+      });
     });
 
-    return () => socket.current?.disconnect();
-  }, []);
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+      }
+    };
+  }, []); // 🌟 مصفوفة فارغة تضمن ثبات الاتصال وعدم حدوث ريفريش للسوكيت مع الضغط
 
   const scrollToBottom = useCallback((behavior = "smooth") => {
     chatEndRef.current?.scrollIntoView({ behavior });
@@ -94,8 +138,10 @@ export default function MessageLogs() {
   const fetchLogs = async () => {
     try {
       const { data } = await axios.get("/messages", { params: { search } });
-      setLogs(data.messages);
-    } catch (err) { console.error("Error fetching logs:", err); }
+      setLogs(data.messages || []);
+    } catch (err) { 
+      console.error("Error fetching logs:", err); 
+    }
   };
 
   useEffect(() => {
@@ -103,22 +149,42 @@ export default function MessageLogs() {
     return () => clearTimeout(handler);
   }, [search]);
 
+  // فتح المحادثة
   const openChat = async (msg) => {
     setReplyTarget(msg);
     setActiveChat([]); 
+    
+    // تصفير العداد وإرسال حدث القراءة فور الضغط على المحادثة
+    markAsRead(msg.phone);
+
     try {
       const { data } = await axios.get(`/whatsapp/chat/${msg.phone}`);
-      if (data.success) setActiveChat(data.messages);
-    } catch (err) { console.error("Chat loading failed", err); }
+      if (data.success) {
+        setActiveChat(data.messages || []);
+      }
+    } catch (err) { 
+      console.error("Chat loading failed", err); 
+    }
   };
 
   const handleSendReply = async () => {
     if (!replyText.trim() || sending) return;
     const content = replyText;
-    const tempId = Date.now().toString();
+    const tempId = "temp_" + Date.now().toString(); // تمييز الآيدي المؤقت بوضوح
     
     setSending(true);
     setReplyText("");
+
+    // إضافة الرسالة في الـ UI فوراً لتجربة مستخدم سريعة جداً (Optimistic UI Update)
+    const optimisticMessage = {
+      ...tempId,
+      text: content,
+      direction: "outbound",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      type: "text"
+    };
+    setActiveChat((prev) => [...prev, optimisticMessage]);
 
     try {
       const res = await axios.post("/whatsapp/send", { 
@@ -126,7 +192,7 @@ export default function MessageLogs() {
       });
       
       if (res.data.success) {
-        const newMessage = {
+        const finalMessage = {
           _id: res.data.messageId || tempId,
           whatsappMessageId: res.data.whatsappMessageId,
           text: content,
@@ -136,18 +202,31 @@ export default function MessageLogs() {
           type: "text"
         };
 
-        // 1. تحديث الشات المفتوح فوراً
-        setActiveChat((prev) => [...prev, newMessage]);
+        // استبدال الرسالة المؤقتة بالرسالة الحقيقية القادمة من السيرفر
+        setActiveChat((prev) => 
+          prev.map(msg => msg._id === tempId ? finalMessage : msg)
+        );
 
-        // 2. تحديث القائمة الجانبية (Sidebar) لتصبح الرسالة المرسلة هي الأخيرة
         setLogs((prev) => {
           const filtered = prev.filter(l => l.phone !== replyTarget.phone);
-          const updatedLog = { ...replyTarget, text: content, status: 'sent', createdAt: newMessage.createdAt, direction: 'outbound', whatsappMessageId: res.data.whatsappMessageId };
+          const updatedLog = { 
+            ...replyTarget, 
+            text: content, 
+            status: 'sent', 
+            createdAt: finalMessage.createdAt, 
+            direction: 'outbound', 
+            whatsappMessageId: res.data.whatsappMessageId,
+            unreadCount: 0 
+          };
           return [updatedLog, ...filtered];
         });
       }
     } catch (err) { 
       console.error(err);
+      // في حال فشل الإرسال، نقوم بتحويل حالة الرسالة المؤقتة إلى فاشلة
+      setActiveChat((prev) => 
+        prev.map(msg => msg._id === tempId ? { ...msg, status: "failed" } : msg)
+      );
     } finally { 
       setSending(false); 
     }
@@ -196,33 +275,51 @@ export default function MessageLogs() {
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {logs.map((msg) => (
-              <div 
-                key={msg._id} 
-                onClick={() => openChat(msg)}
-                className={`flex items-center gap-3 p-3.5 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors ${replyTarget?.phone === msg.phone ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-md">
-                  {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name.charAt(0).toUpperCase() : <User size={22}/>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center mb-0.5">
-                    <h3 className="text-[14px] font-bold truncate">
-                      {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name : msg.phone}
-                    </h3>
-                    <span className="text-[10px] text-gray-400 tabular-nums">
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+            {logs.map((msg) => {
+              const hasUnread = msg.unreadCount > 0;
+              return (
+                <div 
+                  key={msg._id} 
+                  onClick={() => openChat(msg)}
+                  className={`flex items-center gap-3 p-3.5 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors 
+                    ${replyTarget?.phone === msg.phone ? 'bg-red-50/50 dark:bg-red-900/10' : ''}
+                    ${hasUnread ? 'bg-green-50/30 dark:bg-green-500/[0.03]' : ''}`}
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-md relative">
+                    {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name.charAt(0).toUpperCase() : <User size={22}/>}
+                    {hasUnread && (
+                      <span className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-[#111]"></span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {msg.direction === "outbound" && <StatusIcon status={msg.status} size={14} />}
-                    <p className={`text-xs truncate ${msg.status === 'read' ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400 font-medium'}`}>
-                      {msg.text || '📷 Media'}
-                    </p>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <h3 className={`text-[14px] truncate ${hasUnread ? 'font-black text-black dark:text-white' : 'font-bold'}`}>
+                        {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name : msg.phone}
+                      </h3>
+                      <span className={`text-[10px] tabular-nums ${hasUnread ? 'text-green-500 font-bold' : 'text-gray-400'}`}>
+                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        {msg.direction === "outbound" && <StatusIcon status={msg.status} size={14} />}
+                        <p className={`text-xs truncate ${hasUnread ? 'text-black dark:text-slate-200 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+                          {msg.text || '📷 Media'}
+                        </p>
+                      </div>
+                      
+                      {hasUnread && (
+                        <span className="bg-green-500 text-white font-bold text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-sm animate-pulse">
+                          {msg.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -274,7 +371,7 @@ export default function MessageLogs() {
                         {renderMedia(msg)}
                         <div className="flex items-center justify-end gap-1.5 mt-1 select-none">
                           <span className="text-[9px] font-medium opacity-60 uppercase">
-                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                           </span>
                           {isMe && <StatusIcon status={msg.status} size={13} />}
                         </div>

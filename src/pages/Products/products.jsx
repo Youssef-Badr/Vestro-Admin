@@ -189,27 +189,24 @@ const handleImportExcel = async (e) => {
 
 const handleToggleActive = async (productId, currentStatus) => {
   try {
-    // إرسال الحالة المعكوسة للسيرفر
     const newStatus = !currentStatus;
     
-    // تأكد من مسار الـ API عندك، أنا هنا استخدمت دالة الـ update اللي عملناها
-    await axios.put(`/products/${productId}`, { 
+    // توجيه الطلب إلى الروت المخصص الجديد 🚀
+    await axios.patch(`/products/${productId}/toggle-active`, { 
       isActive: newStatus 
     });
 
-    // تحديث الحالة في الـ State فوراً عشان الجدول يحس بالتغيير
+    // تحديث الحالة في الـ State فوراً
     setProducts((prev) =>
       prev.map((p) => (p._id === productId ? { ...p, isActive: newStatus } : p))
     );
 
-    // اختيار اختياري: إظهار تنبيه نجاح
     // toast.success(newStatus ? "Product Activated" : "Product Hidden");
   } catch (err) {
     console.error("Error toggling product status:", err);
     alert("Failed to update status");
   }
 };
-
 
 
 const handleReorderSave = async (newOrderedProducts) => {
