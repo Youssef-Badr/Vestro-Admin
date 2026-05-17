@@ -8,12 +8,11 @@ import {
   Webhook,
   Activity,
   RefreshCw,
+  Lock, // استيراد أيقونة القفل للتوكن
 } from "lucide-react";
-
 export default function WhatsAppSettings() {
   const { language } = useLanguage();
   const isRTL = language === "ar";
-
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
 
@@ -35,15 +34,42 @@ export default function WhatsAppSettings() {
     fetchSettings();
   }, []);
 
+ // دالة لتشفير التوكن وإظهار أول 6 أحرف فقط مع حظر الرؤية والنسخ تماماً
+  const formatAccessToken = (token) => {
+    if (!token) return "-";
+    if (token.length <= 6) return token;
+    
+    const visiblePart = token.substring(0, 6);
+    
+    return (
+      <div 
+        className="flex items-center gap-2 font-mono tracking-wider select-none bg-gray-50/50 dark:bg-neutral-950/40 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-white/[0.03] w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* الحروف الـ 6 الأولى الواضحة لمعرفة هوية التوكن */}
+        <span className="text-red-700 dark:text-red-400 font-black text-xs md:text-sm shrink-0">
+          {visiblePart}
+        </span>
+        
+        {/* التشفير الثابت بالبلور والنقاط لمنع الاختراق البصري */}
+        <span className="blur-[2.5px] opacity-35 text-[10px] truncate max-w-[160px] tracking-widest font-bold select-none pointer-events-none">
+          ••••••••••••••••••••••••••••••••
+        </span>
+      </div>
+    );
+  };
+
   const Card = ({ icon, title, value }) => (
     <div className="p-5 rounded-2xl border bg-white dark:bg-black border-gray-200 dark:border-white/10 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="text-red-700">{icon}</div>
-        <div>
-          <p className="text-xs opacity-50 uppercase">
+      <div className="flex items-center gap-3 w-full min-w-0">
+        <div className="text-red-700 shrink-0">{icon}</div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs opacity-50 uppercase truncate">
             {title}
           </p>
-          <p className="font-bold text-sm">{value}</p>
+          <div className="font-bold text-sm truncate mt-0.5">
+            {value}
+          </div>
         </div>
       </div>
     </div>
@@ -68,7 +94,7 @@ export default function WhatsAppSettings() {
 
           <button
             onClick={fetchSettings}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-700 text-white"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-700 text-white hover:bg-red-800 transition-colors"
           >
             <RefreshCw size={16} />
             {isRTL ? "تحديث" : "Refresh"}
@@ -108,6 +134,13 @@ export default function WhatsAppSettings() {
               value={data?.businessAccountId || "-"}
             />
 
+            {/* 🔐 كارت الأكسيس توكن المضاف حديثاً مع حماية البلور */}
+            <Card
+              icon={<Lock size={20} />}
+              title={isRTL ? "رمز الوصول (Access Token)" : "Access Token"}
+              value={formatAccessToken(data?.accessToken)}
+            />
+
             <Card
               icon={<Webhook />}
               title={isRTL ? "Webhook" : "Webhook Status"}
@@ -134,10 +167,10 @@ export default function WhatsAppSettings() {
         )}
 
         {/* FOOTER WARNING */}
-        <div className="mt-10 p-4 border border-red-700/30 rounded-2xl text-sm text-red-700">
+        <div className="mt-10 p-4 border border-red-700/30 rounded-2xl text-sm text-red-700 bg-red-50/10 backdrop-blur-sm">
           {isRTL
-            ? "هذه الصفحة تُستخدم فقط لعرض حالة تكامل WhatsApp API."
-            : "This page is used to monitor WhatsApp API integration status."}
+            ? "هذه الصفحة تُستخدم فقط لعرض حالة تكامل WhatsApp API وحماية البيانات الحساسة."
+            : "This page is used to monitor WhatsApp API integration status and protect sensitive credentials."}
         </div>
 
       </div>

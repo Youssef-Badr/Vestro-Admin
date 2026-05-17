@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import axios from "../../api/axiosInstance";
 import { useLanguage } from "../../context/LanguageContext";
@@ -21,16 +22,30 @@ export default function MessageLogs() {
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
 
+  // الـ localStorage هو المخزن الأساسي لعدد الرسائل غير المقروءة لايف
+  const [localUnreadPhones, setLocalUnreadPhones] = useState(() => {
+    try {
+      const saved = localStorage.getItem("vestro_unread_phones");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const socket = useRef(null);
   const chatEndRef = useRef(null);
   const activePhoneRef = useRef(null);
+  const textareaRef = useRef(null);
 
-  // تحديث المرجع للهاتف النشط لمتابعة السوكيت فوراً وبدون رندر إضافي
+  // تحديث الـ localStorage كلما تغيرت الحسبة المحلية
+  useEffect(() => {
+    localStorage.setItem("vestro_unread_phones", JSON.stringify(localUnreadPhones));
+  }, [localUnreadPhones]);
+
   useEffect(() => {
     activePhoneRef.current = replyTarget?.phone;
   }, [replyTarget]);
 
-  // دالة لعرض أيقونة الحالة (للرسائل الصادرة)
   const StatusIcon = ({ status, size = 16 }) => {
     if (status === "read") return <CheckCheck size={size} className="text-blue-500" />;
     if (status === "delivered") return <CheckCheck size={size} className="text-gray-400" />;
@@ -39,11 +54,18 @@ export default function MessageLogs() {
     return <Clock size={size - 2} className="text-gray-300" />;
   };
 
-  // دالة إرسال إشارة القراءة
+  // دالة القراءة: تصفر الـ localStorage والسيرفر فوراً
   const markAsRead = useCallback((phone) => {
     if (socket.current?.connected) {
       socket.current.emit("mark_as_read", { phone });
     }
+    
+    setLocalUnreadPhones((prev) => {
+      const updated = { ...prev };
+      delete updated[phone];
+      return updated;
+    });
+
     setLogs((prev) =>
       prev.map((log) =>
         log.phone === phone ? { ...log, unreadCount: 0 } : log
@@ -51,7 +73,6 @@ export default function MessageLogs() {
     );
   }, []);
 
-  // دالة مسح أو إخفاء المحادثة (Soft Delete)
   const handleClearChat = async (phone) => {
     if (!window.confirm(isRTL ? "هل أنت متأكد من رغبتك في إخفاء هذه المحادثة؟" : "Are you sure you want to hide this chat?")) return;
     try {
@@ -61,6 +82,11 @@ export default function MessageLogs() {
           setReplyTarget(null);
           setActiveChat([]);
         }
+        setLocalUnreadPhones((prev) => {
+          const updated = { ...prev };
+          delete updated[phone];
+          return updated;
+        });
         setLogs((prev) => prev.filter((log) => log.phone !== phone));
       }
     } catch (err) {
@@ -68,7 +94,23 @@ export default function MessageLogs() {
     }
   };
 
-  // إعداد وإدارة السوكيت بشكل آمن ومقاوم للتكرار والتسريب
+// 2. الدالة المحدثة لعمل ريفريش كامل (للشات المفتوح والسايد بار معاً)
+const fetchChatMessages = async (phone) => {
+  if (!phone) return;
+  try {
+    // جلب رسائل الشات النشط وتحديث السايد بار في نفس الوقت بالتوازي لسرعة الأداء
+    const [chatRes] = await Promise.all([
+      axios.get(`/whatsapp/chat/${phone}`),
+      fetchLogs()
+    ]);
+
+    if (chatRes.data.success) {
+      setActiveChat(chatRes.data.messages || []);
+    }
+  } catch (err) {
+    console.error("Failed to force refresh chat and sidebar:", err);
+  }
+};
   useEffect(() => {
     socket.current = io(SOCKET_URL, {
       transports: ["websocket"],
@@ -77,49 +119,78 @@ export default function MessageLogs() {
 
     const currentSocket = socket.current;
 
-    // 1. تحديث حالة الرسائل المقروءة والمستلمة لايف
     currentSocket.on("message_status_updated", (update) => {
-      console.log("💡 Received status update from socket:", update);
-      
-      const updateIdStr = update.messageId?.toString();
-      const updateWamIdStr = update.whatsappMessageId?.toString();
 
-      setActiveChat((prev) => prev.map(msg => {
-        const msgIdStr = msg._id?.toString();
-        const msgWamIdStr = msg.whatsappMessageId?.toString();
+      const updateIdStr = update.messageId ? String(update.messageId) : null;
+      const updateWamIdStr = update.whatsappMessageId ? String(update.whatsappMessageId) : null;
 
-        const isMatch = (updateIdStr && msgIdStr === updateIdStr) || 
-                        (updateWamIdStr && msgWamIdStr === updateWamIdStr);
-        return isMatch ? { ...msg, status: update.status } : msg;
-      }));
 
-      setLogs((prev) => prev.map(log => {
-        const logIdStr = log._id?.toString();
-        const logWamIdStr = log.whatsappMessageId?.toString();
+      if (update.status === "read") {
+        setLocalUnreadPhones((prev) => {
+          const updated = { ...prev };
+          delete updated[update.phone];
+          return updated;
+        });
+        setLogs((prev) =>
+          prev.map((log) =>
+            log.phone === update.phone ? { ...log, unreadCount: 0 } : log
+          )
+        );
+      }
 
-        const isMatch = (updateIdStr && logIdStr === updateIdStr) || 
-                        (updateWamIdStr && logWamIdStr === updateWamIdStr);
-        return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
-      }));
+      // === ⚠️ هنا مربط الفرس: تحديث الشات المفتوح ===
+      setActiveChat((prev) => {
+        
+        if (!prev || prev.length === 0) {
+          return prev;
+        }
+        
+        return prev.map(msg => {
+          const msgIdStr = msg._id ? String(msg._id) : null;
+          const msgWamIdStr = msg.whatsappMessageId ? String(msg.whatsappMessageId) : null;
+          
+          const isMatch = (updateIdStr && msgIdStr === updateIdStr) || 
+                          (updateWamIdStr && msgWamIdStr === updateWamIdStr);
+
+          // كونسول مخصص للرسالة اللي السيرفر بيحاول يحدثها (هنطبع لو حصل تطابق أو لو ده كونسول تشخيصي)
+          if (isMatch) {
+          
+          }
+
+          return isMatch ? { ...msg, status: update.status } : msg;
+        });
+      });
+
+      // === تحديث الـ Logs الجانبية ===
+      setLogs((prev) => {
+        if (!prev || prev.length === 0) return prev;
+        return prev.map(log => {
+          const logIdStr = log._id ? String(log._id) : null;
+          const logWamIdStr = log.whatsappMessageId ? String(log.whatsappMessageId) : null;
+          
+          const isMatch = (updateIdStr && logIdStr === updateIdStr) || 
+                          (updateWamIdStr && logWamIdStr === updateWamIdStr);
+                          
+          return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
+        });
+      });
     });
 
-    // 2. الاستماع لحدث مسح الشات لايف لو تم مسحه من جهاز آخر
     currentSocket.on("chat_cleared", (data) => {
-      console.log(`📡 Socket received "chat_cleared" for phone: ${data.phone}`);
       if (activePhoneRef.current === data.phone) {
         setReplyTarget(null);
         setActiveChat([]);
       }
+      setLocalUnreadPhones((prev) => {
+        const updated = { ...prev };
+        delete updated[data.phone];
+        return updated;
+      });
       setLogs((prev) => prev.filter((log) => log.phone !== data.phone));
     });
 
-    // 3. استقبال رسالة جديدة من عميل أو تحديث من السيرفر
     currentSocket.on("receive-message", (newMessage) => {
       const isChatOpen = activePhoneRef.current === newMessage.phone;
-
-      if (isChatOpen && currentSocket.connected) {
-        currentSocket.emit("mark_as_read", { phone: newMessage.phone });
-      }
 
       if (isChatOpen) {
         setActiveChat((prev) => {
@@ -139,7 +210,6 @@ export default function MessageLogs() {
 
           const newMsgIdStr = newMessage._id?.toString();
           const newWamIdStr = newMessage.whatsappMessageId?.toString();
-
           const isAlreadyExists = prev.some(msg => {
             const msgIdStr = msg._id?.toString();
             const msgWamIdStr = msg.whatsappMessageId?.toString();
@@ -151,30 +221,52 @@ export default function MessageLogs() {
         });
       }
 
-      // تحديث القائمة الجانبية وترتيبها
-      setLogs((prev) => {
-        const existingLog = prev.find(l => l.phone === newMessage.phone);
-        const currentUnread = existingLog?.unreadCount || 0;
-        const newUnreadCount = isChatOpen ? 0 : currentUnread + 1;
+      const isCustomerMsg = newMessage.direction === "inbound";
 
-        const filtered = prev.filter(l => l.phone !== newMessage.phone);
-        const updatedLog = {
-          ...newMessage,
-          unreadCount: newUnreadCount,
-          customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" }
-        };
-        return [updatedLog, ...filtered];
-      });
+      // 1. تحديث الـ localStorage أولاً كـ مرجع وحيد للزيادة لمنع الدبلرة
+      if (isCustomerMsg && !isChatOpen) {
+        setLocalUnreadPhones((prevPhones) => {
+          const currentLocalCount = prevPhones[newMessage.phone] || 0;
+          const updatedPhones = {
+            ...prevPhones,
+            [newMessage.phone]: currentLocalCount + 1
+          };
+          
+          // 2. تحديث قائمة الـ logs بناءً على القيمة الدقيقة الجديدة مباشرةً من الحسبة
+          setLogs((prevLogs) => {
+            const existingLog = prevLogs.find(l => l.phone === newMessage.phone);
+            const filtered = prevLogs.filter(l => l.phone !== newMessage.phone);
+            
+            const updatedLog = {
+              ...newMessage,
+              unreadCount: updatedPhones[newMessage.phone], // القيمة الدقيقة بدون تكرار أو جمع إضافي
+              customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" }
+            };
+            return [updatedLog, ...filtered];
+          });
+
+          return updatedPhones;
+        });
+      } else {
+        // لو رسالة صادرة منك أو الشات مفتوح، بنرتب اللوج الجانبي طبيعي بدون لعب في العداد
+        setLogs((prevLogs) => {
+          const existingLog = prevLogs.find(l => l.phone === newMessage.phone);
+          const filtered = prevLogs.filter(l => l.phone !== newMessage.phone);
+          const updatedLog = {
+            ...newMessage,
+            unreadCount: isChatOpen ? 0 : (existingLog?.unreadCount || 0),
+            customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" }
+          };
+          return [updatedLog, ...filtered];
+        });
+      }
     });
-return () => {
+
+    return () => {
       currentSocket.off("message_status_updated");
       currentSocket.off("chat_cleared");
       currentSocket.off("receive-message");
-      
-      // لا تفصل السوكيت بعنف إلا لو كان متصلاً بالفعل لتجنب أخطاء الفريم ورك في الـ Console
-      if (currentSocket.connected) {
-        currentSocket.disconnect();
-      }
+      currentSocket.disconnect();
     };
   }, []); 
 
@@ -192,7 +284,16 @@ return () => {
   const fetchLogs = async () => {
     try {
       const { data } = await axios.get("/messages", { params: { search } });
-      setLogs(data.messages || []);
+      const fetchedMessages = data.messages || [];
+      
+      setLogs(fetchedMessages.map(msg => {
+        const localCount = localUnreadPhones[msg.phone];
+        return {
+          ...msg,
+          // الـ Math.max هنا للحماية، طالما اللوجيك اتظبط فوق هتجيب القيمة الحقيقية مظبوطة 100%
+          unreadCount: localCount !== undefined ? Math.max(msg.unreadCount || 0, localCount) : (msg.unreadCount || 0)
+        };
+      }));
     } catch (err) { 
       console.error("Error fetching logs:", err); 
     }
@@ -201,13 +302,14 @@ return () => {
   useEffect(() => {
     const handler = setTimeout(fetchLogs, 400);
     return () => clearTimeout(handler);
-  }, [search]);
+  }, [search]); // شيلنا الـ localUnreadPhones من الـ dependencies لمنع الـ Infinite loops وإعادة استدعاء الـ API مع كل تحديث عداد
 
-  // فتح المحادثة
   const openChat = async (msg) => {
     setReplyTarget(msg);
     setActiveChat([]); 
+    
     markAsRead(msg.phone);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     try {
       const { data } = await axios.get(`/whatsapp/chat/${msg.phone}`);
@@ -226,6 +328,7 @@ return () => {
     
     setSending(true);
     setReplyText("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     const optimisticMessage = {
       _id: tempId,
@@ -281,12 +384,17 @@ return () => {
     }
   };
 
+  const handleTextareaChange = (e) => {
+    setReplyText(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = `${e.target.scrollHeight}px`;
+  };
+
   const renderMedia = (msg) => {
     if (msg.type === "text" && !msg.mediaUrl) {
       return <p className="text-[14.5px] leading-tight whitespace-pre-wrap">{msg.text}</p>;
     }
 
-    // 📥 معالجة وعرض كارت الأوردر القادم من الكاتالوج بشكل فاخر احترافي
     if (msg.type === "order") {
       const items = msg.orderDetails?.product_items || [];
       const totalCartPrice = items.reduce((sum, item) => sum + (item.item_price * item.quantity), 0);
@@ -294,7 +402,6 @@ return () => {
 
       return (
         <div className="w-full min-w-[260px] max-w-sm rounded-xl overflow-hidden bg-white/95 dark:bg-[#182229] border border-red-500/10 dark:border-red-500/20 shadow-md">
-          {/* Header الكارت */}
           <div className="bg-gradient-to-r from-red-800 to-red-600 px-3.5 py-2.5 flex items-center justify-between text-white shadow-sm">
             <div className="flex items-center gap-2">
               <ShoppingBag size={18} className="animate-pulse" />
@@ -310,40 +417,76 @@ return () => {
             )}
           </div>
 
-          {/* قائمة المنتجات المطلوبة */}
           <div className="p-3.5 space-y-2.5 max-h-60 overflow-y-auto custom-scrollbar">
             {items.length > 0 ? (
-              items.map((item, index) => (
-                <div key={index} className="flex items-center justify-between gap-4 text-xs border-b border-gray-100 dark:border-white/5 pb-2 last:border-0 last:pb-0">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-mono font-bold text-slate-900 dark:text-slate-100 truncate" title={item.product_retailer_id}>
-                      {item.product_retailer_id}
-                    </p>
-                    <p className="text-gray-400 dark:text-gray-500 text-[11px] mt-0.5 tabular-nums">
-                      {isRTL ? "الكمية:" : "Qty:"} <span className="font-bold text-red-600 dark:text-red-400">{item.quantity}</span>
-                    </p>
+              items.map((item, index) => {
+                const productImg = item.primary_image || item.image_url || item.product_image || item.images?.[0]?.url;
+                const productName = item.product_name || item.name || (isRTL ? "منتج غير معروف" : "Unknown Product");
+                const variantColor = item.color || item.variant_info?.color;
+                const variantSize = item.size || item.variant_info?.size;
+
+                return (
+                  <div key={index} className="flex items-center justify-between gap-4 text-xs border-b border-gray-100 dark:border-white/5 pb-2 last:border-0 last:pb-0">
+                    <div className="min-w-0 flex-1 flex items-center gap-2">
+                      {productImg ? (
+                        <img 
+                          src={productImg} 
+                          alt={productName} 
+                          loading="lazy"
+                          className="w-10 h-10 object-cover rounded-md border border-gray-100 dark:border-white/10 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-md flex items-center justify-center shrink-0 border border-red-100 dark:border-red-950/50">
+                          <ShoppingBag size={16} />
+                        </div>
+                      )}
+                      
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-slate-900 dark:text-slate-100 text-[13px] leading-tight mb-1">
+                          {productName}
+                        </p>
+                        
+                        <p className="text-gray-400 dark:text-gray-500 text-[11px] tabular-nums">
+                          {isRTL ? "الكمية:" : "Qty:"} <span className="font-bold text-red-600 dark:text-red-400">{item.quantity}</span>
+                        </p>
+
+                        {(variantColor || variantSize) && (
+                          <div className="flex flex-col gap-0.5 mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                            {variantColor && (
+                              <p>
+                                {isRTL ? "اللون:" : "Color:"} <span className="text-slate-700 dark:text-slate-300 font-bold">{variantColor}</span>
+                              </p>
+                            )}
+                            {variantSize && (
+                              <p>
+                                {isRTL ? "المقاس:" : "Size:"} <span className="text-slate-700 dark:text-slate-300 font-bold font-mono">{variantSize}</span>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="text-end shrink-0 tabular-nums">
+                      <span className="font-black text-slate-800 dark:text-slate-200">
+                        {(item.item_price * item.quantity).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] opacity-60 ms-1">{currencyStr}</span>
+                    </div>
                   </div>
-                  <div className="text-end shrink-0 tabular-nums">
-                    <span className="font-black text-slate-800 dark:text-slate-200">
-                      {(item.item_price * item.quantity).toLocaleString()}
-                    </span>
-                    <span className="text-[10px] opacity-60 ms-1">{currencyStr}</span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <p className="text-xs text-gray-400 text-center py-2">{isRTL ? "لا توجد تفاصيل للمنتجات" : "No product items included"}</p>
             )}
           </div>
 
-          {/* لو العميل كاتب كومنت مع الأوردر */}
           {msg.orderDetails?.text && (
             <div className="mx-3.5 mb-3.5 p-2 bg-gray-50 dark:bg-black/20 border-s-2 border-red-500 rounded text-[12.5px] italic text-slate-600 dark:text-slate-300">
               "{msg.orderDetails.text}"
             </div>
           )}
 
-          {/* الإجمالي السفلي للكارت */}
           <div className="bg-gray-50 dark:bg-black/30 px-3.5 py-2.5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold shadow-inner">
             <span className="text-gray-500 dark:text-gray-400">{isRTL ? "إجمالي قيمة المنتجات:" : "Total Price:"}</span>
             <span className="text-[14px] font-black text-red-700 dark:text-red-400 tabular-nums">
@@ -354,7 +497,6 @@ return () => {
       );
     }
 
-    // حماية إضافية لو الـ mediaUrl مش موجود نهائياً لأي سبب لكي لا يحدث كراش
     if (!msg.mediaUrl) {
       return <p className="text-[14.5px] leading-tight text-gray-400 italic">{isRTL ? "ملف وسائط غير صالح" : "Invalid media file"}</p>;
     }
@@ -399,13 +541,15 @@ return () => {
 
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {logs.map((msg) => {
-              const hasUnread = msg.unreadCount > 0;
+              const isCurrentActive = replyTarget?.phone === msg.phone;
+              const hasUnread = msg.unreadCount > 0 && !isCurrentActive;
+              
               return (
                 <div 
                   key={msg._id} 
                   onClick={() => openChat(msg)}
                   className={`flex items-center gap-3 p-3.5 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors 
-                    ${replyTarget?.phone === msg.phone ? 'bg-red-50/50 dark:bg-red-900/10' : ''}
+                    ${isCurrentActive ? 'bg-red-50/50 dark:bg-red-900/10' : ''}
                     ${hasUnread ? 'bg-green-50/30 dark:bg-green-500/[0.03]' : ''}`}
                 >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-md relative">
@@ -446,118 +590,143 @@ return () => {
           </div>
         </div>
 
-        {/* CHAT WINDOW */}
-        <div className={`flex-1 flex flex-col relative bg-[#f0f2f5] dark:bg-[#0c0c0c] ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
-          {replyTarget ? (
-            <>
-              {/* Header */}
-              <div className="h-16 flex items-center justify-between px-4 bg-white/80 dark:bg-[#111]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-20 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setReplyTarget(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors">
-                    <ChevronLeft size={24} className={isRTL ? "rotate-180" : ""} />
-                  </button>
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold shadow-inner">
-                      {replyTarget.customer?.name?.charAt(0) || "V"}
-                    </div>
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-black dark:text-white leading-tight">
-                      {replyTarget.customer?.name || replyTarget.phone}
-                    </h2>
-                    <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                      <p className="text-[10px] text-green-500 font-bold tracking-wider">ONLINE</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                   <div className="hidden sm:flex flex-col items-end px-3 border-e border-gray-200 dark:border-white/10">
-                      <span className="text-[10px] font-bold text-gray-400">CUSTOMER PHONE</span>
-                      <span className="text-[11px] font-mono">{replyTarget.phone}</span>
-                   </div>
-                   <button 
-                     onClick={() => handleClearChat(replyTarget.phone)} 
-                     title={isRTL ? "إخفاء المحادثة" : "Hide Chat"}
-                     className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all"
-                   >
-                     <Trash2 size={20} />
-                   </button>
-                   <MoreVertical className="text-gray-400 cursor-pointer hover:text-red-600 transition-colors" size={20} />
-                </div>
-              </div>
-
-              {/* Messages Body */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
-                <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.03] pointer-events-none" 
-                     style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '350px' }} />
-                
-                {activeChat.map((msg, idx) => {
-                  const isMe = msg.direction === "outbound";
-                  const isOrder = msg.type === "order";
-                  return (
-                    <div key={msg._id || idx} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-1 duration-300`}>
-                      <div className={`relative max-w-[85%] md:max-w-[70%] shadow-sm rounded-xl 
-                        ${isOrder 
-                          ? "p-1 bg-transparent border-0 shadow-none" 
-                          : isMe 
-                            ? "px-3 pt-2 pb-1.5 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none" 
-                            : "px-3 pt-2 pb-1.5 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none"
-                        }`}
-                      >
-                        {renderMedia(msg)}
-                        <div className={`flex items-center justify-end gap-1.5 mt-1 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
-                          <span className="text-[9px] font-medium opacity-60 uppercase">
-                            {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                          </span>
-                          {isMe && <StatusIcon status={msg.status} size={13} />}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={chatEndRef} />
-              </div>
-
-              {/* Input Area */}
-              <div className="p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-end gap-2.5 z-20 border-t border-gray-200 dark:border-white/5">
-                <div className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500">
-                  <Paperclip size={22} />
-                </div>
-                <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-2xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/30 transition-all">
-                    <textarea 
-                        rows="1"
-                        placeholder={isRTL ? "اكتب رسالة..." : "Type a message..."}
-                        className="w-full bg-transparent border-none outline-none py-3.5 px-4 text-[15px] dark:text-white resize-none max-h-32 custom-scrollbar"
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
-                    />
-                </div>
-                <button 
-                  disabled={sending || !replyText.trim()}
-                  onClick={handleSendReply}
-                  className="mb-0.5 w-12 h-12 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
-                >
-                  {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={20} className={isRTL ? "rotate-180" : "ml-0.5"} />}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50 dark:bg-[#0c0c0c]">
-              <div className="w-24 h-24 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 mb-6 animate-bounce shadow-xl shadow-red-500/10">
-                <MessageCircle size={48} />
-              </div>
-              <h2 className="text-2xl font-black mb-2 dark:text-white tracking-tight uppercase">
-                {isRTL ? "منصة فيسترو للمحادثات" : "VESTRO CHAT HUB"}
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 max-w-xs text-sm leading-relaxed">
-                {isRTL ? "اختر محادثة من القائمة الجانبية لبدء الرد على العملاء بشكل مباشر" : "Select a conversation from the sidebar to start responding to customers in real-time."}
-              </p>
+      {/* CHAT WINDOW */}
+<div className={`flex-1 flex flex-col relative bg-[#f0f2f5] dark:bg-[#0c0c0c] ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
+  {replyTarget ? (
+    <>
+      {/* Header */}
+      <div className="h-16 flex items-center justify-between px-4 bg-white/80 dark:bg-[#111]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-20 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setReplyTarget(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors">
+            <ChevronLeft size={24} className={isRTL ? "rotate-180" : ""} />
+          </button>
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold shadow-inner">
+              {replyTarget.customer?.name?.charAt(0) || "V"}
             </div>
-          )}
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
+          </div>
+          <div>
+            <h2 className="text-sm font-black dark:text-white leading-tight">
+              {replyTarget.customer?.name || replyTarget.phone}
+            </h2>
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+              <p className="text-[10px] text-green-500 font-bold tracking-wider">ONLINE</p>
+            </div>
+          </div>
         </div>
+
+        <div className="flex items-center gap-2 sm:gap-4">
+           <div className="hidden sm:flex flex-col items-end px-3 border-e border-gray-200 dark:border-white/10">
+              <span className="text-[10px] font-bold text-gray-400">CUSTOMER PHONE</span>
+              <span className="text-[11px] font-mono">{replyTarget.phone}</span>
+           </div>
+
+       {/* 🌟 زر الريفرش المحدث لتحديث الشات والقائمة الجانبية فورا 🌟 */}
+<button 
+  onClick={() => fetchChatMessages(replyTarget.phone)} 
+  title={isRTL ? "تحديث المحادثة" : "Refresh Chat"}
+  className="p-2 text-gray-400 hover:text-red-700 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95 group"
+>
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="20" 
+    height="20" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className="transform group-hover:rotate-180 transition-transform duration-500"
+  >
+    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+    <polyline points="21 3 21 8 16 8" />
+  </svg>
+</button>
+           <button 
+             onClick={() => handleClearChat(replyTarget.phone)} 
+             title={isRTL ? "إخفاء المحادثة" : "Hide Chat"}
+             className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all"
+           >
+             <Trash2 size={20} />
+           </button>
+           <MoreVertical className="text-gray-400 cursor-pointer hover:text-red-600 transition-colors" size={20} />
+        </div>
+      </div>
+
+      {/* Messages Body */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
+        <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.03] pointer-events-none" 
+             style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '350px' }} />
+        
+        {activeChat.map((msg, idx) => {
+          const isMe = msg.direction === "outbound";
+          const isOrder = msg.type === "order";
+          return (
+            <div key={msg._id || idx} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-1 duration-300`}>
+              <div className={`relative max-w-[85%] md:max-w-[70%] shadow-sm rounded-xl 
+                ${isOrder 
+                  ? "p-1 bg-transparent border-0 shadow-none" 
+                  : isMe 
+                    ? "px-3 pt-2 pb-1.5 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none" 
+                    : "px-3 pt-2 pb-1.5 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none"
+                }`}
+              >
+                {renderMedia(msg)}
+                <div className={`flex items-center justify-end gap-1.5 mt-1 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
+                  <span className="text-[9px] font-medium opacity-60 uppercase">
+                    {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                  </span>
+                  {isMe && <StatusIcon status={msg.status} size={13} />}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div className="p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-end gap-2.5 z-20 border-t border-gray-200 dark:border-white/5">
+        <div className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500">
+          <Paperclip size={22} />
+        </div>
+        <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-2xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/30 transition-all">
+            <textarea 
+                ref={textareaRef}
+                rows="1"
+                placeholder={isRTL ? "اكتب رسالة..." : "Type a message..."}
+                className="w-full bg-transparent border-none outline-none py-3.5 px-4 text-[15px] dark:text-white resize-none max-h-32 custom-scrollbar dynamic-textarea"
+                value={replyText}
+                onChange={handleTextareaChange}
+                onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
+            />
+        </div>
+        <button 
+          disabled={sending || !replyText.trim()}
+          onClick={handleSendReply}
+          className="mb-0.5 w-12 h-12 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
+        >
+          {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={20} className={isRTL ? "rotate-180" : "ml-0.5"} />}
+        </button>
+      </div>
+    </>
+  ) : (
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50 dark:bg-[#0c0c0c]">
+      <div className="w-24 h-24 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 mb-6 animate-bounce shadow-xl shadow-red-500/10">
+        <MessageCircle size={48} />
+      </div>
+      <h2 className="text-2xl font-black mb-2 dark:text-white tracking-tight uppercase">
+        {isRTL ? "منصة فيسترو للمحادثات" : "VESTRO CHAT HUB"}
+      </h2>
+      <p className="text-gray-500 dark:text-gray-400 max-w-xs text-sm leading-relaxed">
+        {isRTL ? "اختر محادثة من القائمة الجانبية لبدء الرد على العملاء بشكل مباشر" : "Select a conversation from the sidebar to start responding to customers in real-time."}
+      </p>
+    </div>
+  )}
+</div>
       </div>
 
       <style>{`
@@ -571,9 +740,12 @@ return () => {
         .dark .custom-audio { filter: invert(100%) hue-rotate(180deg) brightness(1.8) contrast(0.9); }
         .custom-audio { border-radius: 30px; }
         
+        .dynamic-textarea { height: auto; min-height: 48px; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-in { animation: fadeIn 0.3s ease-out; }
       `}</style>
+      
     </div>
   ); 
 }
