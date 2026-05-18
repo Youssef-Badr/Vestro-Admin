@@ -5,8 +5,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { io } from "socket.io-client";
 import { 
   Search, CheckCheck, Check, User, Send, Headset, 
-  MessageCircle, ChevronLeft, MoreVertical, Paperclip, 
-  Clock, Trash2, ShoppingBag, Hash
+  MessageCircle, ChevronLeft, MoreVertical, 
+  Clock, Trash2, ShoppingBag, Hash, Paperclip, Mic, Square
 } from "lucide-react";
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
@@ -21,8 +21,11 @@ export default function MessageLogs() {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
-
-  // الـ localStorage هو المخزن الأساسي لعدد الرسائل غير المقروءة لايف
+  const [isRecording, setIsRecording] = useState(false); // حالة التسجيل الحالي
+const [mediaRecorder, setMediaRecorder] = useState(null); // كائن التسجيل
+// استبدل الـ state القديم selectedFile بدول:
+const [selectedFiles, setSelectedFiles] = useState([]); // مصفوفة للصور أو الميديا المتعددة
+const [audioBlob, setAudioBlob] = useState(null);       // لحفظ ملف الصوت أو الريكورد  // الـ localStorage هو المخزن الأساسي لعدد الرسائل غير المقروءة لايف
   const [localUnreadPhones, setLocalUnreadPhones] = useState(() => {
     try {
       const saved = localStorage.getItem("vestro_unread_phones");
@@ -281,6 +284,8 @@ const fetchChatMessages = async (phone) => {
     }
   }, [activeChat, scrollToBottom]);
 
+  
+
   const fetchLogs = async () => {
     try {
       const { data } = await axios.get("/messages", { params: { search } });
@@ -321,74 +326,192 @@ const fetchChatMessages = async (phone) => {
     }
   };
 
-  const handleSendReply = async () => {
-    if (!replyText.trim() || sending) return;
-    const content = replyText;
-    const tempId = "temp_" + Date.now().toString(); 
-    
-    setSending(true);
-    setReplyText("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+ const handleMediaSelect = (e) => {
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
 
-    const optimisticMessage = {
-      _id: tempId,
-      text: content,
-      direction: "outbound",
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      type: "text"
-    };
-    setActiveChat((prev) => [...prev, optimisticMessage]);
+  // الحد الأقصى 16 ميجا بايت لكل ملف
+  const maxSize = 16 * 1024 * 1024; 
+  const validFiles = [];
 
-    try {
-      const res = await axios.post("/whatsapp/send", { 
-        phone: replyTarget.phone, message: content, type: "text" 
-      });
-      
-      if (res.data.success) {
-        const finalMessage = {
-          _id: res.data.messageId || tempId,
-          whatsappMessageId: res.data.whatsappMessageId,
-          text: content,
-          direction: "outbound",
-          status: "sent",
-          createdAt: new Date().toISOString(),
-          type: "text"
-        };
-
-        setActiveChat((prev) => 
-          prev.map(msg => msg._id?.toString() === tempId ? finalMessage : msg)
-        );
-
-        setLogs((prev) => {
-          const filtered = prev.filter(l => l.phone !== replyTarget.phone);
-          const updatedLog = { 
-            ...replyTarget, 
-            text: content, 
-            status: 'sent', 
-            createdAt: finalMessage.createdAt, 
-            direction: 'outbound', 
-            whatsappMessageId: res.data.whatsappMessageId,
-            unreadCount: 0 
-          };
-          return [updatedLog, ...filtered];
-        });
-      }
-    } catch (err) { 
-      console.error(err);
-      setActiveChat((prev) => 
-        prev.map(msg => msg._id?.toString() === tempId ? { ...msg, status: "failed" } : msg)
-      );
-    } finally { 
-      setSending(false); 
+  for (let file of files) {
+    if (file.size > maxSize) {
+      alert(isRTL ? `الملف ${file.name} حجمه كبير جداً. الحد الأقصى 16 ميجابايت.` : `File ${file.name} is too large. Max size is 16MB.`);
+      continue;
     }
+    validFiles.push(file);
+  }
+
+  // لو بنرفع صور، بنسمح بتعدد الصور، لو ملف صوتي بناخده هو بس
+  const hasAudio = validFiles.some(f => f.type.startsWith('audio/'));
+  
+  if (hasAudio) {
+    // لو ريكورد أو صوت، بناخد أول واحد وبنصفره من قائمة الصور
+    setAudioBlob(validFiles[0]);
+    setSelectedFiles([]);
+  } else {
+    // لو صور، بنضيفهم على المختارين حالياً (لو عايز تدمج أو تستبدل، هنا بنستبدل عشان الأمان)
+    setSelectedFiles(validFiles);
+    setAudioBlob(null);
+  }
+};
+
+const handleSendReply = async () => {
+  // التحقق: لو مفيش نص ومفيش أي ميديا، أو السيرفر بيحمل.. اخرج
+  const hasImages = selectedFiles.length > 0;
+  const hasAudio = !!audioBlob;
+  
+  if ((!replyText.trim() && !hasImages && !hasAudio) || sending) return;
+  
+  const content = replyText.trim();
+  const tempId = "temp_" + Date.now().toString(); 
+  
+  setSending(true);
+  setReplyText("");
+  if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+  // 1. التحديث الفوري على الشاشة (Optimistic UI)
+  let optimisticText = content;
+  let optimisticType = "text";
+  
+  if (!optimisticText) {
+    if (hasImages) optimisticText = isRTL ? `📷 جاري إرسال ${selectedFiles.length} صور...` : `📷 Sending ${selectedFiles.length} images...`;
+    if (hasAudio) optimisticText = isRTL ? "🎵 جاري إرسال تسجيل صوتي..." : "🎵 Sending audio...";
+  }
+  
+  if (hasImages) optimisticType = "image";
+  if (hasAudio) optimisticType = "audio";
+
+  const optimisticMessage = {
+    _id: tempId,
+    text: optimisticText,
+    direction: "outbound",
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    type: optimisticType
   };
+  setActiveChat((prev) => [...prev, optimisticMessage]);
+
+  try {
+    const formData = new FormData();
+    formData.append("phone", replyTarget.phone);
+    formData.append("message", content);
+    
+    // 2. معالجة نوع الميديا المرفوعة وإضافتها للـ FormData
+    if (hasImages) {
+      formData.append("type", "image");
+      // الـ Loop السحري لاستقبال الحقل "file" كمصفوفة في الباك إند
+      selectedFiles.forEach((file) => {
+        formData.append("file", file); 
+      });
+    } else if (hasAudio) {
+      formData.append("type", "audio");
+      const audioFile = audioBlob instanceof File ? audioBlob : new File([audioBlob], "voice.mp3", { type: audioBlob.type || "audio/mp3" });
+      formData.append("file", audioFile);
+    } else {
+      formData.append("type", "text");
+    }
+
+    // 3. إرسال الطلب للباك إند
+    const res = await axios.post("/whatsapp/send", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    if (res.data.success) {
+      const finalMessage = {
+        _id: res.data.data?._id || res.data.dbId || tempId,
+        whatsappMessageId: res.data.messageId || res.data.whatsappMessageId,
+        text: content || (hasImages ? `📷 Photo (${selectedFiles.length})` : hasAudio ? "🎵 Audio" : ""),
+        direction: "outbound",
+        status: "sent",
+        createdAt: new Date().toISOString(),
+        type: optimisticType,
+        mediaUrl: res.data.data?.mediaUrl || null,
+        mediaUrls: res.data.data?.mediaUrls || null // هنا بنخزن مصفوفة الروابط الكاملة اللي رجعت من السيرفر
+      };
+
+      setActiveChat((prev) => 
+        prev.map(msg => msg._id?.toString() === tempId ? finalMessage : msg)
+      );
+
+      setLogs((prev) => {
+        const filtered = prev.filter(l => l.phone !== replyTarget.phone);
+        const updatedLog = { 
+          ...replyTarget, 
+          text: finalMessage.text, 
+          status: 'sent', 
+          createdAt: finalMessage.createdAt, 
+          direction: 'outbound', 
+          whatsappMessageId: finalMessage.whatsappMessageId,
+          unreadCount: 0 
+        };
+        return [updatedLog, ...filtered];
+      });
+
+      // تصفير الميديا بعد النجاح
+      setSelectedFiles([]);
+      setAudioBlob(null);
+    }
+  } catch (err) { 
+    console.error("حدث خطأ أثناء الإرسال:", err);
+    setActiveChat((prev) => 
+      prev.map(msg => msg._id?.toString() === tempId ? { ...msg, status: "failed" } : msg)
+    );
+  } finally { 
+    setSending(false); 
+  }
+};
 
   const handleTextareaChange = (e) => {
     setReplyText(e.target.value);
     e.target.style.height = "auto";
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
+
+const startRecording = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    // نحدد الصيغة المدعومة في متصفح العميل تلقائياً
+    let options = {};
+    if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+      options = { mimeType: 'audio/ogg;codecs=opus' };
+    } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      options = { mimeType: 'audio/webm;codecs=opus' };
+    }
+
+    const recorder = new MediaRecorder(stream, options);
+    const chunks = [];
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      // ننشئ الـ Blob بنفس الـ mimeType السليم اللي سجلنا بيه منعاً لأي تلف
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+      setAudioBlob(blob);
+      // قفل المايك بعد الانتهاء عشان الخصوصية
+      stream.getTracks().forEach(track => track.stop());
+    };
+
+    recorder.start();
+    setMediaRecorder(recorder);
+    setIsRecording(true);
+    setSelectedFiles([]); // تصفير الصور لو هنسجل
+  } catch (err) {
+    console.error("تعذر الوصول للمايكروفون:", err);
+    alert(isRTL ? "برجاء السماح بالوصول للمايكروفون أولاً." : "Please allow microphone access.");
+  }
+};
+const stopRecording = () => {
+  if (mediaRecorder && isRecording) {
+    mediaRecorder.stop();
+    setIsRecording(false);
+  }
+};
 
 const renderMedia = (msg) => {
   if (msg.type === "text" && !msg.mediaUrl) {
@@ -422,13 +545,8 @@ const renderMedia = (msg) => {
         <div className="p-3 space-y-2.5 max-h-52 overflow-y-auto custom-scrollbar">
           {items.length > 0 ? (
             items.map((item, index) => {
-              // سحب الصورة مباشرة من الحقل الصريح المجهز بالباك إند
               const productImg = item.primary_image || item.image_url || item.product_image || item.images?.[0]?.url;
-              
-              // الاسم يأتي نقي تماماً وجاهز من السيرفر
               const rawName = item.product_name || item.name || (isRTL ? "منتج غير معروف" : "Unknown Product");
-              
-              // قراءة مباشرة للحقول الصافية المخزنة والمفصولة في الـ Database
               const variantColor = item.color && item.color !== "N/A" ? item.color : null;
               const variantSize = item.size && item.size !== "N/A" ? item.size : null;
 
@@ -449,7 +567,6 @@ const renderMedia = (msg) => {
                     )}
                     
                     <div className="min-w-0 flex-1">
-                      {/* اسم المنتج نقي وعصري بدون أي زيادات مدمجة */}
                       <p className="font-bold text-slate-900 dark:text-slate-100 text-[12.5px] leading-tight mb-0.5 break-words">
                         {rawName}
                       </p>
@@ -458,7 +575,6 @@ const renderMedia = (msg) => {
                         {isRTL ? "الكمية:" : "Qty:"} <span className="font-bold text-red-600 dark:text-red-400">{item.quantity}</span>
                       </p>
 
-                      {/* عرض الخصائص كـ Badges أنيقة بالاعتماد الفوري على داتا السيرفر النظيفة */}
                       {(variantColor || variantSize) && (
                         <div className="flex flex-wrap gap-1 mt-1 text-[10.5px] font-medium">
                           {variantColor && (
@@ -477,7 +593,6 @@ const renderMedia = (msg) => {
                     </div>
                   </div>
                   
-                  {/* سعر القطعة الكلي */}
                   <div className="text-end shrink-0 tabular-nums font-bold pt-0.5 text-slate-800 dark:text-slate-200">
                     <span>{(item.item_price * item.quantity).toLocaleString()}</span>
                     <span className="text-[9px] opacity-60 ms-0.5 font-normal">{currencyStr}</span>
@@ -508,31 +623,74 @@ const renderMedia = (msg) => {
     );
   }
 
-  if (!msg.mediaUrl) {
+  // تحقق السلامة: لو مفيش رابط مفرد ولا مصفوفة روابط، يعتبر الملف غير صالح
+  if (!msg.mediaUrl && (!msg.mediaUrls || msg.mediaUrls.length === 0)) {
     return <p className="text-[13px] leading-tight text-gray-400 italic">{isRTL ? "ملف وسائط غير صالح" : "Invalid media file"}</p>;
   }
 
-  const mediaUrl = msg.mediaUrl.includes('http') ? msg.mediaUrl.substring(msg.mediaUrl.lastIndexOf('http')) : msg.mediaUrl;
+  // دالة لتنظيف الروابط من أي بريفكس تالف
+  const cleanUrl = (url) => {
+    if (!url) return "";
+    return url.includes('http') ? url.substring(url.lastIndexOf('http')) : url;
+  };
 
+  // ==========================================
+  // معالجة نوع الصور (سواء مفردة أو متعددة)
+  // ==========================================
   if (msg.type === "image") {
+    // لو الرسالة جاية بمصفوفة صور متعددة
+    if (msg.mediaUrls && msg.mediaUrls.length > 0) {
+      return (
+        <div className={`grid ${msg.mediaUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-1.5 p-1 max-w-[280px] sm:max-w-xs`}>
+          {msg.mediaUrls.map((rawUrl, index) => {
+            const finalUrl = cleanUrl(rawUrl);
+            return (
+              <img 
+                key={index}
+                src={finalUrl} 
+                loading="lazy"
+                className="rounded-lg max-h-40 w-full object-cover cursor-zoom-in aspect-square transition-transform active:scale-95" 
+                alt={`attachment-${index}`} 
+                onClick={() => window.open(finalUrl)}
+              />
+            );
+          })}
+        </div>
+      );
+    }
+
+    // الـ Fallback للصورة الفردية الطبيعية
+    const singleMediaUrl = cleanUrl(msg.mediaUrl);
     return (
       <img 
-        src={mediaUrl} 
+        src={singleMediaUrl} 
         loading="lazy"
         className="rounded-md max-h-64 sm:max-h-80 w-full object-cover cursor-zoom-in aspect-auto" 
         alt="media" 
-        onClick={() => window.open(mediaUrl)}
+        onClick={() => window.open(singleMediaUrl)}
       />
     );
   }
   
+  // =========================================================
+  // معالجة الصوت والريكوردات (تم تأمين تشغيلها في لوحة التحكم الأدمن)
+  // =========================================================
   if (msg.type === "audio" || msg.type === "voice") {
+    let audioUrl = cleanUrl(msg.mediaUrl);
+    
+    // الحيلة الذكية: لو الرابط تم تحويل امتداده لـ .ogg عشان Meta، بنرجعه لـ .webm في العرض 
+    // عشان نضمن إنه يشتغل في متصفح الأدمن (كروم وسفاري) بكفاءة كاملة ومن غير تعليق
+    if (audioUrl && audioUrl.endsWith('.ogg') && audioUrl.includes('cloudinary')) {
+      audioUrl = audioUrl.replace('.ogg', '.webm');
+    }
+
     return (
       <div className="pt-1 w-full min-w-[200px] max-w-full">
-        <audio src={mediaUrl} controls preload="metadata" className="w-full h-8 custom-audio" />
+        <audio src={audioUrl} controls preload="metadata" className="w-full h-8 custom-audio" />
       </div>
     );
   }
+
   return <div className="p-2 bg-black/5 dark:bg-white/5 rounded text-xs break-words">📎 Attachment: {msg.type}</div>;
 };
 
@@ -696,30 +854,113 @@ const renderMedia = (msg) => {
               <div ref={chatEndRef} />
             </div>
 
-            {/* سطر الإدخال والكتابة ثابت دايماً أسفل الشاشة (shrink-0 + sticky) */}
-            <div className="fixed bottom-0 p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-2 z-30 border-t border-gray-200 dark:border-white/5 shrink-0 w-full">
-              <div className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500 shrink-0">
-                <Paperclip size={20} />
-              </div>
-              <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/30 transition-all">
-                <textarea 
-                  ref={textareaRef}
-                  rows="1"
-                  placeholder={isRTL ? "اكتب رسالة..." : "Type a message..."}
-                  className="w-full bg-transparent border-none outline-none py-2.5 px-3 text-[14px] sm:text-[15px] dark:text-white resize-none max-h-24 custom-scrollbar dynamic-textarea block"
-                  value={replyText}
-                  onChange={handleTextareaChange}
-                  onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
-                />
-              </div>
-              <button 
-                disabled={sending || !replyText.trim()}
-                onClick={handleSendReply}
-                className="w-10 h-10 sm:w-11 h-11 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
-              >
-                {sending ? <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={18} className={isRTL ? "rotate-180" : "ml-0.5"} />}
-              </button>
-            </div>
+{/* سطر الإدخال والكتابة المطور بالكامل */}
+<div className="p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-2 border-t border-gray-200 dark:border-white/5 shrink-0 w-full relative">
+  
+  {/* زر الـ Media المطور */}
+  <div className="flex items-center shrink-0">
+    <label className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500 block active:scale-95">
+      <Paperclip size={20} />
+      <input 
+        type="file"
+        className="hidden"
+        accept="image/*,audio/*"
+        multiple
+        onChange={handleMediaSelect}
+      />
+    </label>
+  </div>
+
+  {/* زر الريكورد (المايك) */}
+  <div className="flex items-center shrink-0">
+    {isRecording ? (
+      <button 
+        onClick={stopRecording}
+        className="p-2 bg-red-500 text-white rounded-full animate-pulse transition-colors active:scale-95 flex items-center justify-center"
+        title={isRTL ? "إيقاف التسجيل" : "Stop Recording"}
+      >
+        <Square size={18} fill="currentColor" />
+      </button>
+    ) : (
+      <button 
+        onClick={startRecording}
+        className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 rounded-full transition-colors active:scale-95 flex items-center justify-center"
+        title={isRTL ? "تسجيل صوتي" : "Record Voice Note"}
+      >
+        <Mic size={20} />
+      </button>
+    )}
+  </div>
+
+  {/* صندوق النص */}
+  <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/30 transition-all">
+    
+    {/* مؤشر جاري التسجيل الآن */}
+    {isRecording && (
+      <div className="px-3 py-1.5 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 flex items-center gap-2 text-xs font-semibold animate-pulse border-b border-gray-200 dark:border-white/5">
+        <span className="w-2 h-2 rounded-full bg-red-600 block"></span>
+        <span>{isRTL ? "جاري تسجيل صوتك الآن..." : "Recording your voice..."}</span>
+      </div>
+    )}
+
+    {/* معاينة الصور المتعددة */}
+    {selectedFiles.length > 0 && (
+      <div className="px-3 py-2 bg-gray-100 dark:bg-[#1f2c34] flex flex-wrap gap-1.5 items-center justify-between border-b border-gray-200 dark:border-white/5 text-xs">
+        <div className="flex flex-wrap gap-1 max-w-[85%]">
+          {selectedFiles.map((f, i) => (
+            <span key={i} className="bg-white dark:bg-black/20 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-md border border-gray-200 dark:border-white/5 font-mono max-w-[120px] truncate">
+              📷 {f.name}
+            </span>
+          ))}
+        </div>
+        <button onClick={() => setSelectedFiles([])} className="text-red-500 hover:text-red-700 font-bold px-1">✕</button>
+      </div>
+    )}
+
+    {/* معاينة الريكورد الصوتي بعد الانتهاء وقبل الإرسال */}
+    {audioBlob && !isRecording && (
+      <div className="px-3 py-1.5 bg-gray-100 dark:bg-[#1f2c34] flex items-center justify-between border-b border-gray-200 dark:border-white/5 text-xs">
+        <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+          🎙️ {isRTL ? "تسجيل صوتي جاهز للإرسال" : "Voice Note Ready to Send"} 
+          <span className="text-gray-400 font-mono font-normal">({Math.round(audioBlob.size / 1024)} KB)</span>
+        </span>
+        <button onClick={() => setAudioBlob(null)} className="text-red-500 hover:text-red-700 font-bold px-1">✕</button>
+      </div>
+    )}
+    
+    <textarea 
+      ref={textareaRef}
+      rows="1"
+      disabled={isRecording}
+      placeholder={
+        isRecording 
+          ? "" 
+          : selectedFiles.length > 0 
+            ? (isRTL ? "أضف تعليقاً على الصور..." : "Add a caption...") 
+            : audioBlob 
+              ? (isRTL ? "اضغط إرسال لتأكيد الريكورد..." : "Press send to confirm voice note...") 
+              : (isRTL ? "اكتب رسالة..." : "Type a message...")
+      }
+      className="w-full bg-transparent border-none outline-none py-2.5 px-3 text-[14px] sm:text-[15px] dark:text-white resize-none max-h-24 custom-scrollbar dynamic-textarea block disabled:opacity-50"
+      value={replyText}
+      onChange={handleTextareaChange}
+      onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
+    />
+  </div>
+
+  {/* زر الإرسال */}
+  <button 
+    disabled={sending || isRecording || (!replyText.trim() && selectedFiles.length === 0 && !audioBlob)}
+    onClick={handleSendReply}
+    className="w-10 h-10 sm:w-11 h-11 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
+  >
+    {sending ? (
+      <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+    ) : (
+      <Send size={18} className={isRTL ? "rotate-180" : "ml-0.5"} />
+    )}
+  </button>
+</div>
           </>
         ) : (
           /* واجهة الترحيب عند عدم فتح شات */
