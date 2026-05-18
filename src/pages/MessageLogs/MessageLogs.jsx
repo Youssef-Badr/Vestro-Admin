@@ -390,362 +390,359 @@ const fetchChatMessages = async (phone) => {
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
-  const renderMedia = (msg) => {
-    if (msg.type === "text" && !msg.mediaUrl) {
-      return <p className="text-[14.5px] leading-tight whitespace-pre-wrap">{msg.text}</p>;
-    }
+ const renderMedia = (msg) => {
+  if (msg.type === "text" && !msg.mediaUrl) {
+    return <p className="text-[14.5px] leading-tight whitespace-pre-wrap break-words">{msg.text}</p>;
+  }
 
-    if (msg.type === "order") {
-      const items = msg.orderDetails?.product_items || [];
-      const totalCartPrice = items.reduce((sum, item) => sum + (item.item_price * item.quantity), 0);
-      const currencyStr = items[0]?.currency || (isRTL ? "ج.م" : "EGP");
+  if (msg.type === "order") {
+    const items = msg.orderDetails?.product_items || [];
+    const totalCartPrice = items.reduce((sum, item) => sum + (item.item_price * item.quantity), 0);
+    const currencyStr = items[0]?.currency || (isRTL ? "ج.م" : "EGP");
 
-      return (
-        <div className="w-full min-w-[260px] max-w-sm rounded-xl overflow-hidden bg-white/95 dark:bg-[#182229] border border-red-500/10 dark:border-red-500/20 shadow-md">
-          <div className="bg-gradient-to-r from-red-800 to-red-600 px-3.5 py-2.5 flex items-center justify-between text-white shadow-sm">
-            <div className="flex items-center gap-2">
-              <ShoppingBag size={18} className="animate-pulse" />
-              <span className="text-[13px] font-black tracking-wide uppercase">
-                {isRTL ? "طلب شراء جديد" : "NEW CATALOG ORDER"}
-              </span>
-            </div>
-            {msg.orderDetails?.catalog_id && (
-              <div className="flex items-center gap-0.5 text-[10px] bg-black/20 px-1.5 py-0.5 rounded font-mono" title="Catalog ID">
-                <Hash size={10} />
-                <span>{msg.orderDetails.catalog_id.slice(-6)}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="p-3.5 space-y-2.5 max-h-60 overflow-y-auto custom-scrollbar">
-            {items.length > 0 ? (
-              items.map((item, index) => {
-                const productImg = item.primary_image || item.image_url || item.product_image || item.images?.[0]?.url;
-                const productName = item.product_name || item.name || (isRTL ? "منتج غير معروف" : "Unknown Product");
-                const variantColor = item.color || item.variant_info?.color;
-                const variantSize = item.size || item.variant_info?.size;
-
-                return (
-                  <div key={index} className="flex items-center justify-between gap-4 text-xs border-b border-gray-100 dark:border-white/5 pb-2 last:border-0 last:pb-0">
-                    <div className="min-w-0 flex-1 flex items-center gap-2">
-                      {productImg ? (
-                        <img 
-                          src={productImg} 
-                          alt={productName} 
-                          loading="lazy"
-                          className="w-10 h-10 object-cover rounded-md border border-gray-100 dark:border-white/10 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-md flex items-center justify-center shrink-0 border border-red-100 dark:border-red-950/50">
-                          <ShoppingBag size={16} />
-                        </div>
-                      )}
-                      
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-slate-900 dark:text-slate-100 text-[13px] leading-tight mb-1">
-                          {productName}
-                        </p>
-                        
-                        <p className="text-gray-400 dark:text-gray-500 text-[11px] tabular-nums">
-                          {isRTL ? "الكمية:" : "Qty:"} <span className="font-bold text-red-600 dark:text-red-400">{item.quantity}</span>
-                        </p>
-
-                        {(variantColor || variantSize) && (
-                          <div className="flex flex-col gap-0.5 mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-                            {variantColor && (
-                              <p>
-                                {isRTL ? "اللون:" : "Color:"} <span className="text-slate-700 dark:text-slate-300 font-bold">{variantColor}</span>
-                              </p>
-                            )}
-                            {variantSize && (
-                              <p>
-                                {isRTL ? "المقاس:" : "Size:"} <span className="text-slate-700 dark:text-slate-300 font-bold font-mono">{variantSize}</span>
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="text-end shrink-0 tabular-nums">
-                      <span className="font-black text-slate-800 dark:text-slate-200">
-                        {(item.item_price * item.quantity).toLocaleString()}
-                      </span>
-                      <span className="text-[10px] opacity-60 ms-1">{currencyStr}</span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-xs text-gray-400 text-center py-2">{isRTL ? "لا توجد تفاصيل للمنتجات" : "No product items included"}</p>
-            )}
-          </div>
-
-          {msg.orderDetails?.text && (
-            <div className="mx-3.5 mb-3.5 p-2 bg-gray-50 dark:bg-black/20 border-s-2 border-red-500 rounded text-[12.5px] italic text-slate-600 dark:text-slate-300">
-              "{msg.orderDetails.text}"
-            </div>
-          )}
-
-          <div className="bg-gray-50 dark:bg-black/30 px-3.5 py-2.5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold shadow-inner">
-            <span className="text-gray-500 dark:text-gray-400">{isRTL ? "إجمالي قيمة المنتجات:" : "Total Price:"}</span>
-            <span className="text-[14px] font-black text-red-700 dark:text-red-400 tabular-nums">
-              {totalCartPrice.toLocaleString()} <span className="text-[10px] font-bold opacity-80">{currencyStr}</span>
+    return (
+      <div className="w-full min-w-[240px] max-w-[290px] sm:max-w-sm rounded-xl overflow-hidden bg-white/95 dark:bg-[#182229] border border-red-500/10 dark:border-red-500/20 shadow-md">
+        <div className="bg-gradient-to-r from-red-800 to-red-600 px-3 py-2 flex items-center justify-between text-white shadow-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <ShoppingBag size={16} className="animate-pulse shrink-0" />
+            <span className="text-[11px] sm:text-[13px] font-black tracking-wide uppercase truncate">
+              {isRTL ? "طلب شراء جديد" : "NEW CATALOG ORDER"}
             </span>
           </div>
-        </div>
-      );
-    }
-
-    if (!msg.mediaUrl) {
-      return <p className="text-[14.5px] leading-tight text-gray-400 italic">{isRTL ? "ملف وسائط غير صالح" : "Invalid media file"}</p>;
-    }
-
-    const mediaUrl = msg.mediaUrl.includes('http') ? msg.mediaUrl.substring(msg.mediaUrl.lastIndexOf('http')) : msg.mediaUrl;
-
-    if (msg.type === "image") {
-      return <img src={mediaUrl} className="rounded-md max-h-80 w-full object-cover cursor-zoom-in" alt="media" onClick={() => window.open(mediaUrl)}/>;
-    }
-    if (msg.type === "audio" || msg.type === "voice") {
-      return (
-        <div className="pt-1 min-w-[220px]">
-          <audio src={mediaUrl} controls preload="metadata" className="w-full h-8 custom-audio" />
-        </div>
-      );
-    }
-    return <div className="p-2 bg-black/5 rounded text-xs">📎 Attachment: {msg.type}</div>;
-  };
-
-  return (
-    <div className={`flex flex-col h-screen bg-[#f0f2f5] dark:bg-[#0c0c0c] text-slate-900 dark:text-slate-100 ${isRTL ? "font-arabic" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
-      <div className="flex flex-1 overflow-hidden pt-16 md:pt-20">
-        
-        {/* SIDEBAR */}
-        <div className={`w-full md:w-[380px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 ${replyTarget ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-black text-red-700 flex items-center gap-2">
-                <Headset size={24}/> VESTRO <span className="text-xs bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">LIVE</span>
-              </h1>
+          {msg.orderDetails?.catalog_id && (
+            <div className="flex items-center gap-0.5 text-[9px] bg-black/20 px-1.5 py-0.5 rounded font-mono shrink-0" title="Catalog ID">
+              <Hash size={9} />
+              <span>{msg.orderDetails.catalog_id.slice(-6)}</span>
             </div>
-            <div className="relative group">
-              <Search className={`${isRTL ? "right-3" : "left-3"} absolute top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-600 transition-colors`} size={18} />
-              <input 
-                type="text" 
-                placeholder={isRTL ? "بحث في المحادثات..." : "Search conversations..."}
-                className={`w-full bg-gray-100 dark:bg-white/5 rounded-xl py-2.5 ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} text-sm outline-none border border-transparent focus:border-red-500/50 transition-all`}
-                value={search} onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
+          )}
+        </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {logs.map((msg) => {
-              const isCurrentActive = replyTarget?.phone === msg.phone;
-              const hasUnread = msg.unreadCount > 0 && !isCurrentActive;
-              
+        <div className="p-3 space-y-2.5 max-h-52 overflow-y-auto custom-scrollbar">
+          {items.length > 0 ? (
+            items.map((item, index) => {
+              const productImg = item.primary_image || item.image_url || item.product_image || item.images?.[0]?.url;
+              const productName = item.product_name || item.name || (isRTL ? "منتج غير معروف" : "Unknown Product");
+              const variantColor = item.color || item.variant_info?.color;
+              const variantSize = item.size || item.variant_info?.size;
+
               return (
-                <div 
-                  key={msg._id} 
-                  onClick={() => openChat(msg)}
-                  className={`flex items-center gap-3 p-3.5 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors 
-                    ${isCurrentActive ? 'bg-red-50/50 dark:bg-red-900/10' : ''}
-                    ${hasUnread ? 'bg-green-50/30 dark:bg-green-500/[0.03]' : ''}`}
-                >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-md relative">
-                    {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name.charAt(0).toUpperCase() : <User size={22}/>}
-                    {hasUnread && (
-                      <span className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-[#111]"></span>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <h3 className={`text-[14px] truncate ${hasUnread ? 'font-black text-black dark:text-white' : 'font-bold'}`}>
-                        {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name : msg.phone}
-                      </h3>
-                      <span className={`text-[10px] tabular-nums ${hasUnread ? 'text-green-500 font-bold' : 'text-gray-400'}`}>
-                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between gap-1.5">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        {msg.direction === "outbound" && <StatusIcon status={msg.status} size={14} />}
-                        <p className={`text-xs truncate ${hasUnread ? 'text-black dark:text-slate-200 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
-                          {msg.text || '📷 Media'}
-                        </p>
+                <div key={index} className="flex items-start justify-between gap-2 text-xs border-b border-gray-100 dark:border-white/5 pb-2 last:border-0 last:pb-0">
+                  <div className="min-w-0 flex-1 flex items-start gap-2">
+                    {productImg ? (
+                      <img 
+                        src={productImg} 
+                        alt={productName} 
+                        loading="lazy"
+                        className="w-10 h-10 object-cover rounded-md border border-gray-100 dark:border-white/10 shrink-0 aspect-square"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-md flex items-center justify-center shrink-0 border border-red-100 dark:border-red-950/50 aspect-square">
+                        <ShoppingBag size={14} />
                       </div>
+                    )}
+                    
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 text-[12.5px] leading-tight mb-0.5 break-words">
+                        {productName}
+                      </p>
                       
-                      {hasUnread && (
-                        <span className="bg-green-500 text-white font-bold text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-sm animate-pulse">
-                          {msg.unreadCount}
-                        </span>
+                      <p className="text-gray-400 dark:text-gray-500 text-[11px] tabular-nums">
+                        {isRTL ? "الكمية:" : "Qty:"} <span className="font-bold text-red-600 dark:text-red-400">{item.quantity}</span>
+                      </p>
+
+                      {(variantColor || variantSize) && (
+                        <div className="flex flex-col gap-0.5 mt-0.5 text-[10.5px] text-gray-500 dark:text-gray-400 font-medium">
+                          {variantColor && (
+                            <p className="truncate">
+                              {isRTL ? "اللون:" : "Color:"} <span className="text-slate-700 dark:text-slate-300 font-bold">{variantColor}</span>
+                            </p>
+                          )}
+                          {variantSize && (
+                            <p className="truncate">
+                              {isRTL ? "المقاس:" : "Size:"} <span className="text-slate-700 dark:text-slate-300 font-bold font-mono">{variantSize}</span>
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
+                  </div>
+                  
+                  <div className="text-end shrink-0 tabular-nums font-bold pt-0.5 text-slate-800 dark:text-slate-200">
+                    <span>{(item.item_price * item.quantity).toLocaleString()}</span>
+                    <span className="text-[9px] opacity-60 ms-0.5 font-normal">{currencyStr}</span>
                   </div>
                 </div>
               );
-            })}
-          </div>
+            })
+          ) : (
+            <p className="text-xs text-gray-400 text-center py-2">{isRTL ? "لا توجد تفاصيل للمنتجات" : "No product items included"}</p>
+          )}
         </div>
 
-      {/* CHAT WINDOW */}
-<div className={`flex-1 flex flex-col relative bg-[#f0f2f5] dark:bg-[#0c0c0c] ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
-  {replyTarget ? (
-    <>
-      {/* Header */}
-      <div className="h-16 flex items-center justify-between px-4 bg-white/80 dark:bg-[#111]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setReplyTarget(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors">
-            <ChevronLeft size={24} className={isRTL ? "rotate-180" : ""} />
-          </button>
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold shadow-inner">
-              {replyTarget.customer?.name?.charAt(0) || "V"}
-            </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
+        {msg.orderDetails?.text && (
+          <div className="mx-3 mb-3 p-2 bg-gray-50 dark:bg-black/20 border-s-2 border-red-500 rounded text-[12px] italic text-slate-600 dark:text-slate-300 break-words">
+            "{msg.orderDetails.text}"
           </div>
-          <div>
-            <h2 className="text-sm font-black dark:text-white leading-tight">
-              {replyTarget.customer?.name || replyTarget.phone}
-            </h2>
-            <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-              <p className="text-[10px] text-green-500 font-bold tracking-wider">ONLINE</p>
-            </div>
-          </div>
-        </div>
+        )}
 
-        <div className="flex items-center gap-2 sm:gap-4">
-           <div className="hidden sm:flex flex-col items-end px-3 border-e border-gray-200 dark:border-white/10">
-              <span className="text-[10px] font-bold text-gray-400">CUSTOMER PHONE</span>
-              <span className="text-[11px] font-mono">{replyTarget.phone}</span>
-           </div>
-
-       {/* 🌟 زر الريفرش المحدث لتحديث الشات والقائمة الجانبية فورا 🌟 */}
-<button 
-  onClick={() => fetchChatMessages(replyTarget.phone)} 
-  title={isRTL ? "تحديث المحادثة" : "Refresh Chat"}
-  className="p-2 text-gray-400 hover:text-red-700 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95 group"
->
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="20" 
-    height="20" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className="transform group-hover:rotate-180 transition-transform duration-500"
-  >
-    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-    <polyline points="21 3 21 8 16 8" />
-  </svg>
-</button>
-           <button 
-             onClick={() => handleClearChat(replyTarget.phone)} 
-             title={isRTL ? "إخفاء المحادثة" : "Hide Chat"}
-             className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all"
-           >
-             <Trash2 size={20} />
-           </button>
-           <MoreVertical className="text-gray-400 cursor-pointer hover:text-red-600 transition-colors" size={20} />
+        <div className="bg-gray-50 dark:bg-black/30 px-3 py-2 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold shadow-inner">
+          <span className="text-gray-500 dark:text-gray-400">{isRTL ? "إجمالي المنتجات:" : "Total Price:"}</span>
+          <span className="text-[13px] font-black text-red-700 dark:text-red-400 tabular-nums">
+            {totalCartPrice.toLocaleString()} <span className="text-[9px] font-bold opacity-80">{currencyStr}</span>
+          </span>
         </div>
       </div>
+    );
+  }
 
-      {/* Messages Body */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
-        <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.03] pointer-events-none" 
-             style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '350px' }} />
-        
-        {activeChat.map((msg, idx) => {
-          const isMe = msg.direction === "outbound";
-          const isOrder = msg.type === "order";
-          return (
-            <div key={msg._id || idx} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-1 duration-300`}>
-              <div className={`relative max-w-[85%] md:max-w-[70%] shadow-sm rounded-xl 
-                ${isOrder 
-                  ? "p-1 bg-transparent border-0 shadow-none" 
-                  : isMe 
-                    ? "px-3 pt-2 pb-1.5 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none" 
-                    : "px-3 pt-2 pb-1.5 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none"
-                }`}
+  if (!msg.mediaUrl) {
+    return <p className="text-[13px] leading-tight text-gray-400 italic">{isRTL ? "ملف وسائط غير صالح" : "Invalid media file"}</p>;
+  }
+
+  const mediaUrl = msg.mediaUrl.includes('http') ? msg.mediaUrl.substring(msg.mediaUrl.lastIndexOf('http')) : msg.mediaUrl;
+
+  if (msg.type === "image") {
+    return (
+      <img 
+        src={mediaUrl} 
+        loading="lazy"
+        className="rounded-md max-h-64 sm:max-h-80 w-full object-cover cursor-zoom-in aspect-auto" 
+        alt="media" 
+        onClick={() => window.open(mediaUrl)}
+      />
+    );
+  }
+  
+  if (msg.type === "audio" || msg.type === "voice") {
+    return (
+      <div className="pt-1 w-full min-w-[200px] max-w-full">
+        <audio src={mediaUrl} controls preload="metadata" className="w-full h-8 custom-audio" />
+      </div>
+    );
+  }
+  return <div className="p-2 bg-black/5 dark:bg-white/5 rounded text-xs break-words">📎 Attachment: {msg.type}</div>;
+};
+
+ return (
+  <div className={`flex flex-col h-screen w-full bg-[#f0f2f5] dark:bg-[#0c0c0c] text-slate-900 dark:text-slate-100 overflow-hidden ${isRTL ? "font-arabic" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
+    <div className="flex flex-1 h-full w-full overflow-hidden relative">
+      
+      {/* SIDEBAR */}
+      <div className={`w-full md:w-[360px] lg:w-[400px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 shrink-0 h-full ${replyTarget ? 'hidden md:flex' : 'flex'}`}>
+        <div className="p-3.5 space-y-3 shrink-0">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-black text-red-700 flex items-center gap-2">
+              <Headset size={22}/> VESTRO <span className="text-[10px] bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">LIVE</span>
+            </h1>
+          </div>
+          <div className="relative group">
+            <Search className={`${isRTL ? "right-3" : "left-3"} absolute top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-600 transition-colors`} size={16} />
+            <input 
+              type="text" 
+              placeholder={isRTL ? "بحث في المحادثات..." : "Search conversations..."}
+              className={`w-full bg-gray-100 dark:bg-white/5 rounded-xl py-2 ${isRTL ? "pr-9 pl-4" : "pl-9 pr-4"} text-xs sm:text-sm outline-none border border-transparent focus:border-red-500/50 transition-all`}
+              value={search} onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar division-y division-gray-100 dark:division-white/5">
+          {logs.map((msg) => {
+            const isCurrentActive = replyTarget?.phone === msg.phone;
+            const hasUnread = msg.unreadCount > 0 && !isCurrentActive;
+            
+            return (
+              <div 
+                key={msg._id} 
+                onClick={() => openChat(msg)}
+                className={`flex items-center gap-3 p-3 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors 
+                  ${isCurrentActive ? 'bg-red-50/50 dark:bg-red-900/10' : ''}
+                  ${hasUnread ? 'bg-green-50/30 dark:bg-green-500/[0.03]' : ''}`}
               >
-                {renderMedia(msg)}
-                <div className={`flex items-center justify-end gap-1.5 mt-1 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
-                  <span className="text-[9px] font-medium opacity-60 uppercase">
-                    {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                  </span>
-                  {isMe && <StatusIcon status={msg.status} size={13} />}
+                <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-sm relative text-sm">
+                  {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name.charAt(0).toUpperCase() : <User size={20}/>}
+                  {hasUnread && (
+                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-[#111]"></span>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-0.5 gap-1">
+                    <h3 className={`text-[13.5px] truncate ${hasUnread ? 'font-black text-black dark:text-white' : 'font-bold'}`}>
+                      {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name : msg.phone}
+                    </h3>
+                    <span className={`text-[9px] shrink-0 tabular-nums ${hasUnread ? 'text-green-500 font-bold' : 'text-gray-400'}`}>
+                      {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1 min-w-0 flex-1">
+                      {msg.direction === "outbound" && <StatusIcon status={msg.status} size={13} />}
+                      <p className={`text-xs truncate ${hasUnread ? 'text-black dark:text-slate-200 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {msg.text || '📷 Media'}
+                      </p>
+                    </div>
+                    
+                    {hasUnread && (
+                      <span className="bg-green-500 text-white font-bold text-[9px] min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                        {msg.unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-        <div ref={chatEndRef} />
+            );
+          })}
+        </div>
       </div>
 
-      {/* Input Area */}
-      <div className="p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-end gap-2.5 z-20 border-t border-gray-200 dark:border-white/5">
-        <div className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500">
-          <Paperclip size={22} />
-        </div>
-        <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-2xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/30 transition-all">
-            <textarea 
-                ref={textareaRef}
-                rows="1"
-                placeholder={isRTL ? "اكتب رسالة..." : "Type a message..."}
-                className="w-full bg-transparent border-none outline-none py-3.5 px-4 text-[15px] dark:text-white resize-none max-h-32 custom-scrollbar dynamic-textarea"
-                value={replyText}
-                onChange={handleTextareaChange}
-                onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
-            />
-        </div>
-        <button 
-          disabled={sending || !replyText.trim()}
-          onClick={handleSendReply}
-          className="mb-0.5 w-12 h-12 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
-        >
-          {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={20} className={isRTL ? "rotate-180" : "ml-0.5"} />}
-        </button>
+      {/* CHAT WINDOW - ثابت ومستقر تماماً وبدون أي سكرول خارجي */}
+      <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#f0f2f5] dark:bg-[#0c0c0c] relative ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
+        {replyTarget ? (
+          <>
+           {/* Header الشات ثابت مستحيل يتحرك مسمار في مكانه */}
+<div className="absolute top-0 left-0 right-0 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-4 bg-white/95 dark:bg-[#111]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-30 shadow-sm shrink-0 w-full select-none">
+  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+    <button onClick={() => setReplyTarget(null)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors md:hidden">
+      <ChevronLeft size={22} className={isRTL ? "rotate-180" : ""} />
+    </button>
+    <div className="relative shrink-0">
+      <div className="w-9 h-9 sm:w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold text-sm shadow-inner">
+        {replyTarget.customer?.name?.charAt(0) || "V"}
       </div>
-    </>
-  ) : (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50 dark:bg-[#0c0c0c]">
-      <div className="w-24 h-24 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 mb-6 animate-bounce shadow-xl shadow-red-500/10">
-        <MessageCircle size={48} />
-      </div>
-      <h2 className="text-2xl font-black mb-2 dark:text-white tracking-tight uppercase">
-        {isRTL ? "منصة فيسترو للمحادثات" : "VESTRO CHAT HUB"}
+      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
+    </div>
+    <div className="min-w-0">
+      <h2 className="text-xs sm:text-sm font-black dark:text-white leading-tight truncate">
+        {replyTarget.customer?.name || replyTarget.phone}
       </h2>
-      <p className="text-gray-500 dark:text-gray-400 max-w-xs text-sm leading-relaxed">
-        {isRTL ? "اختر محادثة من القائمة الجانبية لبدء الرد على العملاء بشكل مباشر" : "Select a conversation from the sidebar to start responding to customers in real-time."}
-      </p>
-    </div>
-  )}
-</div>
+      <div className="flex items-center gap-1 mt-0.5">
+        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+        <p className="text-[9px] text-green-500 font-bold tracking-wider">ONLINE</p>
       </div>
-
-      <style>{`
-        .font-arabic { font-family: 'Cairo', sans-serif; }
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); }
-        
-        .custom-audio::-webkit-media-controls-panel { background-color: #f1f3f4; }
-        .dark .custom-audio { filter: invert(100%) hue-rotate(180deg) brightness(1.8) contrast(0.9); }
-        .custom-audio { border-radius: 30px; }
-        
-        .dynamic-textarea { height: auto; min-height: 48px; }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .animate-in { animation: fadeIn 0.3s ease-out; }
-      `}</style>
-      
     </div>
-  ); 
+  </div>
+
+  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+    <div className="hidden lg:flex flex-col items-end px-3 border-e border-gray-200 dark:border-white/10">
+      <span className="text-[9px] font-bold text-gray-400">CUSTOMER PHONE</span>
+      <span className="text-[11px] font-mono">{replyTarget.phone}</span>
+    </div>
+
+    <button 
+      onClick={() => fetchChatMessages(replyTarget.phone)} 
+      title={isRTL ? "تحديث المحادثة" : "Refresh Chat"}
+      className="p-2 text-gray-400 hover:text-red-700 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95 group"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transform group-hover:rotate-180 transition-transform duration-500">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+        <polyline points="21 3 21 8 16 8" />
+      </svg>
+    </button>
+    <button 
+      onClick={() => handleClearChat(replyTarget.phone)} 
+      title={isRTL ? "إخفاء المحادثة" : "Hide Chat"}
+      className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all"
+    >
+      <Trash2 size={18} />
+    </button>
+    <MoreVertical className="text-gray-400 cursor-pointer hover:text-red-600 transition-colors" size={18} />
+  </div>
+</div>
+
+            {/* صندوق الرسائل - هو الوحيد اللي مسموحله يعمل سكرول داخلي */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
+              <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.02] pointer-events-none" 
+                   style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '300px' }} />
+              
+              {activeChat.map((msg, idx) => {
+                const isMe = msg.direction === "outbound";
+                const isOrder = msg.type === "order";
+                return (
+                  <div key={msg._id || idx} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-1 duration-200`}>
+                    <div className={`relative max-w-[88%] sm:max-w-[70%] shadow-sm rounded-xl break-words
+                      ${isOrder 
+                        ? "p-0.5 bg-transparent border-0 shadow-none" 
+                        : isMe 
+                          ? "px-2.5 pt-1.5 pb-1 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none" 
+                          : "px-2.5 pt-1.5 pb-1 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none"
+                      }`}
+                    >
+                      {renderMedia(msg)}
+                      <div className={`flex items-center justify-end gap-1 mt-0.5 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
+                        <span className="text-[8.5px] font-medium opacity-60 uppercase">
+                          {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                        </span>
+                        {isMe && <StatusIcon status={msg.status} size={12} />}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* سطر الإدخال والكتابة ثابت دايماً أسفل الشاشة (shrink-0 + sticky) */}
+            <div className="sticky bottom-0 p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-2 z-30 border-t border-gray-200 dark:border-white/5 shrink-0 w-full">
+              <div className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500 shrink-0">
+                <Paperclip size={20} />
+              </div>
+              <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/30 transition-all">
+                <textarea 
+                  ref={textareaRef}
+                  rows="1"
+                  placeholder={isRTL ? "اكتب رسالة..." : "Type a message..."}
+                  className="w-full bg-transparent border-none outline-none py-2.5 px-3 text-[14px] sm:text-[15px] dark:text-white resize-none max-h-24 custom-scrollbar dynamic-textarea block"
+                  value={replyText}
+                  onChange={handleTextareaChange}
+                  onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
+                />
+              </div>
+              <button 
+                disabled={sending || !replyText.trim()}
+                onClick={handleSendReply}
+                className="w-10 h-10 sm:w-11 h-11 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
+              >
+                {sending ? <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" /> : <Send size={18} className={isRTL ? "rotate-180" : "ml-0.5"} />}
+              </button>
+            </div>
+          </>
+        ) : (
+          /* واجهة الترحيب عند عدم فتح شات */
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-gray-50 dark:bg-[#0c0c0c] h-full">
+            <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 mb-4 animate-bounce shadow-lg shadow-red-500/5">
+              <MessageCircle size={40} />
+            </div>
+            <h2 className="text-xl font-black mb-1 dark:text-white tracking-tight uppercase">
+              {isRTL ? "منصة فيسترو للمحادثات" : "VESTRO CHAT HUB"}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 max-w-xs text-xs sm:text-sm leading-relaxed">
+              {isRTL ? "اختر محادثة من القائمة الجانبية لبدء الرد على العملاء بشكل مباشر" : "Select a conversation from the sidebar to start responding to customers in real-time."}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* ستايل مخصص */}
+    <style>{`
+      .font-arabic { font-family: 'Cairo', sans-serif; }
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+      .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+      
+      .custom-audio::-webkit-media-controls-panel { background-color: #f1f3f4; }
+      .dark .custom-audio { filter: invert(100%) hue-rotate(180deg) brightness(1.6) contrast(0.9); }
+      .custom-audio { border-radius: 30px; }
+      
+      .dynamic-textarea { height: auto; min-height: 40px; }
+
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+      .animate-in { animation: fadeIn 0.2s ease-out; contain-visibility: auto; }
+    `}</style>
+    
+  </div>
+);
 }
