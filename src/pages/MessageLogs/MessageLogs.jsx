@@ -602,13 +602,13 @@ const fetchChatMessages = async (phone) => {
         {replyTarget ? (
           <>
            {/* Header الشات ثابت مستحيل يتحرك مسمار في مكانه */}
-<div className="absolute top-0 left-0 right-0 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-4 bg-white/95 dark:bg-[#111]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-30 shadow-sm shrink-0 w-full select-none">
+<div className="fixed  left-0 right-0 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-4 bg-white/95 dark:bg-[#111]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-30 shadow-sm shrink-0 w-full select-none">
   <div className="flex items-center gap-2 sm:gap-3 min-w-0">
     <button onClick={() => setReplyTarget(null)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors md:hidden">
       <ChevronLeft size={22} className={isRTL ? "rotate-180" : ""} />
     </button>
     <div className="relative shrink-0">
-      <div className="w-9 h-9 sm:w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold text-sm shadow-inner">
+      <div className="w-9  sm:w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold text-sm shadow-inner">
         {replyTarget.customer?.name?.charAt(0) || "V"}
       </div>
       <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
@@ -684,7 +684,7 @@ const fetchChatMessages = async (phone) => {
             </div>
 
             {/* سطر الإدخال والكتابة ثابت دايماً أسفل الشاشة (shrink-0 + sticky) */}
-            <div className="sticky bottom-0 p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-2 z-30 border-t border-gray-200 dark:border-white/5 shrink-0 w-full">
+            <div className="fixed bottom-0 p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-2 z-30 border-t border-gray-200 dark:border-white/5 shrink-0 w-full">
               <div className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500 shrink-0">
                 <Paperclip size={20} />
               </div>
