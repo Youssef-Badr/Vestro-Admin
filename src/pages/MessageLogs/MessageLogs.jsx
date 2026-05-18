@@ -390,7 +390,7 @@ const fetchChatMessages = async (phone) => {
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
- const renderMedia = (msg) => {
+const renderMedia = (msg) => {
   if (msg.type === "text" && !msg.mediaUrl) {
     return <p className="text-[14.5px] leading-tight whitespace-pre-wrap break-words">{msg.text}</p>;
   }
@@ -402,6 +402,7 @@ const fetchChatMessages = async (phone) => {
 
     return (
       <div className="w-full min-w-[240px] max-w-[290px] sm:max-w-sm rounded-xl overflow-hidden bg-white/95 dark:bg-[#182229] border border-red-500/10 dark:border-red-500/20 shadow-md">
+        {/* Header الـ Card */}
         <div className="bg-gradient-to-r from-red-800 to-red-600 px-3 py-2 flex items-center justify-between text-white shadow-sm">
           <div className="flex items-center gap-2 min-w-0">
             <ShoppingBag size={16} className="animate-pulse shrink-0" />
@@ -417,13 +418,19 @@ const fetchChatMessages = async (phone) => {
           )}
         </div>
 
+        {/* قائمة المنتجات داخل الـ Card */}
         <div className="p-3 space-y-2.5 max-h-52 overflow-y-auto custom-scrollbar">
           {items.length > 0 ? (
             items.map((item, index) => {
+              // سحب الصورة مباشرة من الحقل الصريح المجهز بالباك إند
               const productImg = item.primary_image || item.image_url || item.product_image || item.images?.[0]?.url;
-              const productName = item.product_name || item.name || (isRTL ? "منتج غير معروف" : "Unknown Product");
-              const variantColor = item.color || item.variant_info?.color;
-              const variantSize = item.size || item.variant_info?.size;
+              
+              // الاسم يأتي نقي تماماً وجاهز من السيرفر
+              const rawName = item.product_name || item.name || (isRTL ? "منتج غير معروف" : "Unknown Product");
+              
+              // قراءة مباشرة للحقول الصافية المخزنة والمفصولة في الـ Database
+              const variantColor = item.color && item.color !== "N/A" ? item.color : null;
+              const variantSize = item.size && item.size !== "N/A" ? item.size : null;
 
               return (
                 <div key={index} className="flex items-start justify-between gap-2 text-xs border-b border-gray-100 dark:border-white/5 pb-2 last:border-0 last:pb-0">
@@ -431,7 +438,7 @@ const fetchChatMessages = async (phone) => {
                     {productImg ? (
                       <img 
                         src={productImg} 
-                        alt={productName} 
+                        alt={rawName} 
                         loading="lazy"
                         className="w-10 h-10 object-cover rounded-md border border-gray-100 dark:border-white/10 shrink-0 aspect-square"
                       />
@@ -442,31 +449,35 @@ const fetchChatMessages = async (phone) => {
                     )}
                     
                     <div className="min-w-0 flex-1">
+                      {/* اسم المنتج نقي وعصري بدون أي زيادات مدمجة */}
                       <p className="font-bold text-slate-900 dark:text-slate-100 text-[12.5px] leading-tight mb-0.5 break-words">
-                        {productName}
+                        {rawName}
                       </p>
                       
                       <p className="text-gray-400 dark:text-gray-500 text-[11px] tabular-nums">
                         {isRTL ? "الكمية:" : "Qty:"} <span className="font-bold text-red-600 dark:text-red-400">{item.quantity}</span>
                       </p>
 
+                      {/* عرض الخصائص كـ Badges أنيقة بالاعتماد الفوري على داتا السيرفر النظيفة */}
                       {(variantColor || variantSize) && (
-                        <div className="flex flex-col gap-0.5 mt-0.5 text-[10.5px] text-gray-500 dark:text-gray-400 font-medium">
+                        <div className="flex flex-wrap gap-1 mt-1 text-[10.5px] font-medium">
                           {variantColor && (
-                            <p className="truncate">
-                              {isRTL ? "اللون:" : "Color:"} <span className="text-slate-700 dark:text-slate-300 font-bold">{variantColor}</span>
-                            </p>
+                            <span className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded flex items-center gap-1 max-w-[120px] truncate">
+                              <span className="w-1 h-1 rounded-full bg-slate-400 shrink-0"></span>
+                              <span>{variantColor}</span>
+                            </span>
                           )}
                           {variantSize && (
-                            <p className="truncate">
-                              {isRTL ? "المقاس:" : "Size:"} <span className="text-slate-700 dark:text-slate-300 font-bold font-mono">{variantSize}</span>
-                            </p>
+                            <span className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded font-mono font-bold">
+                              {variantSize}
+                            </span>
                           )}
                         </div>
                       )}
                     </div>
                   </div>
                   
+                  {/* سعر القطعة الكلي */}
                   <div className="text-end shrink-0 tabular-nums font-bold pt-0.5 text-slate-800 dark:text-slate-200">
                     <span>{(item.item_price * item.quantity).toLocaleString()}</span>
                     <span className="text-[9px] opacity-60 ms-0.5 font-normal">{currencyStr}</span>
@@ -479,12 +490,14 @@ const fetchChatMessages = async (phone) => {
           )}
         </div>
 
+        {/* نص رسالة العميل المرافقة إن وجدت */}
         {msg.orderDetails?.text && (
           <div className="mx-3 mb-3 p-2 bg-gray-50 dark:bg-black/20 border-s-2 border-red-500 rounded text-[12px] italic text-slate-600 dark:text-slate-300 break-words">
             "{msg.orderDetails.text}"
           </div>
         )}
 
+        {/* الفوتر الكلي والـ Total */}
         <div className="bg-gray-50 dark:bg-black/30 px-3 py-2 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold shadow-inner">
           <span className="text-gray-500 dark:text-gray-400">{isRTL ? "إجمالي المنتجات:" : "Total Price:"}</span>
           <span className="text-[13px] font-black text-red-700 dark:text-red-400 tabular-nums">
@@ -652,7 +665,7 @@ const fetchChatMessages = async (phone) => {
 </div>
 
             {/* صندوق الرسائل - هو الوحيد اللي مسموحله يعمل سكرول داخلي */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 pb-12 sm:p-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
               <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.02] pointer-events-none" 
                    style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '300px' }} />
               
