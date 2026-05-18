@@ -4742,314 +4742,257 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
 
   
 
-  <div className="space-y-1">
+ <div className="space-y-1">
   {editingOrder.orderItems.map((item, index) => {
     const originalProduct = products.find(
       (p) => String(p._id) === String(item.product)
     );
 
-    // ===================== IMAGE =====================
-    const currentVariation = originalProduct?.variations?.find(
-      (v) => v.color === (item.color || item.Color)
+    // ===================== IMAGE LOGIC =====================
+    // البحث عن الـ Variant المطابق للون والمقاس معاً المختارين حالياً في هذا العنصر
+    const currentVariation = originalProduct?.variants?.find(
+      (v) => 
+        v.options?.Color === (item.Color || item.color) &&
+        v.options?.Size === (item.Size || item.size)
     );
 
+    // اختيار الصورة بناءً على الترتيب: صورة الـ variant الحالي -> ثم الصورة الأساسية للمنتج -> ثم الصورة الاحتياطية في الـ item
     const displayImage =
-      currentVariation?.images?.[0]?.url || item.image;
+      currentVariation?.images?.[0]?.url ||
+      originalProduct?.images?.[0]?.url ||
+      item.image;
 
-
-return (
-  <div
-    key={index}
-    className={`relative group flex flex-col md:flex-row gap-2 md:gap-4 p-2 md:p-4 rounded-[1.2rem] border transition-all duration-300 ${
-      darkMode
-        ? "bg-white/[0.02] border-white/5 hover:border-red-700/50"
-        : "bg-white border-slate-100 shadow-sm"
-    }`}
-  >
-
-    {/* ================= TOP: IMAGE + NAME ================= */}
-    <div className="flex items-center gap-2 md:min-w-[160px]">
-
-      {/* IMAGE */}
-      <div className="relative w-12 h-12 md:w-16 md:h-16 shrink-0">
-        <img
-          src={displayImage}
-          alt={item.name}
-          className="w-full h-full object-cover rounded-lg border border-white/5"
-        />
-      </div>
-
-      {/* NAME + PRICE */}
-      <div className="flex flex-col">
-        <div className="font-black uppercase text-[11px] md:text-sm leading-tight">
-          {item.name}
-        </div>
-
-        <div className="text-red-700 text-[9px] font-black">
-          {Number(item.price).toLocaleString()} EGP
-        </div>
-      </div>
-    </div>
-
-    {/* ================= MIDDLE: COLOR + SIZE (MOBILE STACK) ================= */}
-    {!item.isBundle && (
-      <div className="flex flex-col md:grid md:grid-cols-2 gap-1 flex-1">
-
-        {/* COLOR */}
-        <select
-          className="p-1 md:p-2 rounded-md text-[9px] font-black border"
-          value={item.Color || item.color || ""}
-          onChange={(e) => {
-            const selectedColor = e.target.value;
-            const newItems = [...editingOrder.orderItems];
-
-            const matchedVar = originalProduct?.variants?.find(
-              (v) => v.options?.Color === selectedColor
-            );
-
-            newItems[index] = {
-              ...newItems[index],
-              Color: selectedColor,
-              color: selectedColor,
-              options: {
-                Color: selectedColor,
-                Size: matchedVar?.options?.Size || newItems[index].Size || "",
-              },
-              image:
-                matchedVar?.images?.[0]?.url || newItems[index].image,
-            };
-
-            setEditingOrder({
-              ...editingOrder,
-              orderItems: newItems,
-            });
-          }}
-        >
-          <option value="">Color</option>
-          {originalProduct?.options
-            ?.find((o) => o.name === "Color")
-            ?.values?.map((val) => (
-              <option key={val} value={val}>{val}</option>
-            ))}
-        </select>
-
-        {/* SIZE */}
-        <select
-          className="p-1 md:p-2 rounded-md text-[9px] font-black border"
-          value={item.Size || item.size || ""}
-          onChange={(e) => {
-            const selectedSize = e.target.value;
-            const newItems = [...editingOrder.orderItems];
-
-            newItems[index] = {
-              ...newItems[index],
-              Size: selectedSize,
-              size: selectedSize,
-              options: {
-                ...newItems[index].options,
-                Size: selectedSize,
-              },
-            };
-
-            setEditingOrder({
-              ...editingOrder,
-              orderItems: newItems,
-            });
-          }}
-        >
-          <option value="">Size</option>
-          {originalProduct?.variants
-            ?.filter((v) => v.options?.Color === (item.Color || item.color))
-            ?.map((v) => (
-              <option key={v._id} value={v.options?.Size}>
-                {v.options?.Size}
-              </option>
-            ))}
-        </select>
-      </div>
-    )}
-    
-    {/* ================= BUNDLE ================= */}
-{
-// item.isBundle && (
-//   <div className="flex flex-col gap-2 flex-1">
-    
-//     {/* HEADER */}
-//     <div className="flex items-center justify-between">
-//       <div className="text-[10px] md:text-xs font-black uppercase text-red-700 tracking-wide">
-//         Bundle Items
-//       </div>
-
-//       <div className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full bg-red-700/10 text-red-700 font-bold">
-//         {item.bundleItems?.length || 0} items
-//       </div>
-//     </div>
-
-//     {/* ITEMS */}
-//     <div className="flex flex-col gap-2">
-//       {item.bundleItems?.map((bItem, i) => (
-//         <div
-//           key={i}
-//           className="flex items-center justify-between p-2 rounded-xl border 
-//                      bg-white/5 backdrop-blur-md 
-//                      hover:border-red-700/40 transition-all duration-300"
-//         >
-          
-//           {/* LEFT: NAME */}
-//           <div className="flex flex-col">
-//             <span className="font-bold text-[10px] md:text-xs uppercase tracking-wide">
-//               {bItem.name}
-//             </span>
-
-//             <span className="text-[8px] opacity-60">
-//               Bundle product #{i + 1}
-//             </span>
-//           </div>
-
-//           {/* RIGHT: VARIANTS */}
-//           <div className="flex items-center gap-2">
-
-//             {/* COLOR BADGE */}
-//             <span className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full 
-//                              bg-black text-white font-bold uppercase">
-//               {bItem.Color || bItem.color || "NO COLOR"}
-//             </span>
-
-//             {/* SIZE BADGE */}
-//             <span className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full 
-//                              bg-red-700 text-white font-bold uppercase">
-//               {bItem.Size || bItem.size || "NO SIZE"}
-//             </span>
-
-//           </div>
-//         </div>
-//       ))}
-//     </div>
-//   </div>
-// )
-}
-
-      {/* ================= BUNDLE ================= */}
-{item.isBundle && (
-  <div className="flex flex-col gap-2 flex-1">
-    
-    {/* HEADER */}
-    <div className="flex items-center justify-between">
-      <div className="text-[10px] md:text-xs font-black uppercase text-red-700 tracking-wide">
-        Bundle Items
-      </div>
-
-      <div className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full bg-red-700/10 text-red-700 font-bold">
-        {item.bundleItems?.length || 0} items
-      </div>
-    </div>
-
-    {/* ITEMS */}
-    <div className="flex flex-col gap-2">
-      {item.bundleItems?.map((bItem, i) => (
-        <div
-          key={i}
-          className="flex items-center justify-between p-2 rounded-xl border 
-                     bg-white/5 backdrop-blur-md 
-                     hover:border-red-700/40 transition-all duration-300"
-        >
-          
-          {/* LEFT: NAME */}
-          <div className="flex flex-col">
-            <span className="font-bold text-[10px] md:text-xs uppercase tracking-wide">
-              {bItem.name}
-            </span>
-
-            <span className="text-[8px] opacity-60">
-              Bundle product #{i + 1}
-            </span>
-          </div>
-
-          {/* RIGHT: VARIANTS */}
-          <div className="flex items-center gap-2">
-
-            {/* COLOR BADGE */}
-            <span className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full 
-                             bg-black text-white font-bold uppercase">
-              {bItem.Color || bItem.color || "NO COLOR"}
-            </span>
-
-            {/* SIZE BADGE */}
-            <span className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full 
-                             bg-red-700 text-white font-bold uppercase">
-              {bItem.Size || bItem.size || "NO SIZE"}
-            </span>
-
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
-    {/* ================= BOTTOM: QTY + DELETE ================= */}
-    <div className="flex items-center gap-2">
-
-      <input
-        type="number"
-        value={item.quantity}
-        onChange={(e) => {
-          const val = parseInt(e.target.value) || 1;
-
-          const newItems = [...editingOrder.orderItems];
-          newItems[index].quantity = val;
-
-          const subtotal = newItems.reduce(
-            (acc, i) => acc + i.price * i.quantity,
-            0
-          );
-
-          setEditingOrder({
-            ...editingOrder,
-            orderItems: newItems,
-            totalPrice:
-              subtotal +
-              Number(editingOrder.shippingFee || 0) -
-              (editingOrder.discount?.amount || 0),
-          });
-        }}
-        className="w-10 p-1 rounded text-center border text-[9px]"
-      />
-
-      <button
-        onClick={() => {
-          const newItems = editingOrder.orderItems.filter(
-            (_, i) => i !== index
-          );
-
-          const subtotal = newItems.reduce(
-            (acc, i) => acc + i.price * i.quantity,
-            0
-          );
-
-          setEditingOrder({
-            ...editingOrder,
-            orderItems: newItems,
-            totalPrice:
-              subtotal +
-              Number(editingOrder.shippingFee || 0) -
-              (editingOrder.discount?.amount || 0),
-          });
-        }}
-        className="w-7 h-7 rounded bg-red-700/10 text-red-700 text-xs"
+    return (
+      <div
+        key={index}
+        className={`relative group flex flex-col md:flex-row gap-2 md:gap-4 p-2 md:p-4 rounded-[1.2rem] border transition-all duration-300 ${
+          darkMode
+            ? "bg-white/[0.02] border-white/5 hover:border-red-700/50"
+            : "bg-white border-slate-100 shadow-sm"
+        }`}
       >
-        🗑
-      </button>
-    </div>
-  </div>
-);
+        {/* ================= TOP: IMAGE + NAME ================= */}
+        <div className="flex items-center gap-2 md:min-w-[160px]">
+          {/* IMAGE */}
+          <div className="relative w-12 h-12 md:w-16 md:h-16 shrink-0">
+            <img
+              src={displayImage}
+              alt={item.name}
+              className="w-full h-full object-cover rounded-lg border border-white/5"
+            />
+          </div>
 
+          {/* NAME + PRICE */}
+          <div className="flex flex-col">
+            <div className="font-black uppercase text-[11px] md:text-sm leading-tight">
+              {item.name}
+            </div>
+
+            <div className="text-red-700 text-[9px] font-black">
+              {Number(item.price).toLocaleString()} EGP
+            </div>
+          </div>
+        </div>
+
+        {/* ================= MIDDLE: COLOR + SIZE (NON-BUNDLE ITEMS) ================= */}
+        {!item.isBundle && (
+          <div className="flex flex-col md:grid md:grid-cols-2 gap-1 flex-1">
+            {/* COLOR SELECT */}
+            <select
+              className="p-1 md:p-2 rounded-md text-[9px] font-black border"
+              value={item.Color || item.color || ""}
+              onChange={(e) => {
+                const selectedColor = e.target.value;
+                const currentSize = item.Size || item.size || "";
+                const newItems = [...editingOrder.orderItems];
+
+                // البحث عن الـ variant المطابق للون الجديد والمقاس الحالي
+                const matchedVar = originalProduct?.variants?.find(
+                  (v) => v.options?.Color === selectedColor && v.options?.Size === currentSize
+                ) || originalProduct?.variants?.find(
+                  (v) => v.options?.Color === selectedColor // Fallback لأول مقاس متاح من هذا اللون إذا لم يطابق المقاس الحالي
+                );
+
+                newItems[index] = {
+                  ...newItems[index],
+                  Color: selectedColor,
+                  color: selectedColor,
+                  options: {
+                    Color: selectedColor,
+                    Size: matchedVar?.options?.Size || currentSize,
+                  },
+                  image: matchedVar?.images?.[0]?.url || newItems[index].image,
+                };
+
+                setEditingOrder({
+                  ...editingOrder,
+                  orderItems: newItems,
+                });
+              }}
+            >
+              <option value="">Color</option>
+              {originalProduct?.options
+                ?.find((o) => o.name === "Color")
+                ?.values?.map((val) => (
+                  <option key={val} value={val}>
+                    {val}
+                  </option>
+                ))}
+            </select>
+
+            {/* SIZE SELECT */}
+            <select
+              className="p-1 md:p-2 rounded-md text-[9px] font-black border"
+              value={item.Size || item.size || ""}
+              onChange={(e) => {
+                const selectedSize = e.target.value;
+                const currentColor = item.Color || item.color || "";
+                const newItems = [...editingOrder.orderItems];
+
+                // البحث عن الـ variant المطابق للمقاس الجديد واللون الحالي لجلب الصورة الصحيحة تماماً
+                const matchedVar = originalProduct?.variants?.find(
+                  (v) => v.options?.Color === currentColor && v.options?.Size === selectedSize
+                );
+
+                newItems[index] = {
+                  ...newItems[index],
+                  Size: selectedSize,
+                  size: selectedSize,
+                  options: {
+                    ...newItems[index].options,
+                    Size: selectedSize,
+                  },
+                  image: matchedVar?.images?.[0]?.url || newItems[index].image,
+                };
+
+                setEditingOrder({
+                  ...editingOrder,
+                  orderItems: newItems,
+                });
+              }}
+            >
+              <option value="">Size</option>
+              {originalProduct?.variants
+                ?.filter((v) => v.options?.Color === (item.Color || item.color))
+                ?.map((v) => (
+                  <option key={v._id} value={v.options?.Size}>
+                    {v.options?.Size}
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
+
+        {/* ================= MIDDLE: BUNDLE ITEMS DISPLAY ================= */}
+        {item.isBundle && (
+          <div className="flex flex-col gap-2 flex-1">
+            {/* HEADER */}
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] md:text-xs font-black uppercase text-red-700 tracking-wide">
+                Bundle Items
+              </div>
+
+              <div className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full bg-red-700/10 text-red-700 font-bold">
+                {item.bundleItems?.length || 0} items
+              </div>
+            </div>
+
+            {/* ITEMS LIST */}
+            <div className="flex flex-col gap-2">
+              {item.bundleItems?.map((bItem, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-2 rounded-xl border 
+                             bg-white/5 backdrop-blur-md 
+                             hover:border-red-700/40 transition-all duration-300"
+                >
+                  {/* LEFT: NAME */}
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[10px] md:text-xs uppercase tracking-wide">
+                      {bItem.name}
+                    </span>
+                    <span className="text-[8px] opacity-60">
+                      Bundle product #{i + 1}
+                    </span>
+                  </div>
+
+                  {/* RIGHT: VARIANTS BADGES */}
+                  <div className="flex items-center gap-2">
+                    {/* COLOR BADGE */}
+                    <span className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full 
+                                   bg-black text-white font-bold uppercase">
+                      {bItem.Color || bItem.color || "NO COLOR"}
+                    </span>
+
+                    {/* SIZE BADGE */}
+                    <span className="text-[8px] md:text-[10px] px-2 py-[2px] rounded-full 
+                                   bg-red-700 text-white font-bold uppercase">
+                      {bItem.Size || bItem.size || "NO SIZE"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ================= BOTTOM: QTY + DELETE ================= */}
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={item.quantity}
+            min="1"
+            onChange={(e) => {
+              const val = parseInt(e.target.value) || 1;
+              const newItems = [...editingOrder.orderItems];
+              newItems[index].quantity = val;
+
+              const subtotal = newItems.reduce(
+                (acc, i) => acc + i.price * i.quantity,
+                0
+              );
+
+              setEditingOrder({
+                ...editingOrder,
+                orderItems: newItems,
+                totalPrice:
+                  subtotal +
+                  Number(editingOrder.shippingFee || 0) -
+                  (editingOrder.discount?.amount || 0),
+              });
+            }}
+            className="w-10 p-1 rounded text-center border text-[9px]"
+          />
+
+          <button
+            onClick={() => {
+              const newItems = editingOrder.orderItems.filter(
+                (_, i) => i !== index
+              );
+
+              const subtotal = newItems.reduce(
+                (acc, i) => acc + i.price * i.quantity,
+                0
+              );
+
+              setEditingOrder({
+                ...editingOrder,
+                orderItems: newItems,
+                totalPrice:
+                  subtotal +
+                  Number(editingOrder.shippingFee || 0) -
+                  (editingOrder.discount?.amount || 0),
+              });
+            }}
+            className="w-7 h-7 rounded bg-red-700/10 text-red-700 text-xs transition-colors hover:bg-red-700 hover:text-white"
+          >
+            🗑
+          </button>
+        </div>
+      </div>
+    );
   })}
-
 </div>
-
-
-
 
 
 </div>
