@@ -147,7 +147,7 @@ const exportProductsToExcel = (products) => {
       "Option 2 value": v?.options?.["Size"] || v?.options?.["المقاس"] || "",
       "Option 3": "",
       "Option 3 value": "",
-      "Image URL": (v?.images?.[0]?.url) || (p.images?.[0]?.url) || ""
+      "Image URL": getOptimizedImage(v?.images?.[0]?.url) || getOptimizedImage(p.images?.[0]?.url) || ""
     };
   }
 
@@ -156,6 +156,20 @@ const exportProductsToExcel = (products) => {
   XLSX.utils.book_append_sheet(workbook, worksheet, "Products Template");
   XLSX.writeFile(workbook, "Vestro_Template_Standard.xlsx");
 };
+
+
+const getOptimizedImage = (url, width = 400) => {
+  if (!url) return "https://via.placeholder.com/400x400";
+
+  return url.replace(
+    "/upload/",
+    `/upload/w_${width},h_${width},c_fill,f_auto,q_auto/`
+  );
+};
+
+
+const getOptimizedFit = (url) =>
+  url.replace("/upload/", "/upload/f_auto,q_auto/");
 
 
 const handleImportExcel = async (e) => {
@@ -812,7 +826,7 @@ onChange={(e) => {
 
                     <div className="flex items-start gap-4 mb-4">
                       <img
-                        src={product.images?.[0]?.url || "https://via.placeholder.com/400x400?text=No+Image"}
+                        src={getOptimizedImage(product.images?.[0]?.url) || "https://via.placeholder.com/400x400?text=No+Image"}
                         alt={product.name}
                         className="w-20 h-20 object-cover rounded-md border dark:border-gray-600"
                       />
@@ -1581,12 +1595,13 @@ const imageToShow = img.isNew
               {/* MAIN IMAGE */}
               <div className="relative w-10 h-10 shrink-0">
                 {(() => {
-                  const img = v.images?.[0];
+                  const img = getOptimizedImage(v.images?.[0]);
                   const src = typeof img === "string" ? img : img?.url;
 
                   return src ? (
                     <img
-                      src={src}
+                      src={getOptimizedImage(src)}
+
                       className="w-full h-full object-cover rounded-md border border-indigo-500 shadow-sm"
                       alt="variant"
                     />
@@ -1601,7 +1616,7 @@ const imageToShow = img.isNew
               {/* SELECT IMAGE FROM PRODUCT */}
               <div className="flex gap-1 overflow-x-auto max-w-[100px] pb-1 scrollbar-hide">
                 {(data.images || []).map((img, i) => {
-                  const src = img?.url || img;
+                  const src = getOptimizedImage(img?.url) || img;
                   return (
                     <img
                       key={i}
@@ -1672,7 +1687,7 @@ const imageToShow = img.isNew
   {data.sizeChart?.url && !data.sizeChartFile && (
     <div className="mb-3 relative group">
       <img 
-        src={data.sizeChart.url} 
+        src={getOptimizedFit(data.sizeChart.url)} 
         alt="Size Chart" 
         className="w-full h-32 object-contain rounded-lg border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
       />
@@ -1896,7 +1911,7 @@ const imageToShow = img.isNew
                     >
                       <td className="px-6 py-4">
                         <img
-                          src={product.images?.[0]?.url || "https://via.placeholder.com/150"}
+                          src={getOptimizedImage(product.images?.[0]?.url) || "https://via.placeholder.com/150"}
                           className="h-12 w-12 object-cover rounded-lg border dark:border-gray-700 shadow-sm group-hover:scale-105 transition-transform"
                           alt={product.name}
                         />
@@ -1939,7 +1954,7 @@ const imageToShow = img.isNew
                           <button onClick={() => openReviewsModal(product.reviews || [])} className="p-2 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-full transition-all" title="Reviews"><FaCommentDots /></button>
                           <button onClick={() => openEditModal(product)} className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-all"><FaEdit /></button>
                           <button onClick={() => deleteProduct(product._id)} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all"><FaTrash /></button>
-                          <button onClick={() => { setSelectedImages(product.images || []); setShowImageModal(true); }} className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-all" title="View Images"><FaEye /></button>
+                          <button onClick={() => { setSelectedImages(product.images?.map(getOptimizedImage) || []); setShowImageModal(true); }} className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-all" title="View Images"><FaEye /></button>
                         </div>
                       </td>
                     </tr>
@@ -1998,7 +2013,7 @@ const imageToShow = img.isNew
                         </div>
                       )}
                       <img 
-                        src={product.images?.[0]?.url || "https://via.placeholder.com/150"} 
+                        src={getOptimizedImage(product.images?.[0]?.url) || "https://via.placeholder.com/150"} 
                         className="h-16 w-16 object-cover rounded-xl border dark:border-gray-700" 
                         alt="" 
                       />
@@ -2051,7 +2066,7 @@ const imageToShow = img.isNew
                     <div className="flex gap-2">
                       <button onClick={() => openReviewsModal(product.reviews || [])} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 rounded-lg"><FaCommentDots size={16}/></button>
                       <button onClick={() => openEditModal(product)} className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg"><FaEdit size={16}/></button>
-                      <button onClick={() => { setSelectedImages(product.images || []); setShowImageModal(true); }} className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg"><FaEye size={16}/></button>
+                      <button onClick={() => { setSelectedImages(product.images?.map(getOptimizedImage) || []); setShowImageModal(true); }} className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg"><FaEye size={16}/></button>
                       <button onClick={() => deleteProduct(product._id)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg"><FaTrash size={16}/></button>
                     </div>
                   </div>
@@ -2085,7 +2100,7 @@ const imageToShow = img.isNew
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
             {selectedImages.map((img, index) => (
               <div key={index} className="aspect-square overflow-hidden rounded-[2rem] border-2 border-transparent hover:border-[#ccff00] bg-gray-50 dark:bg-[#0a0a0a] transition-all duration-500 shadow-sm">
-                <img src={img.url} className="w-full h-full object-contain p-4 transition-transform hover:scale-105" alt="" />
+                <img src={getOptimizedImage(img.url)} className="w-full h-full object-contain p-4 transition-transform hover:scale-105" alt="" />
               </div>
             ))}
           </div>

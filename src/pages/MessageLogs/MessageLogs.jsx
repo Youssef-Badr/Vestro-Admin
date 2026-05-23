@@ -772,7 +772,7 @@ const renderMedia = (msg) => {
       <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#f0f2f5] dark:bg-[#0c0c0c] relative ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
         {replyTarget ? (
           <>
-           {/* Header الشات ثابت مستحيل يتحرك مسمار في مكانه */}
+           {/* Header */}
 <div className="fixed  left-0 right-0 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-4 bg-white/95 dark:bg-[#111]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-30 shadow-sm shrink-0 w-full select-none">
   <div className="flex items-center gap-2 sm:gap-3 min-w-0">
     <button onClick={() => setReplyTarget(null)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors md:hidden">
@@ -823,7 +823,7 @@ const renderMedia = (msg) => {
 </div>
 
             {/* صندوق الرسائل - هو الوحيد اللي مسموحله يعمل سكرول داخلي */}
-            <div className="flex-1 overflow-y-auto p-4 pb-12 sm:p-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 mt-10 pb-12 sm:p-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
               <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.02] pointer-events-none" 
                    style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '300px' }} />
               
