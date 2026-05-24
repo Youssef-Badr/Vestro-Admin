@@ -2067,11 +2067,10 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
   </div>
 )}
 
-
 <AnimatePresence>
   {auditOrder && (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex  items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4"
       dir={language === "ar" ? "rtl" : "ltr"}
     >
       {/* Overlay */}
@@ -2089,7 +2088,8 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 40, scale: 0.96 }}
         transition={{ type: "spring", damping: 22, stiffness: 260 }}
-        className={`relative flex flex-col w-full sm:max-w-2xl h-[92vh] sm:h-auto sm:max-h-[88vh] overflow-hidden rounded-t-3xl sm:rounded-3xl border shadow-2xl ${
+        className={`relative flex flex-col w-full sm:max-w-2xl h-auto max-h-[90vh] sm:max-h-[88vh] overflow-hidden 
+        rounded-t-3xl sm:rounded-3xl border shadow-2xl ${
           darkMode
             ? "bg-black border-red-700/20 text-white"
             : "bg-white border-red-700/10 text-black"
@@ -2219,9 +2219,7 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
                             }`}
                           >
                             <Calendar className="w-3 h-3" />
-                            <span>
-                              {formatAuditDate(log.createdAt)}
-                            </span>
+                            <span>{formatAuditDate(log.createdAt)}</span>
                           </div>
                         </div>
 
@@ -2245,7 +2243,6 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
                                 : "bg-white border-black/5"
                             }`}
                           >
-
                             <span
                               className={`px-2 py-0.5 rounded-lg line-through ${
                                 darkMode
@@ -2275,9 +2272,7 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
                           <User className="w-3 h-3" />
 
                           <span>
-                            {language === "ar"
-                              ? "المسؤول:"
-                              : "Admin:"}
+                            {language === "ar" ? "المسؤول:" : "Admin:"}
                           </span>
 
                           <span
@@ -2310,15 +2305,12 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
             </div>
 
           ) : (
-
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Info className="w-8 h-8 text-red-700 mb-2" />
 
               <p
                 className={`text-sm font-medium ${
-                  darkMode
-                    ? "text-white/50"
-                    : "text-black/50"
+                  darkMode ? "text-white/50" : "text-black/50"
                 }`}
               >
                 {language === "ar"
@@ -2326,7 +2318,6 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
                   : "No audit logs available"}
               </p>
             </div>
-
           )}
         </div>
       </motion.div>
