@@ -6,7 +6,8 @@ import { saveAs } from "file-saver";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext"; // تأكد أن المسار صح حسب ترتيب ملفاتك
 import { ORDER_STATUS_CONFIG, STATUS_OPTIONS } from "../../constants/orderConstants";
-
+import { Clock, X, Calendar, User, ArrowRight, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 const Orders = () => {
   const { language } = useLanguage();
 const { theme } = useTheme(); 
@@ -23,6 +24,8 @@ const { theme } = useTheme();
   const [editingOrder, setEditingOrder] = useState(null); // الأوردر اللي بنعدله حالياً
   const [coupons, setCoupons] = useState([]); // لإحضار أكواد الخصم من الداتابيز
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+  const [auditOrder, setAuditOrder] = useState(null);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [cities, setCities] = useState([]);
 const [districts, setDistricts] = useState([]);
 const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -232,6 +235,8 @@ useEffect(() => {
   };
 }, []);
 
+
+
   const openEditModal = (order) => {
     setEditingOrder(JSON.parse(JSON.stringify(order))); // نسخة عميقة للأوردر
     fetchCoupons(); // تحديث الأكواد
@@ -439,6 +444,8 @@ setTotalOrders(res.data.totalOrders || 0);
   }
 };
 
+
+
   const fetchProducts = async () => {
     try {
       const res = await axios.get("/products");
@@ -569,33 +576,58 @@ const deliveryMap = useMemo(() => {
       );
     }
   };
-
+  
 const updateStatus = async (id, newStatus) => {
   try {
-    await axios.put(`/orders/${id}/status`, { 
+    const res = await axios.put(`/orders/${id}/status`, {
       status: newStatus,
       ids: [id]
     });
 
-    // ✅ تحديث محلي بدل ما تعمل fetch
-    setOrders((prev) =>
-      prev.map((order) =>
-        order._id === id
-          ? { ...order, status: newStatus }
-          : order
-      )
-    );
+    const updatedOrder = res.data.order;
 
+    if (updatedOrder) {
+      // 1. تحديث الجدول
+      setOrders((prev) => {
+        const index = prev.findIndex((o) => o._id === id);
+        if (index === -1) return prev;
+
+        const updatedList = [...prev];
+        updatedList[index] = {
+          ...updatedList[index],
+          ...updatedOrder,
+        };
+
+        return updatedList;
+      });
+
+      // 2. 🔥 أهم سطر (تحديث المودال مباشرة)
+      setAuditOrder((prev) =>
+        prev && prev._id === id
+          ? { ...prev, ...updatedOrder }
+          : prev
+      );
+
+      toast.success(
+        language === "ar"
+          ? "تم تحديث الحالة بنجاح"
+          : "Status updated successfully"
+      );
+    }
   } catch (error) {
-    toast.error(language === "ar" ? "فشل في تحديث الحالة" : "Failed");
+    console.error("Status Update Error:", error);
+    toast.error(
+      language === "ar"
+        ? "فشل في تحديث الحالة"
+        : "Failed to update status"
+    );
   }
 };
  
  const toggleArchive = async (id, current) => {
   try {
-    // 1. لازم نبعت الـ Body فيه القيمة الجديدة عشان الـ Backend يقرأها
-    // لو current بـ true (مؤرشف)، هنبعت false (إلغاء أرشفة)
-    await axios.put(`/orders/${id}/archive`, { 
+    // 1. نبعت الـ Body فيه القيمة الجديدة عشان الـ Backend يقرأها
+    const res = await axios.put(`/orders/${id}/archive`, { 
       archiveAction: !current 
     });
 
@@ -609,9 +641,22 @@ const updateStatus = async (id, newStatus) => {
           : "Order unarchived"
     );
     
-    fetchOrders();
+    // 🎯 بدل ما تعمل fetchOrders() كاملة وتبطأ الصفحة وتعمل رينديرينج لكل حاجة،
+    // نحدث حالة الأرشفة محلياً فوراً، ولو الصفحة بتعرض غير المؤرشف فقط، بنشيله من الـ list
+    setOrders((prev) => 
+      prev.map((order) => 
+        order._id === id 
+          ? { ...order, archived: !current, auditLog: res.data.order?.auditLog || order.auditLog } 
+          : order
+      ).filter((order) => {
+        // لو الصفحة الحالية بتعرض الأرشيف بس أو العكس، شيل الأوردر اللي حالته اتقلبت
+        if (showArchived === true) return order.archived === true;
+        if (showArchived === false) return order.archived === false;
+        return true;
+      })
+    );
+
   } catch (err) {
-    // ضيف الـ error في الـ console عشان لو حصلت مشكلة تانية تعرفها
     console.error("Archive Toggle Error:", err);
     toast.error(
       language === "ar"
@@ -664,37 +709,43 @@ const updateStatus = async (id, newStatus) => {
   };
 
 const updateAllowToOpenPackage = async (id, value) => {
-  // 1. تحديث فوري في الواجهة (بدون API delay)
+  // 1. Optimistic update للجدول
   setOrders((prev) =>
     prev.map((o) =>
       o._id === id ? { ...o, allowToOpenPackage: value } : o
     )
   );
 
+  // 2. تحديث المودال لو مفتوح
+  setAuditOrder((prev) =>
+    prev?._id === id
+      ? { ...prev, allowToOpenPackage: value }
+      : prev
+  );
+
   try {
-    // 2. تحديث في السيرفر
     await axios.put(`/orders/${id}`, {
       allowToOpenPackage: value,
     });
   } catch (err) {
-    // 3. لو فشل → ارجع الحالة القديمة
+    // rollback الجدول
     setOrders((prev) =>
       prev.map((o) =>
         o._id === id ? { ...o, allowToOpenPackage: !value } : o
       )
     );
+
+    // rollback المودال
+    setAuditOrder((prev) =>
+      prev?._id === id
+        ? { ...prev, allowToOpenPackage: !value }
+        : prev
+    );
   }
 };
 
-// flexship
 const updateFlexShipping = async (id, value) => {
-  await axios.put(`/orders/${id}`, {
-    flexShippingInfo: {
-      amountToBeCollected: value,
-      overriddenByAdmin: true
-    }
-  });
-
+  // 1. UI update
   setOrders((prev) =>
     prev.map((o) =>
       o._id === id
@@ -703,15 +754,66 @@ const updateFlexShipping = async (id, value) => {
             flexShippingInfo: {
               ...o.flexShippingInfo,
               amountToBeCollected: value,
-              overriddenByAdmin: true
-            }
+              overriddenByAdmin: true,
+            },
           }
         : o
     )
   );
-};
 
-  const handleShipToBosta = async (orderId, showToast = true) => {
+  // 2. update modal
+  setAuditOrder((prev) =>
+    prev?._id === id
+      ? {
+          ...prev,
+          flexShippingInfo: {
+            ...prev.flexShippingInfo,
+            amountToBeCollected: value,
+            overriddenByAdmin: true,
+          },
+        }
+      : prev
+  );
+
+  try {
+    await axios.put(`/orders/${id}`, {
+      flexShippingInfo: {
+        amountToBeCollected: value,
+        overriddenByAdmin: true,
+      },
+    });
+  } catch (err) {
+    // rollback
+    setOrders((prev) =>
+      prev.map((o) =>
+        o._id === id
+          ? {
+              ...o,
+              flexShippingInfo: {
+                ...o.flexShippingInfo,
+                amountToBeCollected: !value,
+                overriddenByAdmin: false,
+              },
+            }
+          : o
+      )
+    );
+
+    setAuditOrder((prev) =>
+      prev?._id === id
+        ? {
+            ...prev,
+            flexShippingInfo: {
+              ...prev.flexShippingInfo,
+              amountToBeCollected: !value,
+              overriddenByAdmin: false,
+            },
+          }
+        : prev
+    );
+  }
+};
+const handleShipToBosta = async (orderId, showToast = true) => {
   try {
     const res = await axios.post(`/orders/${orderId}/ship-bosta`);
 
@@ -719,7 +821,17 @@ const updateFlexShipping = async (id, value) => {
       toast.success(res.data.message);
     }
 
-    if (showToast) fetchOrders();
+    if (res.data?.order) {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId ? { ...o, ...res.data.order } : o
+        )
+      );
+
+      setAuditOrder((prev) =>
+        prev?._id === orderId ? { ...prev, ...res.data.order } : prev
+      );
+    }
 
     return res.data;
 
@@ -727,11 +839,9 @@ const updateFlexShipping = async (id, value) => {
     const errorMessage = err.response?.data?.message || "حدث خطأ في النظام";
 
     if (showToast) {
-      if (err.response?.status === 400) {
-        toast.warning(errorMessage);
-      } else {
-        toast.error(errorMessage);
-      }
+      err.response?.status === 400
+        ? toast.warning(errorMessage)
+        : toast.error(errorMessage);
     }
 
     throw { id: orderId, message: errorMessage };
@@ -739,38 +849,106 @@ const updateFlexShipping = async (id, value) => {
 };
 
 const handleConfirmOrder = async (orderId, showToast = true) => {
-   if (
-      !window.confirm(
-        language === "ar"
-          ? "هل أنت متأكد من شحن هذا الطلب؟"
-          : "Are you sure you want to delete this order?",
-      )
+  if (
+    !window.confirm(
+      language === "ar"
+        ? "هل أنت متأكد من شحن هذا الطلب؟"
+        : "Are you sure you want to ship this order?"
     )
-      return;
-  try {
-    // ❌ ممنوع تغيير الحالة من الفرونت
+  )
+    return;
 
-    // 1. إرسال الأوردر للشحن مباشرة
+  try {
     const shipRes = await handleShipToBosta(orderId, showToast);
 
-    // 2. تحديث الجدول فقط لو النجاح حصل
-    if (shipRes?.success && showToast) {
-      fetchOrders();
+    if (shipRes?.success) {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId
+            ? { ...o, ...shipRes.order }
+            : o
+        )
+      );
+
+      setAuditOrder((prev) =>
+        prev?._id === orderId
+          ? { ...prev, ...shipRes.order }
+          : prev
+      );
     }
 
     return shipRes;
 
   } catch (err) {
-    const msg = err.message || "Confirm failed";
+    console.error("Confirm error:", err.message);
 
     if (showToast) {
-      console.error("Single confirm handled error:", msg);
       fetchOrders();
     } else {
-      throw { id: orderId, message: msg };
+      throw err;
     }
   }
 };
+//   const handleShipToBosta = async (orderId, showToast = true) => {
+//   try {
+//     const res = await axios.post(`/orders/${orderId}/ship-bosta`);
+
+//     if (res.data.success && showToast) {
+//       toast.success(res.data.message);
+//     }
+
+//     if (showToast) fetchOrders();
+
+//     return res.data;
+
+//   } catch (err) {
+//     const errorMessage = err.response?.data?.message || "حدث خطأ في النظام";
+
+//     if (showToast) {
+//       if (err.response?.status === 400) {
+//         toast.warning(errorMessage);
+//       } else {
+//         toast.error(errorMessage);
+//       }
+//     }
+
+//     throw { id: orderId, message: errorMessage };
+//   }
+// };
+
+// const handleConfirmOrder = async (orderId, showToast = true) => {
+//    if (
+//       !window.confirm(
+//         language === "ar"
+//           ? "هل أنت متأكد من شحن هذا الطلب؟"
+//           : "Are you sure you want to delete this order?",
+//       )
+//     )
+//       return;
+//   try {
+//     // ❌ ممنوع تغيير الحالة من الفرونت
+
+//     // 1. إرسال الأوردر للشحن مباشرة
+//     const shipRes = await handleShipToBosta(orderId, showToast);
+
+//     // 2. تحديث الجدول فقط لو النجاح حصل
+//     if (shipRes?.success && showToast) {
+//       fetchOrders();
+//     }
+
+//     return shipRes;
+
+//   } catch (err) {
+//     const msg = err.message || "Confirm failed";
+
+//     if (showToast) {
+//       console.error("Single confirm handled error:", msg);
+//       fetchOrders();
+//     } else {
+//       throw { id: orderId, message: msg };
+//     }
+//   }
+// };
  
 
 // bulk actions
@@ -909,6 +1087,13 @@ const computeProductsTotal = (order) => {
     const qty = Number(item?.quantity || item?.qty) || 0;
     return acc + (unitPrice * qty);
   }, 0);
+};
+// دالة سريعة لتنسيق التاريخ والوقت بالشكل العربي للوحة التحكم
+const formatAuditDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString('ar-EG', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
 };
 
 
@@ -1601,63 +1786,100 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
 
      {/* 5 + 6 WRAPPER (Mobile 50/50) */}
 <div className="flex gap-2 lg:contents">
+{/* 5. Order Status + Audit Button */}
+<div className="flex flex-col gap-2 flex-1 lg:col-span-2">
 
-  {/* 5. Status Select */}
-  <div className="flex-1 lg:col-span-2">
+  {/* Order Status + Audit */}
+  <div className="flex items-center gap-2">
 
-    <select
-      value={order.status}
-      onChange={(e) => updateStatus(order._id, e.target.value)}
-      style={{ color: darkMode ? statusColor : "#000", borderLeft: `3px solid ${statusColor}` }}
-      className={`w-full py-2 lg:py-2.5 px-3 rounded-xl text-[12px] font-black uppercase outline-none transition-all appearance-none cursor-pointer ${darkMode ? 'bg-white/5' : 'bg-slate-50 border border-black/5'}`}
-    >
-      {STATUS_OPTIONS.map((statusKey) => (
-        <option key={statusKey} value={statusKey} className="bg-black text-white">
-          {ORDER_STATUS_CONFIG[statusKey].icon} {language === "ar" ? ORDER_STATUS_CONFIG[statusKey].ar : ORDER_STATUS_CONFIG[statusKey].en}
-        </option>
-      ))}
-    </select>
+    {/* Order Status */}
+    <div className="flex-1">
+      <select
+        value={order.status}
+        onChange={(e) => updateStatus(order._id, e.target.value)}
+        style={{
+          color: darkMode ? statusColor : "#000",
+          borderLeft: `3px solid ${statusColor}`,
+        }}
+        className={`w-full py-2 lg:py-2.5 px-3 rounded-xl text-[12px] font-black uppercase outline-none transition-all appearance-none cursor-pointer ${
+          darkMode
+            ? "bg-white/5"
+            : "bg-slate-50 border border-black/5"
+        }`}
+      >
+        {STATUS_OPTIONS.map((statusKey) => (
+          <option
+            key={statusKey}
+            value={statusKey}
+            className="bg-black text-white"
+          >
+            {ORDER_STATUS_CONFIG[statusKey].icon}{" "}
+            {language === "ar"
+              ? ORDER_STATUS_CONFIG[statusKey].ar
+              : ORDER_STATUS_CONFIG[statusKey].en}
+          </option>
+        ))}
+      </select>
+    </div>
 
-
-   <select
-  value={getCurrentShipmentStatus(order)}
-  onChange={(e) =>
-    updateShipmentStatus(order._id, e.target.value)
-  }
-  className={`w-full py-2 px-3 rounded-xl text-[12px] font-black uppercase border ${
+   {/* Audit Button */}
+<button
+  onClick={() => setAuditOrder(order)}
+  className={`shrink-0 h-[42px] px-3 rounded-xl border transition-all duration-200 flex items-center justify-center gap-1.5 backdrop-blur-md font-black ${
     darkMode
-      ? "bg-black border-white/10 text-white"
-      : "bg-white border-black/10 text-black"
+      ? "bg-black border-red-700/40 text-white hover:bg-red-700/10 hover:border-red-700"
+      : "bg-white border-red-700/20 text-black hover:bg-red-700/5 hover:border-red-700"
   }`}
 >
-  {shipmentStatuses.map((status) => (
-    <option key={status.value} value={status.value}>
-      {status.icon} {language === "ar" ? status.ar : status.en}
-    </option>
-  ))}
-</select>
+  <Clock className="w-4 h-4 text-red-700" />
 
-<select
-  value={order.financeStatus || "Pending_Accounting"}
-  onChange={(e) =>
-    updateFinanceStatus(order._id, e.target.value)
-  }
-  className={`w-full px-2 py-2 rounded-xl text-[11px] font-black uppercase border ${
-    darkMode
-      ? "bg-black border-white/10 text-white"
-      : "bg-white border-black/10 text-black"
-  }`}
->
-  {financeStatuses.map((st) => (
-    <option key={st.value} value={st.value}>
-      {st.icon ? st.icon + " " : ""}
-
-      {language === "ar" ? st.ar : st.en}
-    </option>
-  ))}
-</select>
-    
+  <span className="hidden sm:inline text-[15px] font-black whitespace-nowrap">
+    {language === "ar" ? "سجل الحركة" : "Audit Log"}
+  </span>
+</button>
   </div>
+
+  {/* Shipment Status */}
+  <select
+    value={getCurrentShipmentStatus(order)}
+    onChange={(e) =>
+      updateShipmentStatus(order._id, e.target.value)
+    }
+    className={`w-full py-2 px-3 rounded-xl text-[12px] font-black uppercase border ${
+      darkMode
+        ? "bg-black border-white/10 text-white"
+        : "bg-white border-black/10 text-black"
+    }`}
+  >
+    {shipmentStatuses.map((status) => (
+      <option key={status.value} value={status.value}>
+        {status.icon} {language === "ar" ? status.ar : status.en}
+      </option>
+    ))}
+  </select>
+
+  {/* Finance Status */}
+  <select
+    value={order.financeStatus || "Pending_Accounting"}
+    onChange={(e) =>
+      updateFinanceStatus(order._id, e.target.value)
+    }
+    className={`w-full px-2 py-2 rounded-xl text-[11px] font-black uppercase border ${
+      darkMode
+        ? "bg-black border-white/10 text-white"
+        : "bg-white border-black/10 text-black"
+    }`}
+  >
+    {financeStatuses.map((st) => (
+      <option key={st.value} value={st.value}>
+        {st.icon ? st.icon + " " : ""}
+        {language === "ar" ? st.ar : st.en}
+      </option>
+    ))}
+  </select>
+
+</div>
+ 
 
  {/* 6. Bosta Status */}
 <div className="flex-1 flex items-center justify-center lg:col-span-1">
@@ -1920,6 +2142,272 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
   </div>
 )}
 
+
+<AnimatePresence>
+  {auditOrder && (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4"
+      dir={language === "ar" ? "rtl" : "ltr"}
+    >
+      {/* Overlay */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={() => setAuditOrder(null)}
+        className="absolute inset-0"
+      />
+
+      {/* Modal */}
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 40, scale: 0.96 }}
+        transition={{ type: "spring", damping: 22, stiffness: 260 }}
+        className={`relative flex flex-col w-full sm:max-w-2xl h-[92vh] sm:h-auto sm:max-h-[88vh] overflow-hidden rounded-t-3xl sm:rounded-3xl border shadow-2xl ${
+          darkMode
+            ? "bg-black border-red-700/20 text-white"
+            : "bg-white border-red-700/10 text-black"
+        }`}
+      >
+        {/* Header */}
+        <div
+          className={`sticky top-0 z-20 flex items-center justify-between px-4 sm:px-5 py-3 border-b backdrop-blur-xl ${
+            darkMode
+              ? "bg-black/90 border-red-700/10"
+              : "bg-white/90 border-red-700/10"
+          }`}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-red-700/10 border border-red-700/20 shrink-0">
+              <Clock className="w-4 h-4 text-red-700" />
+            </div>
+
+            <div className="min-w-0">
+              <h3 className="text-[14px] sm:text-lg font-black truncate">
+                {language === "ar"
+                  ? "سجل حركة الطلب"
+                  : "Order Audit Log"}
+              </h3>
+
+              <p
+                className={`text-[10px] sm:text-xs truncate ${
+                  darkMode ? "text-white/40" : "text-black/40"
+                }`}
+              >
+                {language === "ar"
+                  ? "تتبع جميع التعديلات والعمليات"
+                  : "Track all updates and actions"}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setAuditOrder(null)}
+            className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${
+              darkMode
+                ? "hover:bg-red-700/10 text-white/60 hover:text-white"
+                : "hover:bg-red-700/5 text-black/60 hover:text-black"
+            }`}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Timeline */}
+        <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 space-y-4">
+
+          {auditOrder.auditLog && auditOrder.auditLog.length > 0 ? (
+
+            <div className="relative">
+
+              {/* Line */}
+              <div className="absolute top-0 bottom-0 right-[9px] w-[2px] bg-red-700/15" />
+
+              <div className="space-y-3 sm:space-y-4">
+
+                {auditOrder.auditLog.map((log, index) => {
+
+                  const isCreated =
+                    log.action === "ORDER_CREATED";
+
+                  const isManual =
+                    log.action === "ORDER_MANUALLY_UPDATED";
+
+                  const isFinance =
+                    log.action === "FINANCE_STATUS_UPDATED";
+
+                  const isFastPatch =
+                    log.action === "ORDER_FAST_PATCH";
+
+                  const badgeStyle = isCreated
+                    ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    : isManual
+                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                    : isFinance
+                    ? "bg-purple-500/10 text-purple-500 border-purple-500/20"
+                    : isFastPatch
+                    ? "bg-cyan-500/10 text-cyan-500 border-cyan-500/20"
+                    : "bg-red-700/10 text-red-700 border-red-700/20";
+
+                  return (
+                    <motion.div
+                      key={log._id || index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="relative pr-7"
+                    >
+
+                      {/* Dot */}
+                      <div
+                        className={`absolute right-[3px] top-5 w-3 h-3 rounded-full border-2 bg-black ${
+                          isCreated
+                            ? "border-green-500 shadow-[0_0_10px_rgba(34,197,94,.5)]"
+                            : "border-red-700"
+                        }`}
+                      />
+
+                      {/* Card */}
+                      <div
+                        className={`rounded-2xl border p-3 sm:p-4 transition-all ${
+                          darkMode
+                            ? "bg-white/[0.03] border-white/5 hover:bg-white/[0.05]"
+                            : "bg-black/[0.02] border-black/5 hover:bg-black/[0.03]"
+                        }`}
+                      >
+
+                        {/* Top */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+
+                          <span
+                            className={`px-2 py-1 rounded-full border text-[9px] sm:text-[10px] font-black uppercase ${badgeStyle}`}
+                          >
+                            {log.action}
+                          </span>
+
+                          <div
+                            className={`flex items-center gap-1 text-[10px] sm:text-xs ${
+                              darkMode
+                                ? "text-white/40"
+                                : "text-black/40"
+                            }`}
+                          >
+                            <Calendar className="w-3 h-3" />
+                            <span>
+                              {formatAuditDate(log.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <p
+                          className={`text-[11px] sm:text-sm leading-relaxed font-medium ${
+                            darkMode
+                              ? "text-white/90"
+                              : "text-black/80"
+                          }`}
+                        >
+                          {log.description}
+                        </p>
+
+                        {/* Status Change */}
+                        {(log.oldStatus || log.newStatus) && (
+                          <div
+                            className={`mt-3 flex flex-wrap items-center gap-1.5 rounded-xl border px-2 py-1.5 w-fit text-[10px] sm:text-xs ${
+                              darkMode
+                                ? "bg-black border-white/5"
+                                : "bg-white border-black/5"
+                            }`}
+                          >
+
+                            <span
+                              className={`px-2 py-0.5 rounded-lg line-through ${
+                                darkMode
+                                  ? "bg-white/5 text-white/40"
+                                  : "bg-black/5 text-black/40"
+                              }`}
+                            >
+                              {log.oldStatus || "-"}
+                            </span>
+
+                            <ArrowRight className="w-3 h-3 text-red-700 rotate-180" />
+
+                            <span className="px-2 py-0.5 rounded-lg bg-red-700/10 text-red-700 font-black border border-red-700/10">
+                              {log.newStatus}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Footer */}
+                        <div
+                          className={`mt-3 pt-2 border-t flex items-center flex-wrap gap-1.5 text-[10px] sm:text-xs ${
+                            darkMode
+                              ? "border-white/5 text-white/40"
+                              : "border-black/5 text-black/40"
+                          }`}
+                        >
+                          <User className="w-3 h-3" />
+
+                          <span>
+                            {language === "ar"
+                              ? "المسؤول:"
+                              : "Admin:"}
+                          </span>
+
+                          <span
+                            className={`font-bold ${
+                              darkMode
+                                ? "text-white/80"
+                                : "text-black/80"
+                            }`}
+                          >
+                            {log.updatedBy}
+                          </span>
+
+                          {log.userId && (
+                            <span
+                              className={`px-1.5 py-0.5 rounded-md text-[9px] border ${
+                                darkMode
+                                  ? "bg-white/5 border-white/5 text-white/30"
+                                  : "bg-black/5 border-black/5 text-black/30"
+                              }`}
+                            >
+                              ID: {log.userId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+          ) : (
+
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Info className="w-8 h-8 text-red-700 mb-2" />
+
+              <p
+                className={`text-sm font-medium ${
+                  darkMode
+                    ? "text-white/50"
+                    : "text-black/50"
+                }`}
+              >
+                {language === "ar"
+                  ? "لا يوجد سجل حركات حالياً"
+                  : "No audit logs available"}
+              </p>
+            </div>
+
+          )}
+        </div>
+      </motion.div>
+    </div>
+  )}
+</AnimatePresence>
 
 
  {isEditModalOpen && editingOrder && (

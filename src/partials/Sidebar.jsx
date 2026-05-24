@@ -113,7 +113,7 @@ useEffect(() => {
 
 
   { to: "/whatsapp-settings", label: isRTL ? "إعدادات واتساب" : "WhatsApp Settings", icon: "⚙️" },
-  { to: "/message-logs", label: isRTL ? "سجلات الرسائل" : "Message Logs", icon: "📜" },
+  { to: "/message-logs", label: isRTL ? "سجلات الرسائل التسويقية" : "Message Logs", icon: "📜" },
 
   { to: "/logout", label: isRTL ? "خروج" : "Logout", icon: "🚪" },
     ],

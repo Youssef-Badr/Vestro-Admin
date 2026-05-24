@@ -85,6 +85,15 @@ const AdminCategories = () => {
     }
   };
 
+  const getOptimizedImage = (url, width = 100) => {
+  if (!url) return "https://via.placeholder.com/100x100";
+
+  return url.replace(
+    "/upload/",
+    `/upload/w_${width},h_${width},c_fill,f_auto,q_auto/`
+  );
+};
+
   // 🔄 دالة حفظ الترتيب العالمي في قاعدة البيانات
   const saveGlobalSortToDB = async (type) => {
     if (type === 'manual') return;
@@ -174,14 +183,14 @@ const AdminCategories = () => {
       {/* Header - Responsive Layout */}
       <div className="flex flex-col md:flex-row justify-between items-start mt-16 md:items-center gap-6 mb-10">
         <div className="w-full md:w-auto">
-            <h1 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter">
+            <h1 className="text-3xl md:text-4xl font-black    uppercase ">
             {isRTL ? "الأقسام" : "Categories"}
             </h1>
             {/* Sort Controls - Flex Wrap for small screens */}
             <div className={`flex flex-wrap gap-1 mt-4 p-1 rounded-xl w-fit ${isDark ? "bg-zinc-900" : "bg-gray-200"}`}>
                 <button 
                     onClick={() => setSortType('manual')}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${sortType === 'manual' ? "bg-[#86FE05] text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"}`}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${sortType === 'manual' ? "bg-red-700 text-white dark:text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"}`}
                 >
                     <LayoutList size={14} /> {isRTL ? "يدوي" : "MANUAL"}
                 </button>
@@ -191,7 +200,7 @@ const AdminCategories = () => {
                         setSortType('newest');
                         saveGlobalSortToDB('newest');
                     }}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${sortType === 'newest' ? "bg-[#86FE05] text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"}`}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${sortType === 'newest' ? "bg-red-700 text-white dark:text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"}`}
                 >
                     <ArrowDownAz size={14} /> {isRTL ? "الأحدث" : "NEWEST"}
                 </button>
@@ -201,14 +210,14 @@ const AdminCategories = () => {
                         setSortType('oldest');
                         saveGlobalSortToDB('oldest');
                     }}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${sortType === 'oldest' ? "bg-[#86FE05] text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"}`}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${sortType === 'oldest' ? "bg-red-700 text-white dark:text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"}`}
                 >
                     <ArrowUpAz size={14} /> {isRTL ? "الأقدم" : "OLDEST"}
                 </button>
             </div>
         </div>
 
-        <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-[#86FE05] text-black px-8 py-3 rounded-2xl font-black flex items-center justify-center gap-2 hover:shadow-[0_0_20px_#86FE05] transition-all text-sm uppercase">
+        <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-red-700 text-white dark:text-black px-8 py-3 rounded-2xl font-black flex items-center justify-center gap-2 hover:shadow-[0_0_20px_#86FE05] transition-all text-sm uppercase">
           <Plus size={20} /> {isRTL ? "إضافة قسم" : "Add Category"}
         </button>
       </div>
@@ -254,14 +263,14 @@ const AdminCategories = () => {
 
                               <td className="p-6">
                                 <div className="w-14 h-14 rounded-2xl overflow-hidden bg-zinc-800">
-                                  {cat.image?.url ? (
-                                    <img src={cat.image.url} alt={cat.name} className="w-full h-full object-cover" />
+                                  {getOptimizedImage(cat.image?.url) ? (
+                                   <img src={getOptimizedImage(cat.image?.url, 120)} alt={cat.name} className="w-full h-full object-cover" />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center opacity-20"><ImageIcon size={20} /></div>
                                   )}
                                 </div>
                               </td>
-                              <td className="p-6 font-black italic text-xl uppercase tracking-tight">{cat.name}</td>
+                              <td className="p-6 font-black    text-xl uppercase ">{cat.name}</td>
                               <td className="p-6">
                                 <div className={`flex gap-3 ${isRTL ? "justify-start" : "justify-end"}`}>
                                   <button onClick={() => { setSelectedForBulk(cat); setIsBulkAddModalOpen(true); }} className="p-2 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/40 transition-colors" title={isRTL ? "إضافة منتجات" : "Add Products"}><ListPlus size={18} /></button>
@@ -318,7 +327,7 @@ const AdminCategories = () => {
                             {/* Image */}
                             <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-800 shrink-0">
                               {cat.image?.url ? (
-                                <img src={cat.image.url} alt={cat.name} className="w-full h-full object-cover" />
+                                <img src={getOptimizedImage(cat.image.url, 120)} alt={cat.name} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center opacity-20"><ImageIcon size={20} /></div>
                               )}
@@ -326,7 +335,7 @@ const AdminCategories = () => {
 
                             {/* Name */}
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-black italic uppercase tracking-tight text-sm truncate">{cat.name}</h3>
+                              <h3 className="font-black    uppercase  text-sm truncate">{cat.name}</h3>
                             </div>
                           </div>
 
@@ -354,7 +363,7 @@ const AdminCategories = () => {
         {isMoveModalOpen && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className={`${isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-gray-200"} p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] w-full max-w-md border`}>
-              <h2 className="text-xl md:text-2xl font-black mb-6 italic uppercase">{isRTL ? "نقل المنتجات" : "Move Products"}</h2>
+              <h2 className="text-xl md:text-2xl font-black mb-6    uppercase">{isRTL ? "نقل المنتجات" : "Move Products"}</h2>
               <select 
                 className={`w-full p-4 rounded-2xl border mb-6 outline-none ${isDark ? "bg-black border-zinc-800" : "bg-gray-100 border-gray-200"}`}
                 onChange={(e) => setMoveData({...moveData, toId: e.target.value})}
@@ -390,7 +399,7 @@ const AdminCategories = () => {
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
             <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className={`${isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-gray-200"} border p-6 md:p-8 rounded-[2rem] md:rounded-[3.5rem] w-full max-w-2xl h-[90vh] md:h-[85vh] flex flex-col`}>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl md:text-2xl font-black italic uppercase truncate pr-4">{isRTL ? `إضافة إلى ${selectedForBulk?.name}` : `Add to ${selectedForBulk?.name}`}</h2>
+                <h2 className="text-xl md:text-2xl font-black    uppercase truncate pr-4">{isRTL ? `إضافة إلى ${selectedForBulk?.name}` : `Add to ${selectedForBulk?.name}`}</h2>
                 <button onClick={() => setIsBulkAddModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full shrink-0"><X /></button>
               </div>
               <div className="relative mb-6">
@@ -404,7 +413,7 @@ const AdminCategories = () => {
                     setSelectedProductIds(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
                   }} className={`p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${selectedProductIds.includes(product._id || product.id) ? "border-[#86FE05] bg-[#86FE05]/10" : isDark ? "border-zinc-800 hover:border-zinc-700" : "border-gray-100 hover:border-gray-200"}`}>
                     <div className="flex items-center gap-4">
-                      <img src={product.images?.[0]?.url} className="w-10 h-10 rounded-lg object-cover bg-zinc-800" alt="" />
+                     <img src={getOptimizedImage(product.images?.[0]?.url, 80)} className="w-10 h-10 rounded-lg object-cover bg-zinc-800" alt="" />
                       <span className="font-bold text-sm uppercase truncate max-w-[150px] md:max-w-none">{product.name}</span>
                     </div>
                     {selectedProductIds.includes(product._id || product.id) && <Check className="text-[#86FE05]" size={20} />}
@@ -431,7 +440,7 @@ const AdminCategories = () => {
     } border p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] w-full max-w-md shadow-2xl`}
   >
     {/* TITLE */}
-    <h2 className="text-xl md:text-2xl font-black italic uppercase mb-8">
+    <h2 className="text-xl md:text-2xl font-black    uppercase mb-8">
       {editingId
         ? isRTL
           ? "تعديل قسم"
