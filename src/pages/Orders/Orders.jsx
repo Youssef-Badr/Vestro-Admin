@@ -813,7 +813,8 @@ const updateFlexShipping = async (id, value) => {
     );
   }
 };
-const handleShipToBosta = async (orderId, showToast = true) => {
+
+  const handleShipToBosta = async (orderId, showToast = true) => {
   try {
     const res = await axios.post(`/orders/${orderId}/ship-bosta`);
 
@@ -821,17 +822,7 @@ const handleShipToBosta = async (orderId, showToast = true) => {
       toast.success(res.data.message);
     }
 
-    if (res.data?.order) {
-      setOrders((prev) =>
-        prev.map((o) =>
-          o._id === orderId ? { ...o, ...res.data.order } : o
-        )
-      );
-
-      setAuditOrder((prev) =>
-        prev?._id === orderId ? { ...prev, ...res.data.order } : prev
-      );
-    }
+    if (showToast) fetchOrders();
 
     return res.data;
 
@@ -839,9 +830,11 @@ const handleShipToBosta = async (orderId, showToast = true) => {
     const errorMessage = err.response?.data?.message || "حدث خطأ في النظام";
 
     if (showToast) {
-      err.response?.status === 400
-        ? toast.warning(errorMessage)
-        : toast.error(errorMessage);
+      if (err.response?.status === 400) {
+        toast.warning(errorMessage);
+      } else {
+        toast.error(errorMessage);
+      }
     }
 
     throw { id: orderId, message: errorMessage };
@@ -849,106 +842,38 @@ const handleShipToBosta = async (orderId, showToast = true) => {
 };
 
 const handleConfirmOrder = async (orderId, showToast = true) => {
-  if (
-    !window.confirm(
-      language === "ar"
-        ? "هل أنت متأكد من شحن هذا الطلب؟"
-        : "Are you sure you want to ship this order?"
+   if (
+      !window.confirm(
+        language === "ar"
+          ? "هل أنت متأكد من شحن هذا الطلب؟"
+          : "Are you sure you want to delete this order?",
+      )
     )
-  )
-    return;
-
+      return;
   try {
+    // ❌ ممنوع تغيير الحالة من الفرونت
+
+    // 1. إرسال الأوردر للشحن مباشرة
     const shipRes = await handleShipToBosta(orderId, showToast);
 
-    if (shipRes?.success) {
-      setOrders((prev) =>
-        prev.map((o) =>
-          o._id === orderId
-            ? { ...o, ...shipRes.order }
-            : o
-        )
-      );
-
-      setAuditOrder((prev) =>
-        prev?._id === orderId
-          ? { ...prev, ...shipRes.order }
-          : prev
-      );
+    // 2. تحديث الجدول فقط لو النجاح حصل
+    if (shipRes?.success && showToast) {
+      fetchOrders();
     }
 
     return shipRes;
 
   } catch (err) {
-    console.error("Confirm error:", err.message);
+    const msg = err.message || "Confirm failed";
 
     if (showToast) {
+      console.error("Single confirm handled error:", msg);
       fetchOrders();
     } else {
-      throw err;
+      throw { id: orderId, message: msg };
     }
   }
 };
-//   const handleShipToBosta = async (orderId, showToast = true) => {
-//   try {
-//     const res = await axios.post(`/orders/${orderId}/ship-bosta`);
-
-//     if (res.data.success && showToast) {
-//       toast.success(res.data.message);
-//     }
-
-//     if (showToast) fetchOrders();
-
-//     return res.data;
-
-//   } catch (err) {
-//     const errorMessage = err.response?.data?.message || "حدث خطأ في النظام";
-
-//     if (showToast) {
-//       if (err.response?.status === 400) {
-//         toast.warning(errorMessage);
-//       } else {
-//         toast.error(errorMessage);
-//       }
-//     }
-
-//     throw { id: orderId, message: errorMessage };
-//   }
-// };
-
-// const handleConfirmOrder = async (orderId, showToast = true) => {
-//    if (
-//       !window.confirm(
-//         language === "ar"
-//           ? "هل أنت متأكد من شحن هذا الطلب؟"
-//           : "Are you sure you want to delete this order?",
-//       )
-//     )
-//       return;
-//   try {
-//     // ❌ ممنوع تغيير الحالة من الفرونت
-
-//     // 1. إرسال الأوردر للشحن مباشرة
-//     const shipRes = await handleShipToBosta(orderId, showToast);
-
-//     // 2. تحديث الجدول فقط لو النجاح حصل
-//     if (shipRes?.success && showToast) {
-//       fetchOrders();
-//     }
-
-//     return shipRes;
-
-//   } catch (err) {
-//     const msg = err.message || "Confirm failed";
-
-//     if (showToast) {
-//       console.error("Single confirm handled error:", msg);
-//       fetchOrders();
-//     } else {
-//       throw { id: orderId, message: msg };
-//     }
-//   }
-// };
  
 
 // bulk actions
