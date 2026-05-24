@@ -204,7 +204,85 @@ const updateShipmentType = async (id, shipmentType) => {
     toast.error("Failed to update shipment type");
   }
 };
+const handleShareOrder = async (order) => {
+  if (!order) return;
 
+  const items = Array.isArray(order?.orderItems) ? order.orderItems : [];
+
+  const itemsText = items.length
+    ? items
+        .map((item) => {
+          const name = item?.name || "Product";
+          const qty = item?.quantity || 1;
+          const price = item?.price || 0;
+          const size = item?.size ? ` (${item.size})` : "";
+          const color = item?.color ? ` - ${item.color}` : "";
+
+          return `• ${name}${size}${color}
+  x${qty} = ${price * qty} EGP`;
+        })
+        .join("\n\n")
+    : "No items";
+
+  const auditText = Array.isArray(order?.auditLog)
+    ? order.auditLog
+        .slice(-3) // آخر 3 أحداث بس عشان مايطولش
+        .map((log) => `• ${log.description}`)
+        .join("\n")
+    : "";
+
+  const text = `
+🧾 ORDER DETAILS
+
+🆔 Order ID: ${order._id}
+
+👤 Customer:
+- Name: ${order?.guestInfo?.name || order?.customerName}
+- Phone: ${order?.guestInfo?.phone || ""}
+- Email: ${order?.guestInfo?.email || ""}
+
+📍 Address:
+- City: ${order?.shippingAddress?.cityName || ""}
+- District: ${order?.shippingAddress?.districtName || ""}
+- Address: ${order?.shippingAddress?.address || ""}
+
+💰 Payment:
+- Method: ${order?.paymentMethod || ""}
+- Total: ${order?.totalPrice || 0} EGP
+- Shipping: ${order?.shippingFee || 0} EGP
+- Discount: ${order?.discount?.amount || 0} EGP
+
+📦 Items:
+${itemsText}
+
+🚚 Status:
+- Order: ${order?.status || ""}
+- Delivery: ${order?.deliveryStatus || ""}
+- Finance: ${order?.financeStatus || ""}
+
+📜 Recent Activity:
+${auditText}
+
+📅 Date:
+${new Date(order?.createdAt).toLocaleString("en-EG")}
+
+`;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: `Order #${order._id}`,
+        text,
+        url: window.location.href,
+      });
+    } else {
+      await navigator.clipboard.writeText(text);
+      alert("Order copied to clipboard!");
+    }
+  } catch (err) {
+    console.log("Share cancelled:", err);
+  }
+};
 
 useEffect(() => {
   fetchFinanceStatuses();
@@ -1710,7 +1788,9 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
           </div>
 
      {/* 5 + 6 WRAPPER (Mobile 50/50) */}
-<div className="flex gap-2 lg:contents">
+{/* 5 + 6 WRAPPER (Mobile 50/50) */}
+<div className="relative flex gap-2 lg:contents">
+
 {/* 5. Order Status + Audit Button */}
 <div className="flex flex-col gap-2 flex-1 lg:col-span-2">
 
@@ -1747,21 +1827,22 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
       </select>
     </div>
 
-   {/* Audit Button */}
-<button
-  onClick={() => setAuditOrder(order)}
-  className={`shrink-0 h-[42px] px-3 rounded-xl border transition-all duration-200 flex items-center justify-center gap-1.5 backdrop-blur-md font-black ${
-    darkMode
-      ? "bg-black border-red-700/40 text-white hover:bg-red-700/10 hover:border-red-700"
-      : "bg-white border-red-700/20 text-black hover:bg-red-700/5 hover:border-red-700"
-  }`}
->
-  <Clock className="w-4 h-4 text-red-700" />
+    {/* Audit Button */}
+    <button
+      onClick={() => setAuditOrder(order)}
+      className={`shrink-0 h-[42px] px-3 rounded-xl border transition-all duration-200 flex items-center justify-center gap-1.5 backdrop-blur-md font-black ${
+        darkMode
+          ? "bg-black border-red-700/40 text-white hover:bg-red-700/10 hover:border-red-700"
+          : "bg-white border-red-700/20 text-black hover:bg-red-700/5 hover:border-red-700"
+      }`}
+    >
+      <Clock className="w-4 h-4 text-red-700" />
 
-  <span className="hidden sm:inline text-[15px] font-black whitespace-nowrap">
-    {language === "ar" ? "سجل الحركة" : "Audit Log"}
-  </span>
-</button>
+      <span className="hidden sm:inline text-[15px] font-black whitespace-nowrap">
+        {language === "ar" ? "سجل الحركة" : "Audit Log"}
+      </span>
+    </button>
+
   </div>
 
   {/* Shipment Status */}
@@ -1804,9 +1885,8 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
   </select>
 
 </div>
- 
 
- {/* 6. Bosta Status */}
+{/* 6. Bosta Status */}
 <div className="flex-1 flex items-center justify-center lg:col-span-1">
   {order.bostaInfo?.currentState?.code !== undefined ? (
     <div
@@ -1830,6 +1910,29 @@ const waSecondary = formatWhatsappNumber(getOrderSecondaryPhone(order));
     <span className="text-[10px] font-black opacity-20">—</span>
   )}
 </div>
+
+{/* 🔥 SHARE BUTTON (BOTTOM LEFT FLOATING) */}
+<button
+  onClick={() => handleShareOrder(order)}
+  className={`
+    absolute bottom-2 left-2
+    w-9 h-9
+    flex items-center justify-center
+    rounded-full
+    border
+    transition-all duration-200
+    backdrop-blur-md
+    z-10
+    ${
+      darkMode
+        ? "bg-black/70 border-green-700/40 text-green-400 hover:bg-green-700/10"
+        : "bg-white/80 border-green-700/20 text-green-600 hover:bg-green-700/5"
+    }
+  `}
+  title={language === "ar" ? "مشاركة الطلب" : "Share Order"}
+>
+  📤
+</button>
 
 </div>
           {/* 7. Manage Buttons */}
