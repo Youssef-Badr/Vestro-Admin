@@ -137,7 +137,7 @@ useEffect(() => {
       >
         <div className="flex items-center gap-2">
           <div className="w-2 h-7 rounded-full bg-red-700" />
-          <h1 className="text-xl font-black italic tracking-tight uppercase">
+          <h1 className="text-xl font-black   tracking-tight uppercase">
             Vestro
           </h1>
         </div>
@@ -170,7 +170,7 @@ useEffect(() => {
           <div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-8 rounded-full bg-red-700" />
-              <h2 className="text-2xl lg:text-3xl font-black italic uppercase tracking-tight">
+              <h2 className="text-2xl lg:text-3xl font-black   uppercase tracking-tight">
                 Vestro
               </h2>
             </div>
