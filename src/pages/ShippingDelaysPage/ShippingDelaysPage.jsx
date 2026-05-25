@@ -36,7 +36,11 @@ export default function ShippingDelaysPage() {
       searchPlaceholder: "ابحث بالاسم، رقم التتبع، الـ ID، أو التليفون...",
       orderId: "معرف الطلب",
       trackingNumber: "رقم التتبع",
-      notAvailable: "غير متاح"
+      notAvailable: "غير متاح",
+      clearDelayBtn: "إزالة التقصير",
+      clearConfirm: "هل أنت متأكد من إزالة هذا التقصير من الشاشة؟",
+      clearSuccess: "تم إزالة تقصير الشحن بنجاح",
+      clearError: "حدث خطأ أثناء إزالة التقصير"
     },
     en: {
       title: "🚨 Shipping Delays",
@@ -54,7 +58,11 @@ export default function ShippingDelaysPage() {
       searchPlaceholder: "Search by name, tracking number, ID, or phone...",
       orderId: "Order ID",
       trackingNumber: "Tracking Number",
-      notAvailable: "N/A"
+      notAvailable: "N/A",
+      clearDelayBtn: "Clear Delay",
+      clearConfirm: "Are you sure you want to clear this delay from the dashboard?",
+      clearSuccess: "Shipping delay cleared successfully",
+      clearError: "Error clearing shipping delay"
     }
   };
 
@@ -126,6 +134,23 @@ export default function ShippingDelaysPage() {
     } catch (err) {
       console.error("Error updating settings:", err);
       alert(currentText.error);
+    }
+  };
+
+  // =========================
+  // 🎯 CLEAR SHIPPING DELAY (الطلب المضاف يدوياً)
+  // =========================
+  const handleClearDelay = async (orderId) => {
+    if (!window.confirm(currentText.clearConfirm)) return;
+
+    try {
+      // 🚀 إرسال طلب PUT لتصفير الأوبجكت وحذفه من لوحة التأخيرات فقط مع الاحتفاظ بالأوردر كامل
+      const res = await axios.put(`/orders/shipping-delays/${orderId}/clear`, {}, { withCredentials: true });
+      alert(res.data?.message || currentText.clearSuccess);
+      fetchData(); // تحديث فوري للشاشة عشان الكرت يختفي
+    } catch (err) {
+      console.error("Error clearing shipping delay:", err);
+      alert(err.response?.data?.message || currentText.clearError);
     }
   };
 
@@ -241,7 +266,7 @@ export default function ShippingDelaysPage() {
           {filteredOrders.map((order) => (
             <div
               key={order._id}
-              className={`p-5 rounded-xl border-s-4 border-red-600 transition-all bg-white shadow-sm dark:bg-zinc-900 dark:border-zinc-800 hover:shadow-md flex flex-col justify-between`}
+              className="p-5 rounded-xl border-s-4 border-red-600 transition-all bg-white shadow-sm dark:bg-zinc-900 dark:border-zinc-800 hover:shadow-md flex flex-col justify-between"
             >
               <div>
                 <div className="flex justify-between items-start gap-4">
@@ -268,20 +293,31 @@ export default function ShippingDelaysPage() {
                   )}
                 </div>
 
-                {/* 🎯 قراءة السبب المترجم القادم من دالة الباك إند مباشرة على حسب لغة السيستم الحالية */}
+                {/* قراءة السبب المترجم القادم من دالة الباك إند */}
                 <div className="text-sm mt-3 font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-zinc-800/40 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800/80">
                   <span className="me-1">🧾</span> 
                   {order.shippingDelay?.reason?.[language] || order.shippingDelay?.reason || currentText.notAvailable}
                 </div>
               </div>
 
-              {/* وقت رصد التأخير متوافق محلياً مع لغة العرض */}
-              <p className="text-xs text-gray-400 mt-4 flex items-center gap-1 opacity-70 border-t border-gray-100 dark:border-zinc-800/60 pt-2">
-                <span>⏱</span> 
-                {order.shippingDelay?.detectedAt 
-                  ? new Date(order.shippingDelay.detectedAt).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
-                  : currentText.notAvailable}
-              </p>
+              {/* الجزء السفلي: تاريخ الرصد + زرار الحذف الفني */}
+              <div className="mt-4 pt-3 border-t border-gray-100 dark:border-zinc-800/60 flex items-center justify-between gap-2">
+                <p className="text-xs text-gray-400 flex items-center gap-1 opacity-70">
+                  <span>⏱</span> 
+                  {order.shippingDelay?.detectedAt 
+                    ? new Date(order.shippingDelay.detectedAt).toLocaleString(language === "ar" ? "ar-EG" : "en-US")
+                    : currentText.notAvailable}
+                </p>
+
+                {/* 🎯 زرار مسح التقصير السحري المتوافق مع الدارك مود واللغتين */}
+                <button
+                  onClick={() => handleClearDelay(order._id)}
+                  className="px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-red-600 bg-red-50 hover:bg-red-100/80 dark:text-red-400 dark:bg-red-950/30 dark:hover:bg-red-950/60 flex items-center gap-1"
+                >
+                  <span>🗑️</span> {currentText.clearDelayBtn}
+                </button>
+              </div>
+
             </div>
           ))}
         </div>
