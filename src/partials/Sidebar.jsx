@@ -114,6 +114,7 @@ useEffect(() => {
 
   { to: "/whatsapp-settings", label: isRTL ? "إعدادات واتساب" : "WhatsApp Settings", icon: "⚙️" },
   { to: "/message-logs", label: isRTL ? "سجلات الرسائل التسويقية" : "Message Logs", icon: "📜" },
+  { to: "/ShippingDelaysPage", label: isRTL ? "تأخيرات الشحن" : "Shipping Delays", icon: "⏱️" },
 
   { to: "/logout", label: isRTL ? "خروج" : "Logout", icon: "🚪" },
     ],
