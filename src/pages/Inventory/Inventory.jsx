@@ -168,6 +168,10 @@ const Inventory = () => {
             <p className="text-sm text-gray-500">
               {isArabic ? "المخزون:" : "Stock:"} {totalStock}
             </p>
+            <p className="text-sm text-gray-500">
+  {isArabic ? "المباع:" : "Sold:"} {product.soldCount || 0}
+</p>
+            
           </div>
         </div>
 
