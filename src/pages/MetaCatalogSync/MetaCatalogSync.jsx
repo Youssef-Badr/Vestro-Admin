@@ -1,23 +1,35 @@
 import { useState } from "react";
 import axios from "../../api/axiosInstance";
 import { toast } from "react-toastify";
+import { useTheme } from "../../context/ThemeContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 const MetaCatalogSync = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
+  const { theme } = useTheme();
+  const { language } = useLanguage();
+
   const handleSync = async () => {
     try {
       setLoading(true);
 
-      const res = await axios.post("/meta/sync-catalog");
+      const res = await axios.get("/meta-sync-all");
 
       setResult(res.data);
 
-      toast.success("Meta Catalog Sync Completed");
+      toast.success(
+        language === "ar"
+          ? "تمت مزامنة الكتالوج بنجاح"
+          : "Meta Catalog Sync Completed"
+      );
     } catch (err) {
       toast.error(
-        err.response?.data?.message || "Meta Sync Failed"
+        err.response?.data?.message ||
+          (language === "ar"
+            ? "فشلت مزامنة الكتالوج"
+            : "Meta Sync Failed")
       );
     } finally {
       setLoading(false);
@@ -25,23 +37,55 @@ const MetaCatalogSync = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8 text-white">
+    <div
+      dir={language === "ar" ? "rtl" : "ltr"}
+      className={`min-h-screen p-8 ${
+        theme === "dark"
+          ? "bg-slate-950 text-white"
+          : "bg-gray-100 text-gray-900"
+      }`}
+    >
       <div className="max-w-4xl mx-auto">
-
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8">
-
+        <div
+          className={`rounded-2xl p-8 border ${
+            theme === "dark"
+              ? "bg-slate-900 border-slate-800"
+              : "bg-white border-gray-200"
+          }`}
+        >
           <h1 className="text-3xl font-bold mb-2">
-            Meta Catalog Management
+            {language === "ar"
+              ? "إدارة كتالوج ميتا"
+              : "Meta Catalog Management"}
           </h1>
 
-          <p className="text-slate-400 mb-8">
-            Server-to-Server Integration using Meta System User Token
+          <p
+            className={`mb-8 ${
+              theme === "dark"
+                ? "text-slate-400"
+                : "text-gray-600"
+            }`}
+          >
+            {language === "ar"
+              ? "مزامنة مباشرة بين الموقع و Meta Commerce Manager"
+              : "Server-to-Server Integration using Meta System User Token"}
           </p>
 
           <div className="grid md:grid-cols-2 gap-4 mb-8">
-
-            <div className="bg-slate-800 p-4 rounded-xl">
-              <div className="text-slate-400 text-sm">
+            <div
+              className={`p-4 rounded-xl ${
+                theme === "dark"
+                  ? "bg-slate-800"
+                  : "bg-gray-100"
+              }`}
+            >
+              <div
+                className={`text-sm ${
+                  theme === "dark"
+                    ? "text-slate-400"
+                    : "text-gray-500"
+                }`}
+              >
                 Catalog ID
               </div>
 
@@ -50,8 +94,20 @@ const MetaCatalogSync = () => {
               </div>
             </div>
 
-            <div className="bg-slate-800 p-4 rounded-xl">
-              <div className="text-slate-400 text-sm">
+            <div
+              className={`p-4 rounded-xl ${
+                theme === "dark"
+                  ? "bg-slate-800"
+                  : "bg-gray-100"
+              }`}
+            >
+              <div
+                className={`text-sm ${
+                  theme === "dark"
+                    ? "text-slate-400"
+                    : "text-gray-500"
+                }`}
+              >
                 Access Token
               </div>
 
@@ -59,46 +115,67 @@ const MetaCatalogSync = () => {
                 EAAB********************
               </div>
             </div>
-
           </div>
 
-          <div className="bg-slate-800 p-6 rounded-xl mb-8">
-
+          <div
+            className={`p-6 rounded-xl mb-8 ${
+              theme === "dark"
+                ? "bg-slate-800"
+                : "bg-gray-100"
+            }`}
+          >
             <h2 className="font-semibold mb-4">
-              Catalog Synchronization
+              {language === "ar"
+                ? "مزامنة الكتالوج"
+                : "Catalog Synchronization"}
             </h2>
 
-            <p className="text-slate-400 mb-6">
-              Synchronizes all active products and variants from the
-              VESTRO database to Meta Commerce Manager.
+            <p
+              className={`mb-6 ${
+                theme === "dark"
+                  ? "text-slate-400"
+                  : "text-gray-600"
+              }`}
+            >
+              {language === "ar"
+                ? "مزامنة جميع المنتجات والفاريانتس النشطة من قاعدة بيانات VESTRO إلى Meta Commerce Manager."
+                : "Synchronizes all active products and variants from the VESTRO database to Meta Commerce Manager."}
             </p>
 
             <button
               onClick={handleSync}
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl font-semibold transition"
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-6 py-3 rounded-xl font-semibold transition"
             >
               {loading
-                ? "Synchronizing..."
+                ? language === "ar"
+                  ? "جاري المزامنة..."
+                  : "Synchronizing..."
+                : language === "ar"
+                ? "مزامنة جميع المنتجات"
                 : "Sync All Products"}
             </button>
-
           </div>
 
           {result && (
-            <div className="bg-green-900/20 border border-green-600 rounded-xl p-4">
-
+            <div
+              className={`border rounded-xl p-4 ${
+                theme === "dark"
+                  ? "bg-green-900/20 border-green-600"
+                  : "bg-green-50 border-green-400"
+              }`}
+            >
               <div className="font-semibold mb-2">
-                Sync Result
+                {language === "ar"
+                  ? "نتيجة المزامنة"
+                  : "Sync Result"}
               </div>
 
-              <pre className="text-sm overflow-auto">
+              <pre className="text-sm overflow-auto whitespace-pre-wrap">
                 {JSON.stringify(result, null, 2)}
               </pre>
-
             </div>
           )}
-
         </div>
       </div>
     </div>
