@@ -109,6 +109,7 @@ useEffect(() => {
     icon: "👥",
   },
   { to: "/audit-logs", label: isRTL ? "السجل" : "Logs", icon: "📜" },
+  { to: "/meta-catalog-sync", label: isRTL ? "مزامنة كتالوج Meta" : "Meta Catalog Sync", icon: "�" },
 
 
 

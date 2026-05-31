@@ -244,6 +244,9 @@ const UserManagement = lazy(() =>
 const AbandonedOrders = lazy(() =>
   import("./pages/AbandonedOrders/AbandonedOrders")
 );
+const MetaCatalogSync = lazy(() =>
+  import("./pages/MetaCatalogSync/MetaCatalogSync")
+);
 const WhatsAppSettings = lazy(() =>
   import("./pages/WhatsAppSettings/WhatsAppSettings")
 );
@@ -293,6 +296,7 @@ function App() {
         <Route path="/user-management" element={wrap(UserManagement)} />
         <Route path="/home-settings" element={wrap(HomeSettings)} />
         <Route path="/whatsapp-settings" element={wrap(WhatsAppSettings)} />
+        <Route path="/meta-catalog-sync" element={wrap(MetaCatalogSync)} />
         <Route path="/message-logs" element={wrap(MessageLogs)} />
         <Route path="/ShippingDelaysPage" element={wrap(ShippingDelaysPage)} />
         <Route path="/logout" element={wrap(Logout)} />
