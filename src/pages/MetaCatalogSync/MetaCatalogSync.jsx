@@ -145,7 +145,7 @@ const MetaCatalogSync = () => {
             <button
               onClick={handleSync}
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-6 py-3 rounded-xl font-semibold transition"
+              className="bg-red-600 hover:bg-red-500 disabled:opacity-50 px-6 py-3 rounded-xl font-semibold transition"
             >
               {loading
                 ? language === "ar"
