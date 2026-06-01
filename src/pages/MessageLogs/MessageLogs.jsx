@@ -1934,21 +1934,22 @@ useEffect(() => {
       <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#f0f2f5] dark:bg-[#0c0c0c] relative ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
         {replyTarget ? (
           <>
-<div className="relative w-full flex flex-col shrink-0 select-none z-30">
+{/* ⚠️ التعديل هنا: تم تغيير الكود ليصبح sticky top-0 مع إضافة خلفية z-30 ليثبت مكانه تماماً */}
+<div className="sticky top-0 w-full flex flex-col shrink-0 select-none z-30 bg-white dark:bg-[#111]">
   {/* 1️⃣ الهيدر الرئيسي للمحادثة */}
-  <div className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-4 bg-white/95 dark:bg-[#111]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 shadow-sm w-full">
+  <div className="h-14 fixed sm:h-16 flex items-center justify-between px-2 sm:px-4 bg-white/95 dark:bg-[#111]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 shadow-sm w-full gap-1">
     
     {/* الطرف الأيسر: بيانات وصورة العميل */}
-    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+    <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
       <button 
         onClick={() => setReplyTarget(null)} 
-        className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors md:hidden text-gray-600 dark:text-gray-300"
+        className="p-1 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors md:hidden text-gray-600 dark:text-gray-300 shrink-0"
       >
-        <ChevronLeft size={22} className={isRTL ? "rotate-180" : ""} />
+        <ChevronLeft size={20} className={isRTL ? "rotate-180" : ""} />
       </button>
       
       <div className="relative shrink-0">
-        <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold text-sm shadow-inner">
+        <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-inner">
           {replyTarget.customer?.name?.trim()?.charAt(0)?.toUpperCase() || "V"}
         </div>
         <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
@@ -1956,26 +1957,26 @@ useEffect(() => {
 
       <div className="min-w-0 flex-1">
         <h2 className="text-xs sm:text-sm font-black dark:text-white leading-tight truncate flex items-center gap-1">
-          <span>{replyTarget.customer?.name || replyTarget.phone}</span>
-          {activeChat.some(m => m.isPinned) && <span className="text-[10px] text-red-500">📌</span>}
+          <span className="truncate">{replyTarget.customer?.name || replyTarget.phone}</span>
+          {activeChat.some(m => m.isPinned) && <span className="text-[10px] text-red-500 shrink-0">📌</span>}
         </h2>
-        <div className="flex items-center gap-1.5 mt-0.5">
+        <div className="flex items-center gap-1 mt-0.5">
           {isPeerTyping ? (
-            <p className="text-[10px] text-green-500 font-bold animate-pulse tracking-wide uppercase">
-              {isRTL ? "جاري الكتابة الآن..." : "TYPING..."}
+            <p className="text-[9px] sm:text-[10px] text-green-500 font-bold animate-pulse tracking-wide uppercase">
+              {isRTL ? "جاري الكتابة..." : "TYPING..."}
             </p>
           ) : (
-            <>
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-              <p className="text-[9px] text-green-500 font-bold tracking-wider uppercase">
+            <div className="flex items-center gap-1 min-w-0 w-full">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shrink-0"></div>
+              <p className="text-[8px] sm:text-[9px] text-green-500 font-bold tracking-wider uppercase shrink-0">
                 {replyTarget.chatStatus || "ONLINE"}
               </p>
               {replyTarget.assignedTo?.name && (
-                <span className="text-[9px] text-gray-400 dark:text-gray-500 truncate max-w-[100px]">
+                <span className="text-[8px] sm:text-[9px] text-gray-400 dark:text-gray-500 truncate max-w-[70px] sm:max-w-[100px]">
                   • {isRTL ? "مسؤول:" : "Agent:"} {replyTarget.assignedTo.name.split(' ')[0]}
                 </span>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -1992,13 +1993,13 @@ useEffect(() => {
             setIsAssignMenuOpen(!isAssignMenuOpen);
           }} 
           title={isRTL ? "تحويل الشات لموظف آخر" : "Forward / Assign Chat"}
-          className={`p-2 rounded-full transition-all active:scale-95 flex items-center justify-center z-50 relative
+          className={`p-1.5 sm:p-2 rounded-full transition-all active:scale-95 flex items-center justify-center z-50 relative
             ${isAssignMenuOpen 
               ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400" 
               : "text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-white/5"
             }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 3 21 3 21 9" />
             <line x1="10" y1="14" x2="21" y2="3" />
             <path d="M18 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
@@ -2015,7 +2016,7 @@ useEffect(() => {
 
         {/* 📋 القائمة المنبثقة لاختيار الموظف فوراً بضغطة واحدة */}
         {isAssignMenuOpen && (
-          <div className={`absolute top-11 bg-white dark:bg-[#2a3942] shadow-2xl border border-gray-100 dark:border-white/5 rounded-xl py-1.5 w-48 z-50 animate-in fade-in zoom-in-95 duration-150 max-h-56 overflow-y-auto custom-scrollbar
+          <div className={`absolute top-11 bg-white dark:bg-[#2a3942] shadow-2xl border border-gray-100 dark:border-white/5 rounded-xl py-1.5 w-44 sm:w-48 z-50 animate-in fade-in zoom-in-95 duration-150 max-h-56 overflow-y-auto custom-scrollbar
             ${isRTL ? "left-0 origin-top-left" : "right-0 origin-top-right"}`}
           >
             <div className={`px-3 py-1 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase border-b border-gray-50 dark:border-white/5 pb-1 mb-1
@@ -2023,14 +2024,12 @@ useEffect(() => {
               {isRTL ? "اختر موظف للتحويل" : "Assign to agent"}
             </div>
 
-            {/* لف على الموظفين المتاحين عندك في السيستم */}
             {typeof employees !== 'undefined' && employees.length > 0 ? (
               employees.map((emp) => (
                 <button
                   key={emp._id}
                   onClick={() => {
                     setIsAssignMenuOpen(false);
-                    // التحويل المباشر باستخدام الـ ID بتاع الموظف اللي اتضغط عليه
                     axios.patch(`/chat-actions/${replyTarget.phone}/assign`, { userId: emp._id })
                       .then(() => {
                         alert(isRTL ? `تم تحويل المحادثة إلى ${emp.name}` : `Chat assigned to ${emp.name}`);
@@ -2046,7 +2045,6 @@ useEffect(() => {
                 </button>
               ))
             ) : (
-              // لو مفيش موظفين متمررين أو الـ array لسه مجاتش من الـ API
               <div className="px-3 py-2 text-[11px] text-gray-400 italic text-center">
                 {isRTL ? "لا يوجد موظفين متاحين" : "No agents available"}
               </div>
@@ -2065,7 +2063,7 @@ useEffect(() => {
           }
         }}
         title={isRTL ? "تحديث حالة الشات" : "Update Status"}
-        className="p-2 text-gray-500 hover:text-amber-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95"
+        className="p-1.5 sm:p-2 text-gray-500 hover:text-amber-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95"
       >
         <Tag size={18} />
       </button>
@@ -2074,9 +2072,9 @@ useEffect(() => {
       <button 
         onClick={() => fetchChatMessages(replyTarget.phone)} 
         title={isRTL ? "تحديث الداتا" : "Force Sync"}
-        className="p-2 text-gray-400 hover:text-red-700 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95 group"
+        className="p-1.5 sm:p-2 text-gray-400 hover:text-red-700 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95 group"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transform group-hover:rotate-180 transition-transform duration-500">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] transform group-hover:rotate-180 transition-transform duration-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
           <polyline points="21 3 21 8 16 8" />
         </svg>
@@ -2086,17 +2084,17 @@ useEffect(() => {
       <button 
         onClick={() => handleClearChat(replyTarget.phone)} 
         title={isRTL ? "إخفاء المحادثة" : "Hide Conversation"}
-        className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95"
+        className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95"
       >
         <Trash2 size={18} />
       </button>
     </div>
   </div>
 
-  {/* 2️⃣ شريط الرسائل المثبتة الفرعي (Sub-Header) - بيظهر تحتهم بنظافة */}
+  {/* 2️⃣ شريط الرسائل المثبتة الفرعي (Sub-Header) */}
   {pinnedMessages && pinnedMessages.length > 0 && (
-    <div className="w-full bg-slate-50/95 dark:bg-[#1a2329]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 px-4 py-1.5 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 animate-in slide-in-from-top duration-200">
-      <span className="text-sm">📌</span>
+    <div className="w-full bg-slate-50/95 dark:bg-[#1a2329]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 px-3 sm:px-4 py-1.5 flex items-center gap-2 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 animate-in slide-in-from-top duration-200">
+      <span className="text-xs sm:text-sm shrink-0">📌</span>
       <div className={`flex-1 truncate font-medium ${isRTL ? "text-right" : "text-left"}`}>
         {pinnedMessages[pinnedMessages.length - 1].text || (isRTL ? "ملف مرفق مثبت" : "Pinned attachment")}
       </div>
@@ -2106,7 +2104,7 @@ useEffect(() => {
             .then(() => setPinnedMessages([]))
             .catch((err) => console.error(err));
         }}
-        className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 font-bold px-2 py-0.5 transition-colors text-sm"
+        className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 font-bold px-1.5 py-0.5 transition-colors text-xs sm:text-sm shrink-0"
         title={isRTL ? "إلغاء التثبيت" : "Unpin"}
       >
         ✕
@@ -2115,303 +2113,307 @@ useEffect(() => {
   )}
 </div>
 
-            {/* صندوق عرض الرسائل (Scroll Area) */}
-            <div className="flex-1 overflow-y-auto pt-16 pb-3 px-3 sm:px-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar flex flex-col">
-              <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.02] pointer-events-none" 
-                   style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '340px' }} />
-              
-              {/* رسالة تثبيت علوية داخل الشات إذا كانت هناك رسالة مثبتة (Pinned Message Header) */}
-{activeChat.some(m => m.isPinned) && (
-  <div className="sticky top-2 z-20 mx-auto max-w-md w-full bg-white/95 dark:bg-[#1f2c34]/95 backdrop-blur shadow-sm rounded-lg p-2.5 flex items-center justify-between text-xs border border-gray-200 dark:border-white/5 animate-in">
-    
-    <div 
-      onClick={async () => {
-        const pinnedMsg = activeChat.find(m => m.isPinned);
-        if (!pinnedMsg?._id) return;
-
-        // 1️⃣ محاولة البحث عن الرسالة في الشاشة الحالية
-        let element = document.getElementById(`msg-${pinnedMsg._id}`);
-        
-        if (element) {
-          // لو الرسالة مرندرة وجاهزة، اسكرول ليها فوراً
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          element.classList.add('bg-amber-100', 'dark:bg-amber-950/40', 'transition-all', 'duration-300');
-          setTimeout(() => element.classList.remove('bg-amber-100', 'dark:bg-amber-950/40'), 1500);
-        } else {
-          // 2️⃣ لو مش موجودة (قديمة ومحصلهاش لود)، هنلجأ للخطة البديلة
-          console.log("⏳ الرسالة قديمة وغير مرندرة، جاري سحب كامل المحادثة...");
-          
-          if (typeof fetchChatMessages === "function") {
-            // هنسحب المحادثة بأكملها (أو تزيد الـ limit في الـ API بتاعك هنا)
-            // افتراضياً هننادي الدالة الأساسية اللي بتجيب الداتا
-            await fetchChatMessages(replyTarget.phone);
-            
-            // استراحة صغيرة 300ms عشان الـ React State تلحق تعمل ريندر للرسائل الجديدة
-            setTimeout(() => {
-              const reFetchedElement = document.getElementById(`msg-${pinnedMsg._id}`);
-              if (reFetchedElement) {
-                reFetchedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                reFetchedElement.classList.add('bg-amber-100', 'dark:bg-amber-950/40', 'transition-all', 'duration-300');
-                setTimeout(() => reFetchedElement.classList.remove('bg-amber-100', 'dark:bg-amber-950/40'), 1500);
-              } else {
-                alert(isRTL ? "الرسالة قديمة جداً، يرجى عمل سكرول لأعلى لتحميلها." : "Message is too old, please scroll up to load it.");
-              }
-            }, 300);
-          }
-        }
-      }}
-      className="flex items-center gap-2 truncate flex-1 cursor-pointer active:opacity-70 group"
-      title={isRTL ? "اضغط للذهاب إلى الرسالة" : "Click to view message"}
-    >
-      <span className="text-red-600 font-bold shrink-0 group-hover:underline">
-        📌 {isRTL ? "مثبتة:" : "Pinned:"}
-      </span>
-      <p className="text-gray-600 dark:text-gray-300 truncate font-medium group-hover:text-blue-500 transition-colors">
-        {activeChat.find(m => m.isPinned)?.text || (isRTL ? "رسالة ميديا مثبتة" : "Pinned Media")}
-      </p>
-    </div>
-    
-    <div className="flex items-center gap-2 shrink-0 pl-2">
-      {activeChat.find(m => m.isPinned)?.pinnedBy?.name && (
-        <span className="text-[10px] text-gray-400 italic">
-          by {activeChat.find(m => m.isPinned).pinnedBy.name.split(' ')[0]}
-        </span>
-      )}
+         {/* صندوق عرض الرسائل (Scroll Area) */}
+<div className="flex-1 overflow-y-auto pt-16 pb-3 px-3 sm:px-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar flex flex-col">
+  <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.02] pointer-events-none" 
+       style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '340px' }} />
+  
+  {/* رسالة تثبيت علوية داخل الشات إذا كانت هناك رسالة مثبتة (Pinned Message Header) */}
+  {activeChat.some(m => m.isPinned) && (
+    <div className="sticky top-2 z-20 mx-auto max-w-md w-full bg-white/95 dark:bg-[#1f2c34]/95 backdrop-blur shadow-sm rounded-lg p-2.5 flex items-center justify-between text-xs border border-gray-200 dark:border-white/5 animate-in">
       
-      <button 
-        onClick={(e) => {
-          e.stopPropagation(); // يمنع تشغيل الاسكرول عند الضغط على X
+      <div 
+        onClick={async () => {
           const pinnedMsg = activeChat.find(m => m.isPinned);
-          if (pinnedMsg?._id) {
-            axios.patch(`/chat-actions/pin/${pinnedMsg._id}`)
-              .then((response) => {
-                if (response.data.success) {
-                  setActiveChat(prev => prev.map(msg => msg._id === pinnedMsg._id ? { ...msg, isPinned: false } : msg));
+          if (!pinnedMsg?._id) return;
+
+          // 1️⃣ محاولة البحث عن الرسالة في الشاشة الحالية
+          let element = document.getElementById(`msg-${pinnedMsg._id}`);
+          
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('bg-amber-100', 'dark:bg-amber-950/40', 'transition-all', 'duration-300');
+            setTimeout(() => element.classList.remove('bg-amber-100', 'dark:bg-amber-950/40'), 1500);
+          } else {
+            // 2️⃣ لو مش موجودة (قديمة ومحصلهاش لود)
+            console.log("⏳ الرسالة قديمة وغير مرندرة، جاري سحب كامل المحادثة...");
+            if (typeof fetchChatMessages === "function") {
+              await fetchChatMessages(replyTarget.phone);
+              setTimeout(() => {
+                const reFetchedElement = document.getElementById(`msg-${pinnedMsg._id}`);
+                if (reFetchedElement) {
+                  reFetchedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  reFetchedElement.classList.add('bg-amber-100', 'dark:bg-amber-950/40', 'transition-all', 'duration-300');
+                  setTimeout(() => reFetchedElement.classList.remove('bg-amber-100', 'dark:bg-amber-950/40'), 1500);
+                } else {
+                  alert(isRTL ? "الرسالة قديمة جداً، يرجى عمل سكرول لأعلى لتحميلها." : "Message is too old, please scroll up to load it.");
                 }
-              })
-              .catch(err => console.error(err));
+              }, 300);
+            }
           }
         }}
-        title={isRTL ? "إلغاء التثبيت" : "Unpin Message"}
-        className="w-5 h-5 bg-gray-100 dark:bg-white/10 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/50 rounded-full flex items-center justify-center font-bold text-[10px] transition-colors text-gray-400 z-30"
+        className="flex items-center gap-2 truncate flex-1 cursor-pointer active:opacity-70 group"
+        title={isRTL ? "اضغط للذهاب إلى الرسالة" : "Click to view message"}
       >
-        ✕
-      </button>
-    </div>
-  </div>
-)}
-
-              <div className="flex-1" /> {/* دفع المحادثة للأسفل دائماً لمحاكاة تطبيق الموبايل الحقيقي */}
-{activeChat.map((msg, idx) => {
-  const isMe = msg.direction === "outbound";
-  const isOrder = msg.type === "order";
-  
-  return (
-    <div 
-      key={msg._id || idx} 
-      id={`msg-${msg._id}`}
-      className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-1 duration-150 group`}
-    >
-      <div className={`relative max-w-[88%] sm:max-w-[72%] shadow-sm rounded-xl transition-all duration-200
-        ${isOrder 
-          ? "p-0 bg-transparent border-0 shadow-none" 
-          : isMe 
-            ? "px-3 pt-1.5 pb-1 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none select-all" 
-            : "px-3 pt-1.5 pb-1 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none select-all"
-        }`}
-      >
-        {/* عرض محتوى الميديا أو الكتالوج أو النصوص */}
-        {renderMedia(msg)}
-        
-        {/* الوقت وحالة الإرسال */}
-        <div className={`flex items-center justify-end gap-1 mt-0.5 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
-          {msg.isPinned && <span className="text-[9px] text-gray-400">📌</span>}
-          {msg.isForwarded && <span className="text-[9px] text-blue-500 italic">↩️ {isRTL ? "منقولة" : "Forwarded"}</span>}
-          <span className="text-[8.5px] font-medium opacity-55 uppercase tracking-tighter tabular-nums">
-            {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+        <span className="text-red-600 font-bold shrink-0 group-hover:underline">
+          📌 {isRTL ? "مثبتة:" : "Pinned:"}
+        </span>
+        <p className="text-gray-600 dark:text-gray-300 truncate font-medium group-hover:text-blue-500 transition-colors">
+          {activeChat.find(m => m.isPinned)?.text || (isRTL ? "رسالة ميديا مثبتة" : "Pinned Media")}
+        </p>
+      </div>
+      
+      <div className="flex items-center gap-2 shrink-0 pl-2">
+        {activeChat.find(m => m.isPinned)?.pinnedBy?.name && (
+          <span className="text-[10px] text-gray-400 italic">
+            by {activeChat.find(m => m.isPinned).pinnedBy.name.split(' ')[0]}
           </span>
-          {isMe && <StatusIcon status={msg.status} size={12} />}
-        </div>
-
-        {/* ⚙️ الأزرار السريعة المحدثة بنظام الـ Dropdown */}
-        {!isOrder && msg._id && !msg._id.startsWith("temp_") && (
-          <div className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center z-20
-            ${isMe ? '-left-8' : '-right-8'}`}
-          >
-            {/* زرار الـ 3 نقط الرئيسي */}
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveMenuMessageId(activeMenuMessageId === msg._id ? null : msg._id);
-              }}
-              className="p-1 text-gray-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all text-xs font-bold"
-              title={isRTL ? "خيارات الرسالة" : "Message Options"}
-            >
-              ⋮
-            </button>
-
-            {/* الـ Dropdown Menu المنبثق بدقة */}
-            {activeMenuMessageId === msg._id && (
-              <div className={`absolute top-6 bg-white dark:bg-[#2a3942] shadow-xl border border-gray-100 dark:border-white/5 rounded-xl py-1 w-32 z-30 animate-in fade-in zoom-in-95 duration-150
-                ${isMe ? 'left-0' : 'right-0'}`}
-              >
-                {/* 📌 خيار التثبيت / إلغاء التثبيت */}
-                <button
-                  onClick={() => {
-                    axios.patch(`/chat-actions/pin/${msg._id}`)
-                      .then((response) => {
-                        setActiveMenuMessageId(null);
-                        if (response.data.success) {
-                          setActiveChat(prev => prev.map(m => m._id === msg._id ? { ...m, isPinned: !m.isPinned } : m));
-                        }
-                      })
-                      .catch(err => console.error(err));
-                  }}
-                  className="w-full px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-200 flex items-center justify-between transition-colors"
-                >
-                  <span className="w-full text-right">{msg.isPinned ? (isRTL ? "إلغاء التثبيت" : "Unpin") : (isRTL ? "تثبيت الرسالة" : "Pin")}</span>
-                  <span className="text-xs">📌</span>
-                </button>
-
-                {/* ↩️ خيار التوجيه (Forward) */}
-                <button
-                  onClick={() => {
-                    setForwardMessageId(msg._id);
-                    setIsForwardModalOpen(true);
-                    setSearchCustomerQuery("");
-                    setActiveMenuMessageId(null);
-                  }}
-                  className="w-full px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-200 flex items-center justify-between border-t border-gray-50 dark:border-white/5 transition-colors"
-                >
-                  <span className="w-full text-right">{isRTL ? "توجيه الرسالة" : "Forward"}</span>
-                  <span className="text-xs">↩️</span>
-                </button>
-              </div>
-            )}
-          </div>
         )}
+        
+        <button 
+          onClick={(e) => {
+            e.stopPropagation(); 
+            const pinnedMsg = activeChat.find(m => m.isPinned);
+            if (pinnedMsg?._id) {
+              axios.patch(`/chat-actions/pin/${pinnedMsg._id}`)
+                .then((response) => {
+                  if (response.data.success) {
+                    setActiveChat(prev => prev.map(msg => msg._id === pinnedMsg._id ? { ...msg, isPinned: false } : msg));
+                  }
+                })
+                .catch(err => console.error(err));
+            }
+          }}
+          title={isRTL ? "إلغاء التثبيت" : "Unpin Message"}
+          className="w-5 h-5 bg-gray-100 dark:bg-white/10 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/50 rounded-full flex items-center justify-center font-bold text-[10px] transition-colors text-gray-400 z-30"
+        >
+          ✕
+        </button>
       </div>
     </div>
-  );
-})}
-              <div ref={chatEndRef} />
-            </div>
+  )}
 
-            {/* INPUT FOOTER (سطر الإدخال والكتابة المطور للـ Mobile/Web) */}
-            <div className="p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-1.5 border-t border-gray-200 dark:border-white/5 shrink-0 w-full relative z-20 pb-safe">
-              
-              {/* زر الـ Media المطور وملحقات الملفات */}
-              <div className="flex items-center shrink-0">
-                <label className="p-2.5 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500 block active:scale-95">
-                  <Paperclip size={20} />
-                  <input 
-                    type="file"
-                    className="hidden"
-                    accept="image/*,audio/*"
-                    multiple
-                    onChange={handleMediaSelect}
-                  />
-                </label>
-              </div>
+  <div className="flex-1" />
 
-              {/* زر الريكورد (المايك لرسائل الصوت لايف) */}
-              <div className="flex items-center shrink-0">
-                {isRecording ? (
-                  <button 
-                    onClick={stopRecording}
-                    className="p-2.5 bg-red-500 text-white rounded-full animate-pulse transition-colors active:scale-95 flex items-center justify-center shadow-md shadow-red-500/20"
-                    title={isRTL ? "إيقاف وحفظ" : "Stop Recording"}
-                  >
-                    <Square size={16} fill="currentColor" />
-                  </button>
-                ) : (
-                  <button 
-                    onClick={startRecording}
-                    className="p-2.5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 rounded-full transition-colors active:scale-95 flex items-center justify-center"
-                    title={isRTL ? "تسجيل ريكورد" : "Record Voice Note"}
-                  >
-                    <Mic size={20} />
-                  </button>
-                )}
-              </div>
+  {activeChat.map((msg, idx) => {
+    const isMe = msg.direction === "outbound";
+    const isOrder = msg.type === "order";
+    
+    return (
+      <div 
+        key={msg._id || idx} 
+        id={`msg-${msg._id}`}
+        // تم إضافة relative و تباعد جانبي (px-7) لترك مساحة ثابتة ومريحة لزر الـ 3 نقط على الموبايل
+        className={`flex w-full ${isMe ? "justify-end pl-7" : "justify-start pr-7"} animate-in fade-in slide-in-from-bottom-1 duration-150 group relative mb-1`}
+      >
+        {/* خلفية نقرة سريعة لقفل القائمة في أي حتة فاضية */}
+        {activeMenuMessageId === msg._id && (
+          <div 
+            className="fixed inset-0 z-30 cursor-default" 
+            onClick={() => setActiveMenuMessageId(null)}
+          />
+        )}
 
-              {/* صندوق النص ومؤشرات المعاينة الحية للميديا والريكوردات قبل إرسالها */}
-              <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/40 transition-all flex flex-col min-w-0">
-                
-                {/* مؤشر جاري تسجيل الصوت حالياً */}
-                {isRecording && (
-                  <div className="px-3 py-1.5 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 flex items-center gap-2 text-xs font-semibold animate-pulse border-b border-gray-100 dark:border-white/5">
-                    <span className="w-2 h-2 rounded-full bg-red-600 block animate-ping"></span>
-                    <span>{isRTL ? "جاري تسجيل الريكورد..." : "Recording live audio..."}</span>
-                  </div>
-                )}
+        <div className={`relative max-w-[88%] sm:max-w-[72%] shadow-sm rounded-xl transition-all duration-200
+          ${isOrder 
+            ? "p-0 bg-transparent border-0 shadow-none" 
+            : isMe 
+              ? "px-3 pt-1.5 pb-1 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none select-all" 
+              : "px-3 pt-1.5 pb-1 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none select-all"
+          }`}
+        >
+          {/* عرض محتوى الميديا أو الكتالوج أو النصوص */}
+          {renderMedia(msg)}
+          
+          {/* الوقت وحالة الإرسال */}
+          <div className={`flex items-center justify-end gap-1 mt-0.5 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
+            {msg.isPinned && <span className="text-[9px] text-gray-400">📌</span>}
+            {msg.isForwarded && <span className="text-[9px] text-blue-500 italic">↩️ {isRTL ? "منقولة" : "Forwarded"}</span>}
+            <span className="text-[8.5px] font-medium opacity-55 uppercase tracking-tighter tabular-nums">
+              {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+            </span>
+            {isMe && <StatusIcon status={msg.status} size={12} />}
+          </div>
 
-                {/* قائمة بأسماء الصور المرفوعة قبل التأكيد */}
-                {selectedFiles.length > 0 && (
-                  <div className="px-3 py-2 bg-gray-50 dark:bg-[#1f2c34] flex items-center justify-between border-b border-gray-200 dark:border-white/5 text-[11px]">
-                    <div className="flex flex-wrap gap-1 max-w-[85%] overflow-hidden truncate">
-                      {selectedFiles.map((f, i) => (
-                        <span key={i} className="bg-white dark:bg-black/20 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/5 font-mono max-w-[110px] truncate shrink-0">
-                          📷 {f.name}
-                        </span>
-                      ))}
-                    </div>
-                    <button onClick={() => setSelectedFiles([])} className="text-red-500 hover:text-red-700 font-bold px-1 text-xs">✕</button>
-                  </div>
-                )}
-
-                {/* معاينة الريكورد وحجمه قبل الإرسال لمنع الضرب */}
-                {audioBlob && !isRecording && (
-                  <div className="px-3 py-1.5 bg-gray-50 dark:bg-[#1f2c34] flex items-center justify-between border-b border-gray-200 dark:border-white/5 text-[11px]">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
-                      🎙️ {isRTL ? "مذكرة صوتية جاهزة" : "Voice Note Selected"} 
-                      <span className="text-gray-400 dark:text-gray-500 font-mono font-normal">({Math.round(audioBlob.size / 1024)} KB)</span>
-                    </span>
-                    <button onClick={() => setAudioBlob(null)} className="text-red-500 hover:text-red-700 font-bold px-1 text-xs">✕</button>
-                  </div>
-                )}
-                
-                {/* حقل الكتابة المرن والتلقائي التمدد من سطر إلى 4 أسطر */}
-                <textarea 
-                  ref={textareaRef}
-                  rows="1"
-                  disabled={isRecording}
-                  placeholder={
-                    isRecording 
-                      ? "" 
-                      : selectedFiles.length > 0 
-                        ? (isRTL ? "أضف تعليقاً على الصور هنا..." : "Add a caption...") 
-                        : audioBlob 
-                          ? (isRTL ? "اضغط إرسال لتأكيد الريكورد..." : "Press send to confirm voice note...") 
-                          : (isRTL ? "اكتب رسالة الدعم الفني..." : "Type a message...")
-                  }
-                  className="w-full bg-transparent border-none outline-none py-2.5 px-3 text-[14px] sm:text-[15px] dark:text-white resize-none max-h-24 custom-scrollbar dynamic-textarea block disabled:opacity-50"
-                  value={replyText}
-                  onChange={handleTextareaChange}
-                  on someKeyDown
-                  onKeyDown={(e) => { 
-                    // في الموبايل والتابلت نكتفي بالضغط للنزول لسطر جديد، وفي الديسكتوب Enter يرسل مباشرة
-                    if(e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) { 
-                      e.preventDefault(); 
-                      handleSendReply(); 
-                    }
-                  }}
-                />
-              </div>
-
-              {/* زر الإرسال الدائري المستوحى بالكامل من واتساب */}
+          {/* ⚙️ زر الـ 3 نقط (ظاهر دايماً للموبايل والكمبيوتر) */}
+          {!isOrder && msg._id && !msg._id.startsWith("temp_") && (
+            <div className={`absolute top-1/2 -translate-y-1/2 flex items-center z-40
+              ${isMe ? '-left-7' : '-right-7'}`}
+            >
+              {/* زرار الـ 3 نقط الرئيسي - بدون opacity عشان يفضل ظاهر علطول على الموبايل */}
               <button 
-                disabled={sending || isRecording || (!replyText.trim() && selectedFiles.length === 0 && !audioBlob)}
-                onClick={handleSendReply}
-                className="w-10 h-10 sm:w-11 h-11 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveMenuMessageId(activeMenuMessageId === msg._id ? null : msg._id);
+                }}
+                className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-all text-sm font-bold active:scale-90"
+                title={isRTL ? "خيارات الرسالة" : "Message Options"}
               >
-                {sending ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
-                ) : (
-                  <Send size={18} className={isRTL ? "rotate-180" : "ml-0.5"} />
-                )}
+                ⋮
               </button>
+
+              {/* الـ Dropdown Menu المنبثق الفخم */}
+              {activeMenuMessageId === msg._id && (
+                <div className={`absolute top-5 bg-white dark:bg-[#2a3942] shadow-2xl border border-gray-100 dark:border-white/5 rounded-xl py-1 w-32 z-50 animate-in fade-in zoom-in-95 duration-100
+                  ${isMe ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`}
+                >
+                  {/* 📌 خيار التثبيت */}
+                  <button
+                    onClick={() => {
+                      axios.patch(`/chat-actions/pin/${msg._id}`)
+                        .then((response) => {
+                          setActiveMenuMessageId(null);
+                          if (response.data.success) {
+                            setActiveChat(prev => prev.map(m => m._id === msg._id ? { ...m, isPinned: !m.isPinned } : m));
+                          }
+                        })
+                        .catch(err => console.error(err));
+                    }}
+                    className={`w-full px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-2 transition-colors
+                      ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}
+                  >
+                    <span className="text-xs">📌</span>
+                    <span className="flex-1 font-medium">{msg.isPinned ? (isRTL ? "إلغاء التثبيت" : "Unpin") : (isRTL ? "تثبيت الرسالة" : "Pin")}</span>
+                  </button>
+
+                  {/* ↩️ خيار التوجيه */}
+                  <button
+                    onClick={() => {
+                      setForwardMessageId(msg._id);
+                      setIsForwardModalOpen(true);
+                      setSearchCustomerQuery("");
+                      setActiveMenuMessageId(null);
+                    }}
+                    className={`w-full px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-2 border-t border-gray-50 dark:border-white/5 transition-colors
+                      ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}
+                  >
+                    <span className="text-xs transform scale-x-[-1]">↩️</span>
+                    <span className="flex-1 font-medium">{isRTL ? "توجيه الرسالة" : "Forward"}</span>
+                  </button>
+                </div>
+              )}
             </div>
+          )}
+        </div>
+      </div>
+    );
+  })}
+  <div ref={chatEndRef} />
+</div>
+
+        {/* ⚠️ التعديل هنا: تم جعل الحاوية sticky bottom-0 وزيادة الـ z-index لمنع الرسائل من العبور فوقه */}
+<div className="fixed bottom-0 w-full p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-1.5 border-t border-gray-200 dark:border-white/5 shrink-0  z-30 pb-safe">
+  
+  {/* زر الـ Media المطور وملحقات الملفات */}
+  <div className="flex items-center shrink-0">
+    <label className="p-2.5 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500 block active:scale-95">
+      <Paperclip size={20} />
+      <input 
+        type="file"
+        className="hidden"
+        accept="image/*,audio/*"
+        multiple
+        onChange={handleMediaSelect}
+      />
+    </label>
+  </div>
+
+  {/* زر الريكورد (المايك لرسائل الصوت لايف) */}
+  <div className="flex items-center shrink-0">
+    {isRecording ? (
+      <button 
+        onClick={stopRecording}
+        className="p-2.5 bg-red-500 text-white rounded-full animate-pulse transition-colors active:scale-95 flex items-center justify-center shadow-md shadow-red-500/20"
+        title={isRTL ? "إيقاف وحفظ" : "Stop Recording"}
+      >
+        <Square size={16} fill="currentColor" />
+      </button>
+    ) : (
+      <button 
+        onClick={startRecording}
+        className="p-2.5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 rounded-full transition-colors active:scale-95 flex items-center justify-center"
+        title={isRTL ? "تسجيل ريكورد" : "Record Voice Note"}
+      >
+        <Mic size={20} />
+      </button>
+    )}
+  </div>
+
+  {/* صندوق النص ومؤشرات المعاينة الحية للميديا والريكوردات قبل إرسالها */}
+  <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/40 transition-all flex flex-col min-w-0">
+    
+    {/* مؤشر جاري تسجيل الصوت حالياً */}
+    {isRecording && (
+      <div className="px-3 py-1.5 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 flex items-center gap-2 text-xs font-semibold animate-pulse border-b border-gray-100 dark:border-white/5">
+        <span className="w-2 h-2 rounded-full bg-red-600 block animate-ping"></span>
+        <span>{isRTL ? "جاري تسجيل الريكورد..." : "Recording live audio..."}</span>
+      </div>
+    )}
+
+    {/* قائمة بأسماء الصور المرفوعة قبل التأكيد */}
+    {selectedFiles.length > 0 && (
+      <div className="px-3 py-2 bg-gray-50 dark:bg-[#1f2c34] flex items-center justify-between border-b border-gray-200 dark:border-white/5 text-[11px]">
+        <div className="flex flex-wrap gap-1 max-w-[85%] overflow-hidden truncate">
+          {selectedFiles.map((f, i) => (
+            <span key={i} className="bg-white dark:bg-black/20 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/5 font-mono max-w-[110px] truncate shrink-0">
+              📷 {f.name}
+            </span>
+          ))}
+        </div>
+        <button onClick={() => setSelectedFiles([])} className="text-red-500 hover:text-red-700 font-bold px-1 text-xs">✕</button>
+      </div>
+    )}
+
+    {/* معاينة الريكورد وحجمه قبل الإرسال لمنع الضرب */}
+    {audioBlob && !isRecording && (
+      <div className="px-3 py-1.5 bg-gray-50 dark:bg-[#1f2c34] flex items-center justify-between border-b border-gray-200 dark:border-white/5 text-[11px]">
+        <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+          🎙️ {isRTL ? "مذكرة صوتية جاهزة" : "Voice Note Selected"} 
+          <span className="text-gray-400 dark:text-gray-500 font-mono font-normal">({Math.round(audioBlob.size / 1024)} KB)</span>
+        </span>
+        <button onClick={() => setAudioBlob(null)} className="text-red-500 hover:text-red-700 font-bold px-1 text-xs">✕</button>
+      </div>
+    )}
+    
+    {/* حقل الكتابة المرن والتلقائي التمدد من سطر إلى 4 أسطر */}
+    <textarea 
+      ref={textareaRef}
+      rows="1"
+      disabled={isRecording}
+      placeholder={
+        isRecording 
+          ? "" 
+          : selectedFiles.length > 0 
+            ? (isRTL ? "أضف تعليقاً على الصور هنا..." : "Add a caption...") 
+            : audioBlob 
+              ? (isRTL ? "اضغط إرسال لتأكيد الريكورد..." : "Press send to confirm voice note...") 
+              : (isRTL ? "اكتب رسالة الدعم الفني..." : "Type a message...")
+      }
+      className="w-full bg-transparent border-none outline-none py-2.5 px-3 text-[14px] sm:text-[15px] dark:text-white resize-none max-h-24 custom-scrollbar dynamic-textarea block disabled:opacity-50"
+      value={replyText}
+      onChange={handleTextareaChange}
+      onKeyDown={(e) => { 
+        if(e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) { 
+          e.preventDefault(); 
+          handleSendReply(); 
+        }
+      }}
+    />
+  </div>
+
+  {/* زر الإرسال الدائري المستوحى بالكامل من واتساب */}
+  <button 
+    disabled={sending || isRecording || (!replyText.trim() && selectedFiles.length === 0 && !audioBlob)}
+    onClick={handleSendReply}
+    className="w-10 h-10 sm:w-11  bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
+  >
+    {sending ? (
+      <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+    ) : (
+      <Send size={18} className={isRTL ? "rotate-180" : "ml-0.5"} />
+    )}
+  </button>
+</div>
           </>
         ) : (
           /* واجهة الترحيب المركزية المصممة بأسلوب الفخامة البسيطة Luxury Minimalism */
@@ -2525,6 +2527,8 @@ useEffect(() => {
   </div>
 )}
       </div>
+
+      
     </div>
 
     {/* الستايلات والـ Custom Overrides الخاصة بواتساب وتناسق الخطوط */}
