@@ -9,7 +9,8 @@ import {
   LayoutDashboard,
   ChevronRight,
   Megaphone,
-  PlusCircle 
+  PlusCircle ,
+  Globe,
 } from "lucide-react";
 
 import { useTheme } from "../context/ThemeContext";
@@ -168,17 +169,39 @@ useEffect(() => {
 >
         {/* HEADER */}
         <div className="h-16 lg:h-auto px-4 lg:px-6 pt-3 lg:pt-7 pb-3 border-b border-inherit flex items-center justify-between">
-          <div>
+       <div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-8 rounded-full bg-red-700" />
-              <h2 className="text-2xl lg:text-3xl font-black   uppercase tracking-tight">
+              <h2 className="text-2xl lg:text-3xl font-black uppercase tracking-tight text-zinc-900 dark:text-white">
                 Vestro
               </h2>
             </div>
 
-            <p className="text-[9px] mt-1 uppercase font-bold tracking-[0.25em] opacity-40">
-              Core Admin
-            </p>
+            {/* السطر الثاني: يجمع Core Admin والزرار جنباً إلى جنب */}
+            <div className="flex items-center gap-2.5 mt-1">
+              <p className="text-[9px] uppercase font-bold tracking-[0.25em] opacity-40 select-none text-zinc-900 dark:text-zinc-100">
+                Core Admin
+              </p>
+
+              {/* زرار الأيقونة الفخم ملاصق وجنب الكلمة مباشرة */}
+              <a
+                href="https://vestro.net"
+                target="_blank"
+                rel="noopener noreferrer"
+                title={isRTL ? "زيارة الموقع الإلكتروني" : "Visit Website"}
+                className="group flex items-center justify-center w-5 h-5 rounded-md bg-red-500/10 hover:bg-red-700 border border-red-500/20 hover:border-red-600 text-red-700 dark:text-red-400 hover:text-white transition-all duration-200 active:scale-90 shrink-0 relative overflow-hidden"
+              >
+                <div className="relative flex items-center justify-center w-full h-full">
+                  {/* أيقونة الكرة الأرضية بحجم متناسق */}
+                  <Globe size={20} strokeWidth={2} className="transition-transform duration-200 group-hover:scale-75 group-hover:opacity-0" />
+                  
+                  {/* السهم يظهر مكانها عند الـ Hover */}
+                  <span className="absolute text-[9px] font-bold opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 text-white">
+                    ↗
+                  </span>
+                </div>
+              </a>
+            </div>
           </div>
 
           <button

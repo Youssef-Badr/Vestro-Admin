@@ -1,1003 +1,4 @@
-// import React, { useEffect, useState, useRef, useCallback } from "react";
-// import axios from "../../api/axiosInstance";
-// import { useLanguage } from "../../context/LanguageContext";
-// import { io } from "socket.io-client";
-// import {
-//   Search, CheckCheck, Check, User, Send, Headset,
-//   MessageCircle, ChevronLeft, MoreVertical,
-//   Clock, Trash2, ShoppingBag, Hash, Paperclip, Mic, Square
-// } from "lucide-react";
-
-// const SOCKET_URL = import.meta.env.VITE_API_URL;
-
-// export default function MessageLogs() {
-//   const { language } = useLanguage();
-//   const isRTL = language === "ar";
-
-//   const [logs, setLogs] = useState([]);
-//   const [activeChat, setActiveChat] = useState([]);
-//   const [replyTarget, setReplyTarget] = useState(null);
-//   const [replyText, setReplyText] = useState("");
-//   const [sending, setSending] = useState(false);
-//   const [search, setSearch] = useState("");
-//   const [isRecording, setIsRecording] = useState(false); // حالة التسجيل الحالي
-// const [mediaRecorder, setMediaRecorder] = useState(null); // كائن التسجيل
-// // استبدل الـ state القديم selectedFile بدول:
-// const [selectedFiles, setSelectedFiles] = useState([]); // مصفوفة للصور أو الميديا المتعددة
-// const [audioBlob, setAudioBlob] = useState(null);       // لحفظ ملف الصوت أو الريكورد  // الـ localStorage هو المخزن الأساسي لعدد الرسائل غير المقروءة لايف
-//   const [localUnreadPhones, setLocalUnreadPhones] = useState(() => {
-//     try {
-//       const saved = localStorage.getItem("vestro_unread_phones");
-//       return saved ? JSON.parse(saved) : {};
-//     } catch {
-//       return {};
-//     }
-//   });
-
-//   const socket = useRef(null);
-//   const chatEndRef = useRef(null);
-//   const activePhoneRef = useRef(null);
-//   const textareaRef = useRef(null);
-
-//   // تحديث الـ localStorage كلما تغيرت الحسبة المحلية
-//   useEffect(() => {
-//     localStorage.setItem("vestro_unread_phones", JSON.stringify(localUnreadPhones));
-//   }, [localUnreadPhones]);
-
-//   useEffect(() => {
-//     activePhoneRef.current = replyTarget?.phone;
-//   }, [replyTarget]);
-
-//   const StatusIcon = ({ status, size = 16 }) => {
-//     if (status === "read") return <CheckCheck size={size} className="text-blue-500" />;
-//     if (status === "delivered") return <CheckCheck size={size} className="text-gray-400" />;
-//     if (status === "sent") return <Check size={size} className="text-gray-400" />;
-//     if (status === "failed") return <span className="text-red-500 text-[10px]">⚠️</span>;
-//     return <Clock size={size - 2} className="text-gray-300" />;
-//   };
-
-//   // دالة القراءة: تصفر الـ localStorage والسيرفر فوراً
-//   const markAsRead = useCallback((phone) => {
-//     if (socket.current?.connected) {
-//       socket.current.emit("mark_as_read", { phone });
-//     }
-
-//     setLocalUnreadPhones((prev) => {
-//       const updated = { ...prev };
-//       delete updated[phone];
-//       return updated;
-//     });
-
-//     setLogs((prev) =>
-//       prev.map((log) =>
-//         log.phone === phone ? { ...log, unreadCount: 0 } : log
-//       )
-//     );
-//   }, []);
-
-//   const handleClearChat = async (phone) => {
-//     if (!window.confirm(isRTL ? "هل أنت متأكد من رغبتك في إخفاء هذه المحادثة؟" : "Are you sure you want to hide this chat?")) return;
-//     try {
-//       const res = await axios.delete(`/messages/clear/${phone}`);
-//       if (res.data.success) {
-//         if (activePhoneRef.current === phone) {
-//           setReplyTarget(null);
-//           setActiveChat([]);
-//         }
-//         setLocalUnreadPhones((prev) => {
-//           const updated = { ...prev };
-//           delete updated[phone];
-//           return updated;
-//         });
-//         setLogs((prev) => prev.filter((log) => log.phone !== phone));
-//       }
-//     } catch (err) {
-//       console.error("Failed to clear chat:", err);
-//     }
-//   };
-
-// // 2. الدالة المحدثة لعمل ريفريش كامل (للشات المفتوح والسايد بار معاً)
-// const fetchChatMessages = async (phone) => {
-//   if (!phone) return;
-//   try {
-//     // جلب رسائل الشات النشط وتحديث السايد بار في نفس الوقت بالتوازي لسرعة الأداء
-//     const [chatRes] = await Promise.all([
-//       axios.get(`/whatsapp/chat/${phone}`),
-//       fetchLogs()
-//     ]);
-
-//     if (chatRes.data.success) {
-//       setActiveChat(chatRes.data.messages || []);
-//     }
-//   } catch (err) {
-//     console.error("Failed to force refresh chat and sidebar:", err);
-//   }
-// };
-//   useEffect(() => {
-//     socket.current = io(SOCKET_URL, {
-//       transports: ["websocket"],
-//       reconnection: true,
-//     });
-
-//     const currentSocket = socket.current;
-
-//     currentSocket.on("message_status_updated", (update) => {
-
-//       const updateIdStr = update.messageId ? String(update.messageId) : null;
-//       const updateWamIdStr = update.whatsappMessageId ? String(update.whatsappMessageId) : null;
-
-//       if (update.status === "read") {
-//         setLocalUnreadPhones((prev) => {
-//           const updated = { ...prev };
-//           delete updated[update.phone];
-//           return updated;
-//         });
-//         setLogs((prev) =>
-//           prev.map((log) =>
-//             log.phone === update.phone ? { ...log, unreadCount: 0 } : log
-//           )
-//         );
-//       }
-
-//       // === ⚠️ هنا مربط الفرس: تحديث الشات المفتوح ===
-//       setActiveChat((prev) => {
-
-//         if (!prev || prev.length === 0) {
-//           return prev;
-//         }
-
-//         return prev.map(msg => {
-//           const msgIdStr = msg._id ? String(msg._id) : null;
-//           const msgWamIdStr = msg.whatsappMessageId ? String(msg.whatsappMessageId) : null;
-
-//           const isMatch = (updateIdStr && msgIdStr === updateIdStr) ||
-//                           (updateWamIdStr && msgWamIdStr === updateWamIdStr);
-
-//           // كونسول مخصص للرسالة اللي السيرفر بيحاول يحدثها (هنطبع لو حصل تطابق أو لو ده كونسول تشخيصي)
-//           if (isMatch) {
-
-//           }
-
-//           return isMatch ? { ...msg, status: update.status } : msg;
-//         });
-//       });
-
-//       // === تحديث الـ Logs الجانبية ===
-//       setLogs((prev) => {
-//         if (!prev || prev.length === 0) return prev;
-//         return prev.map(log => {
-//           const logIdStr = log._id ? String(log._id) : null;
-//           const logWamIdStr = log.whatsappMessageId ? String(log.whatsappMessageId) : null;
-
-//           const isMatch = (updateIdStr && logIdStr === updateIdStr) ||
-//                           (updateWamIdStr && logWamIdStr === updateWamIdStr);
-
-//           return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
-//         });
-//       });
-//     });
-
-//     currentSocket.on("chat_cleared", (data) => {
-//       if (activePhoneRef.current === data.phone) {
-//         setReplyTarget(null);
-//         setActiveChat([]);
-//       }
-//       setLocalUnreadPhones((prev) => {
-//         const updated = { ...prev };
-//         delete updated[data.phone];
-//         return updated;
-//       });
-//       setLogs((prev) => prev.filter((log) => log.phone !== data.phone));
-//     });
-
-//     currentSocket.on("receive-message", (newMessage) => {
-//       const isChatOpen = activePhoneRef.current === newMessage.phone;
-
-//       if (isChatOpen) {
-//         setActiveChat((prev) => {
-//           if (newMessage.direction === "outbound") {
-//             const hasTemp = prev.some(msg => msg._id?.toString().startsWith("temp_"));
-//             if (hasTemp) {
-//               let replaced = false;
-//               return prev.map((msg) => {
-//                 if (!replaced && msg._id?.toString().startsWith("temp_") && msg.text === newMessage.text) {
-//                   replaced = true;
-//                   return { ...newMessage, isRead: true };
-//                 }
-//                 return msg;
-//               });
-//             }
-//           }
-
-//           const newMsgIdStr = newMessage._id?.toString();
-//           const newWamIdStr = newMessage.whatsappMessageId?.toString();
-//           const isAlreadyExists = prev.some(msg => {
-//             const msgIdStr = msg._id?.toString();
-//             const msgWamIdStr = msg.whatsappMessageId?.toString();
-//             return (newMsgIdStr && msgIdStr === newMsgIdStr) || (newWamIdStr && msgWamIdStr === newWamIdStr);
-//           });
-
-//           if (isAlreadyExists) return prev;
-//           return [...prev, { ...newMessage, isRead: true }];
-//         });
-//       }
-
-//       const isCustomerMsg = newMessage.direction === "inbound";
-
-//       // 1. تحديث الـ localStorage أولاً كـ مرجع وحيد للزيادة لمنع الدبلرة
-//       if (isCustomerMsg && !isChatOpen) {
-//         setLocalUnreadPhones((prevPhones) => {
-//           const currentLocalCount = prevPhones[newMessage.phone] || 0;
-//           const updatedPhones = {
-//             ...prevPhones,
-//             [newMessage.phone]: currentLocalCount + 1
-//           };
-
-//           // 2. تحديث قائمة الـ logs بناءً على القيمة الدقيقة الجديدة مباشرةً من الحسبة
-//           setLogs((prevLogs) => {
-//             const existingLog = prevLogs.find(l => l.phone === newMessage.phone);
-//             const filtered = prevLogs.filter(l => l.phone !== newMessage.phone);
-
-//             const updatedLog = {
-//               ...newMessage,
-//               unreadCount: updatedPhones[newMessage.phone], // القيمة الدقيقة بدون تكرار أو جمع إضافي
-//               customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" }
-//             };
-//             return [updatedLog, ...filtered];
-//           });
-
-//           return updatedPhones;
-//         });
-//       } else {
-//         // لو رسالة صادرة منك أو الشات مفتوح، بنرتب اللوج الجانبي طبيعي بدون لعب في العداد
-//         setLogs((prevLogs) => {
-//           const existingLog = prevLogs.find(l => l.phone === newMessage.phone);
-//           const filtered = prevLogs.filter(l => l.phone !== newMessage.phone);
-//           const updatedLog = {
-//             ...newMessage,
-//             unreadCount: isChatOpen ? 0 : (existingLog?.unreadCount || 0),
-//             customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" }
-//           };
-//           return [updatedLog, ...filtered];
-//         });
-//       }
-//     });
-
-//     return () => {
-//       currentSocket.off("message_status_updated");
-//       currentSocket.off("chat_cleared");
-//       currentSocket.off("receive-message");
-//       currentSocket.disconnect();
-//     };
-//   }, []);
-
-//   const scrollToBottom = useCallback((behavior = "smooth") => {
-//     chatEndRef.current?.scrollIntoView({ behavior });
-//   }, []);
-
-//   useEffect(() => {
-//     if (activeChat.length > 0) {
-//       const timer = setTimeout(() => scrollToBottom("smooth"), 100);
-//       return () => clearTimeout(timer);
-//     }
-//   }, [activeChat, scrollToBottom]);
-
-//   const fetchLogs = async () => {
-//     try {
-//       const { data } = await axios.get("/messages", { params: { search } });
-//       const fetchedMessages = data.messages || [];
-
-//       setLogs(fetchedMessages.map(msg => {
-//         const localCount = localUnreadPhones[msg.phone];
-//         return {
-//           ...msg,
-//           // الـ Math.max هنا للحماية، طالما اللوجيك اتظبط فوق هتجيب القيمة الحقيقية مظبوطة 100%
-//           unreadCount: localCount !== undefined ? Math.max(msg.unreadCount || 0, localCount) : (msg.unreadCount || 0)
-//         };
-//       }));
-//     } catch (err) {
-//       console.error("Error fetching logs:", err);
-//     }
-//   };
-
-//   useEffect(() => {
-//     const handler = setTimeout(fetchLogs, 400);
-//     return () => clearTimeout(handler);
-//   }, [search]); // شيلنا الـ localUnreadPhones من الـ dependencies لمنع الـ Infinite loops وإعادة استدعاء الـ API مع كل تحديث عداد
-
-//   const openChat = async (msg) => {
-//     setReplyTarget(msg);
-//     setActiveChat([]);
-
-//     markAsRead(msg.phone);
-//     if (textareaRef.current) textareaRef.current.style.height = "auto";
-
-//     try {
-//       const { data } = await axios.get(`/whatsapp/chat/${msg.phone}`);
-//       if (data.success) {
-//         setActiveChat(data.messages || []);
-//       }
-//     } catch (err) {
-//       console.error("Chat loading failed", err);
-//     }
-//   };
-
-//  const handleMediaSelect = (e) => {
-//   const files = Array.from(e.target.files);
-//   if (files.length === 0) return;
-
-//   // الحد الأقصى 16 ميجا بايت لكل ملف
-//   const maxSize = 16 * 1024 * 1024;
-//   const validFiles = [];
-
-//   for (let file of files) {
-//     if (file.size > maxSize) {
-//       alert(isRTL ? `الملف ${file.name} حجمه كبير جداً. الحد الأقصى 16 ميجابايت.` : `File ${file.name} is too large. Max size is 16MB.`);
-//       continue;
-//     }
-//     validFiles.push(file);
-//   }
-
-//   // لو بنرفع صور، بنسمح بتعدد الصور، لو ملف صوتي بناخده هو بس
-//   const hasAudio = validFiles.some(f => f.type.startsWith('audio/'));
-
-//   if (hasAudio) {
-//     // لو ريكورد أو صوت، بناخد أول واحد وبنصفره من قائمة الصور
-//     setAudioBlob(validFiles[0]);
-//     setSelectedFiles([]);
-//   } else {
-//     // لو صور، بنضيفهم على المختارين حالياً (لو عايز تدمج أو تستبدل، هنا بنستبدل عشان الأمان)
-//     setSelectedFiles(validFiles);
-//     setAudioBlob(null);
-//   }
-// };
-
-// const handleSendReply = async () => {
-//   // التحقق: لو مفيش نص ومفيش أي ميديا، أو السيرفر بيحمل.. اخرج
-//   const hasImages = selectedFiles.length > 0;
-//   const hasAudio = !!audioBlob;
-
-//   if ((!replyText.trim() && !hasImages && !hasAudio) || sending) return;
-
-//   const content = replyText.trim();
-//   const tempId = "temp_" + Date.now().toString();
-
-//   setSending(true);
-//   setReplyText("");
-//   if (textareaRef.current) textareaRef.current.style.height = "auto";
-
-//   // 1. التحديث الفوري على الشاشة (Optimistic UI)
-//   let optimisticText = content;
-//   let optimisticType = "text";
-
-//   if (!optimisticText) {
-//     if (hasImages) optimisticText = isRTL ? `📷 جاري إرسال ${selectedFiles.length} صور...` : `📷 Sending ${selectedFiles.length} images...`;
-//     if (hasAudio) optimisticText = isRTL ? "🎵 جاري إرسال تسجيل صوتي..." : "🎵 Sending audio...";
-//   }
-
-//   if (hasImages) optimisticType = "image";
-//   if (hasAudio) optimisticType = "audio";
-
-//   const optimisticMessage = {
-//     _id: tempId,
-//     text: optimisticText,
-//     direction: "outbound",
-//     status: "pending",
-//     createdAt: new Date().toISOString(),
-//     type: optimisticType
-//   };
-//   setActiveChat((prev) => [...prev, optimisticMessage]);
-
-//   try {
-//     const formData = new FormData();
-//     formData.append("phone", replyTarget.phone);
-//     formData.append("message", content);
-
-//     // 2. معالجة نوع الميديا المرفوعة وإضافتها للـ FormData
-//     if (hasImages) {
-//       formData.append("type", "image");
-//       // الـ Loop السحري لاستقبال الحقل "file" كمصفوفة في الباك إند
-//       selectedFiles.forEach((file) => {
-//         formData.append("file", file);
-//       });
-//     } else if (hasAudio) {
-//       formData.append("type", "audio");
-//       const audioFile = audioBlob instanceof File ? audioBlob : new File([audioBlob], "voice.mp3", { type: audioBlob.type || "audio/mp3" });
-//       formData.append("file", audioFile);
-//     } else {
-//       formData.append("type", "text");
-//     }
-
-//     // 3. إرسال الطلب للباك إند
-//     const res = await axios.post("/whatsapp/send", formData, {
-//       headers: {
-//         'Content-Type': 'multipart/form-data'
-//       }
-//     });
-
-//     if (res.data.success) {
-//       const finalMessage = {
-//         _id: res.data.data?._id || res.data.dbId || tempId,
-//         whatsappMessageId: res.data.messageId || res.data.whatsappMessageId,
-//         text: content || (hasImages ? `📷 Photo (${selectedFiles.length})` : hasAudio ? "🎵 Audio" : ""),
-//         direction: "outbound",
-//         status: "sent",
-//         createdAt: new Date().toISOString(),
-//         type: optimisticType,
-//         mediaUrl: res.data.data?.mediaUrl || null,
-//         mediaUrls: res.data.data?.mediaUrls || null // هنا بنخزن مصفوفة الروابط الكاملة اللي رجعت من السيرفر
-//       };
-
-//       setActiveChat((prev) =>
-//         prev.map(msg => msg._id?.toString() === tempId ? finalMessage : msg)
-//       );
-
-//       setLogs((prev) => {
-//         const filtered = prev.filter(l => l.phone !== replyTarget.phone);
-//         const updatedLog = {
-//           ...replyTarget,
-//           text: finalMessage.text,
-//           status: 'sent',
-//           createdAt: finalMessage.createdAt,
-//           direction: 'outbound',
-//           whatsappMessageId: finalMessage.whatsappMessageId,
-//           unreadCount: 0
-//         };
-//         return [updatedLog, ...filtered];
-//       });
-
-//       // تصفير الميديا بعد النجاح
-//       setSelectedFiles([]);
-//       setAudioBlob(null);
-//     }
-//   } catch (err) {
-//     console.error("حدث خطأ أثناء الإرسال:", err);
-//     setActiveChat((prev) =>
-//       prev.map(msg => msg._id?.toString() === tempId ? { ...msg, status: "failed" } : msg)
-//     );
-//   } finally {
-//     setSending(false);
-//   }
-// };
-
-//   const handleTextareaChange = (e) => {
-//     setReplyText(e.target.value);
-//     e.target.style.height = "auto";
-//     e.target.style.height = `${e.target.scrollHeight}px`;
-//   };
-
-// const startRecording = async () => {
-//   try {
-//     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-//     // نحدد الصيغة المدعومة في متصفح العميل تلقائياً
-//     let options = {};
-//     if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-//       options = { mimeType: 'audio/ogg;codecs=opus' };
-//     } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-//       options = { mimeType: 'audio/webm;codecs=opus' };
-//     }
-
-//     const recorder = new MediaRecorder(stream, options);
-//     const chunks = [];
-
-//     recorder.ondataavailable = (e) => {
-//       if (e.data.size > 0) chunks.push(e.data);
-//     };
-
-//     recorder.onstop = () => {
-//       // ننشئ الـ Blob بنفس الـ mimeType السليم اللي سجلنا بيه منعاً لأي تلف
-//       const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-//       setAudioBlob(blob);
-//       // قفل المايك بعد الانتهاء عشان الخصوصية
-//       stream.getTracks().forEach(track => track.stop());
-//     };
-
-//     recorder.start();
-//     setMediaRecorder(recorder);
-//     setIsRecording(true);
-//     setSelectedFiles([]); // تصفير الصور لو هنسجل
-//   } catch (err) {
-//     console.error("تعذر الوصول للمايكروفون:", err);
-//     alert(isRTL ? "برجاء السماح بالوصول للمايكروفون أولاً." : "Please allow microphone access.");
-//   }
-// };
-// const stopRecording = () => {
-//   if (mediaRecorder && isRecording) {
-//     mediaRecorder.stop();
-//     setIsRecording(false);
-//   }
-// };
-
-// const renderMedia = (msg) => {
-//   if (msg.type === "text" && !msg.mediaUrl) {
-//     return <p className="text-[14.5px] leading-tight whitespace-pre-wrap break-words">{msg.text}</p>;
-//   }
-
-//   if (msg.type === "order") {
-//     const items = msg.orderDetails?.product_items || [];
-//     const totalCartPrice = items.reduce((sum, item) => sum + (item.item_price * item.quantity), 0);
-//     const currencyStr = items[0]?.currency || (isRTL ? "ج.م" : "EGP");
-
-//     return (
-//       <div className="w-full min-w-[240px] max-w-[290px] sm:max-w-sm rounded-xl overflow-hidden bg-white/95 dark:bg-[#182229] border border-red-500/10 dark:border-red-500/20 shadow-md">
-//         {/* Header الـ Card */}
-//         <div className="bg-gradient-to-r from-red-800 to-red-600 px-3 py-2 flex items-center justify-between text-white shadow-sm">
-//           <div className="flex items-center gap-2 min-w-0">
-//             <ShoppingBag size={16} className="animate-pulse shrink-0" />
-//             <span className="text-[11px] sm:text-[13px] font-black tracking-wide uppercase truncate">
-//               {isRTL ? "طلب شراء جديد" : "NEW CATALOG ORDER"}
-//             </span>
-//           </div>
-//           {msg.orderDetails?.catalog_id && (
-//             <div className="flex items-center gap-0.5 text-[9px] bg-black/20 px-1.5 py-0.5 rounded font-mono shrink-0" title="Catalog ID">
-//               <Hash size={9} />
-//               <span>{msg.orderDetails.catalog_id.slice(-6)}</span>
-//             </div>
-//           )}
-//         </div>
-
-//         {/* قائمة المنتجات داخل الـ Card */}
-//         <div className="p-3 space-y-2.5 max-h-52 overflow-y-auto custom-scrollbar">
-//           {items.length > 0 ? (
-//             items.map((item, index) => {
-//               const productImg = item.primary_image || item.image_url || item.product_image || item.images?.[0]?.url;
-//               const rawName = item.product_name || item.name || (isRTL ? "منتج غير معروف" : "Unknown Product");
-//               const variantColor = item.color && item.color !== "N/A" ? item.color : null;
-//               const variantSize = item.size && item.size !== "N/A" ? item.size : null;
-
-//               return (
-//                 <div key={index} className="flex items-start justify-between gap-2 text-xs border-b border-gray-100 dark:border-white/5 pb-2 last:border-0 last:pb-0">
-//                   <div className="min-w-0 flex-1 flex items-start gap-2">
-//                     {productImg ? (
-//                       <img
-//                         src={productImg}
-//                         alt={rawName}
-//                         loading="lazy"
-//                         className="w-10 h-10 object-cover rounded-md border border-gray-100 dark:border-white/10 shrink-0 aspect-square"
-//                       />
-//                     ) : (
-//                       <div className="w-10 h-10 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-md flex items-center justify-center shrink-0 border border-red-100 dark:border-red-950/50 aspect-square">
-//                         <ShoppingBag size={14} />
-//                       </div>
-//                     )}
-
-//                     <div className="min-w-0 flex-1">
-//                       <p className="font-bold text-slate-900 dark:text-slate-100 text-[12.5px] leading-tight mb-0.5 break-words">
-//                         {rawName}
-//                       </p>
-
-//                       <p className="text-gray-400 dark:text-gray-500 text-[11px] tabular-nums">
-//                         {isRTL ? "الكمية:" : "Qty:"} <span className="font-bold text-red-600 dark:text-red-400">{item.quantity}</span>
-//                       </p>
-
-//                       {(variantColor || variantSize) && (
-//                         <div className="flex flex-wrap gap-1 mt-1 text-[10.5px] font-medium">
-//                           {variantColor && (
-//                             <span className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded flex items-center gap-1 max-w-[120px] truncate">
-//                               <span className="w-1 h-1 rounded-full bg-slate-400 shrink-0"></span>
-//                               <span>{variantColor}</span>
-//                             </span>
-//                           )}
-//                           {variantSize && (
-//                             <span className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded font-mono font-bold">
-//                               {variantSize}
-//                             </span>
-//                           )}
-//                         </div>
-//                       )}
-//                     </div>
-//                   </div>
-
-//                   <div className="text-end shrink-0 tabular-nums font-bold pt-0.5 text-slate-800 dark:text-slate-200">
-//                     <span>{(item.item_price * item.quantity).toLocaleString()}</span>
-//                     <span className="text-[9px] opacity-60 ms-0.5 font-normal">{currencyStr}</span>
-//                   </div>
-//                 </div>
-//               );
-//             })
-//           ) : (
-//             <p className="text-xs text-gray-400 text-center py-2">{isRTL ? "لا توجد تفاصيل للمنتجات" : "No product items included"}</p>
-//           )}
-//         </div>
-
-//         {/* نص رسالة العميل المرافقة إن وجدت */}
-//         {msg.orderDetails?.text && (
-//           <div className="mx-3 mb-3 p-2 bg-gray-50 dark:bg-black/20 border-s-2 border-red-500 rounded text-[12px] italic text-slate-600 dark:text-slate-300 break-words">
-//             "{msg.orderDetails.text}"
-//           </div>
-//         )}
-
-//         {/* الفوتر الكلي والـ Total */}
-//         <div className="bg-gray-50 dark:bg-black/30 px-3 py-2 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold shadow-inner">
-//           <span className="text-gray-500 dark:text-gray-400">{isRTL ? "إجمالي المنتجات:" : "Total Price:"}</span>
-//           <span className="text-[13px] font-black text-red-700 dark:text-red-400 tabular-nums">
-//             {totalCartPrice.toLocaleString()} <span className="text-[9px] font-bold opacity-80">{currencyStr}</span>
-//           </span>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // تحقق السلامة: لو مفيش رابط مفرد ولا مصفوفة روابط، يعتبر الملف غير صالح
-//   if (!msg.mediaUrl && (!msg.mediaUrls || msg.mediaUrls.length === 0)) {
-//     return <p className="text-[13px] leading-tight text-gray-400 italic">{isRTL ? "ملف وسائط غير صالح" : "Invalid media file"}</p>;
-//   }
-
-//   // دالة لتنظيف الروابط من أي بريفكس تالف
-//   const cleanUrl = (url) => {
-//     if (!url) return "";
-//     return url.includes('http') ? url.substring(url.lastIndexOf('http')) : url;
-//   };
-
-//   // ==========================================
-//   // معالجة نوع الصور (سواء مفردة أو متعددة)
-//   // ==========================================
-//   if (msg.type === "image") {
-//     // لو الرسالة جاية بمصفوفة صور متعددة
-//     if (msg.mediaUrls && msg.mediaUrls.length > 0) {
-//       return (
-//         <div className={`grid ${msg.mediaUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-1.5 p-1 max-w-[280px] sm:max-w-xs`}>
-//           {msg.mediaUrls.map((rawUrl, index) => {
-//             const finalUrl = cleanUrl(rawUrl);
-//             return (
-//               <img
-//                 key={index}
-//                 src={finalUrl}
-//                 loading="lazy"
-//                 className="rounded-lg max-h-40 w-full object-cover cursor-zoom-in aspect-square transition-transform active:scale-95"
-//                 alt={`attachment-${index}`}
-//                 onClick={() => window.open(finalUrl)}
-//               />
-//             );
-//           })}
-//         </div>
-//       );
-//     }
-
-//     // الـ Fallback للصورة الفردية الطبيعية
-//     const singleMediaUrl = cleanUrl(msg.mediaUrl);
-//     return (
-//       <img
-//         src={singleMediaUrl}
-//         loading="lazy"
-//         className="rounded-md max-h-64 sm:max-h-80 w-full object-cover cursor-zoom-in aspect-auto"
-//         alt="media"
-//         onClick={() => window.open(singleMediaUrl)}
-//       />
-//     );
-//   }
-
-//   // =========================================================
-//   // معالجة الصوت والريكوردات (تم تأمين تشغيلها في لوحة التحكم الأدمن)
-//   // =========================================================
-//   if (msg.type === "audio" || msg.type === "voice") {
-//     let audioUrl = cleanUrl(msg.mediaUrl);
-
-//     // الحيلة الذكية: لو الرابط تم تحويل امتداده لـ .ogg عشان Meta، بنرجعه لـ .webm في العرض
-//     // عشان نضمن إنه يشتغل في متصفح الأدمن (كروم وسفاري) بكفاءة كاملة ومن غير تعليق
-//     if (audioUrl && audioUrl.endsWith('.ogg') && audioUrl.includes('cloudinary')) {
-//       audioUrl = audioUrl.replace('.ogg', '.webm');
-//     }
-
-//     return (
-//       <div className="pt-1 w-full min-w-[200px] max-w-full">
-//         <audio src={audioUrl} controls preload="metadata" className="w-full h-8 custom-audio" />
-//       </div>
-//     );
-//   }
-
-//   return <div className="p-2 bg-black/5 dark:bg-white/5 rounded text-xs break-words">📎 Attachment: {msg.type}</div>;
-// };
-
-//  return (
-//   <div className={`flex flex-col h-screen w-full bg-[#f0f2f5] dark:bg-[#0c0c0c] text-slate-900 dark:text-slate-100 overflow-hidden ${isRTL ? "font-arabic" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
-//     <div className="flex flex-1 h-full w-full overflow-hidden relative">
-
-//       {/* SIDEBAR */}
-//       <div className={`w-full md:w-[360px] lg:w-[400px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 shrink-0 h-full ${replyTarget ? 'hidden md:flex' : 'flex'}`}>
-//         <div className="p-3.5 space-y-3 shrink-0">
-//           <div className="flex items-center justify-between">
-//             <h1 className="text-lg font-black text-red-700 flex items-center gap-2">
-//               <Headset size={22}/> VESTRO <span className="text-[10px] bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">LIVE</span>
-//             </h1>
-//           </div>
-//           <div className="relative group">
-//             <Search className={`${isRTL ? "right-3" : "left-3"} absolute top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-600 transition-colors`} size={16} />
-//             <input
-//               type="text"
-//               placeholder={isRTL ? "بحث في المحادثات..." : "Search conversations..."}
-//               className={`w-full bg-gray-100 dark:bg-white/5 rounded-xl py-2 ${isRTL ? "pr-9 pl-4" : "pl-9 pr-4"} text-xs sm:text-sm outline-none border border-transparent focus:border-red-500/50 transition-all`}
-//               value={search} onChange={(e) => setSearch(e.target.value)}
-//             />
-//           </div>
-//         </div>
-
-//         <div className="flex-1 overflow-y-auto custom-scrollbar division-y division-gray-100 dark:division-white/5">
-//           {logs.map((msg) => {
-//             const isCurrentActive = replyTarget?.phone === msg.phone;
-//             const hasUnread = msg.unreadCount > 0 && !isCurrentActive;
-
-//             return (
-//               <div
-//                 key={msg._id}
-//                 onClick={() => openChat(msg)}
-//                 className={`flex items-center gap-3 p-3 cursor-pointer border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors
-//                   ${isCurrentActive ? 'bg-red-50/50 dark:bg-red-900/10' : ''}
-//                   ${hasUnread ? 'bg-green-50/30 dark:bg-green-500/[0.03]' : ''}`}
-//               >
-//                 <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-sm relative text-sm">
-//                   {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name.charAt(0).toUpperCase() : <User size={20}/>}
-//                   {hasUnread && (
-//                     <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-[#111]"></span>
-//                   )}
-//                 </div>
-
-//                 <div className="flex-1 min-w-0">
-//                   <div className="flex justify-between items-center mb-0.5 gap-1">
-//                     <h3 className={`text-[13.5px] truncate ${hasUnread ? 'font-black text-black dark:text-white' : 'font-bold'}`}>
-//                       {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? msg.customer.name : msg.phone}
-//                     </h3>
-//                     <span className={`text-[9px] shrink-0 tabular-nums ${hasUnread ? 'text-green-500 font-bold' : 'text-gray-400'}`}>
-//                       {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-//                     </span>
-//                   </div>
-
-//                   <div className="flex items-center justify-between gap-1.5">
-//                     <div className="flex items-center gap-1 min-w-0 flex-1">
-//                       {msg.direction === "outbound" && <StatusIcon status={msg.status} size={13} />}
-//                       <p className={`text-xs truncate ${hasUnread ? 'text-black dark:text-slate-200 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
-//                         {msg.text || '📷 Media'}
-//                       </p>
-//                     </div>
-
-//                     {hasUnread && (
-//                       <span className="bg-green-500 text-white font-bold text-[9px] min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center shrink-0 shadow-sm">
-//                         {msg.unreadCount}
-//                       </span>
-//                     )}
-//                   </div>
-//                 </div>
-//               </div>
-//             );
-//           })}
-//         </div>
-//       </div>
-
-//       {/* CHAT WINDOW - ثابت ومستقر تماماً وبدون أي سكرول خارجي */}
-//       <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#f0f2f5] dark:bg-[#0c0c0c] relative ${!replyTarget ? 'hidden md:flex' : 'flex'}`}>
-//         {replyTarget ? (
-//           <>
-//            {/* Header */}
-// <div className="fixed  left-0 right-0 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-4 bg-white/95 dark:bg-[#111]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-30 shadow-sm shrink-0 w-full select-none">
-//   <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-//     <button onClick={() => setReplyTarget(null)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors md:hidden">
-//       <ChevronLeft size={22} className={isRTL ? "rotate-180" : ""} />
-//     </button>
-//     <div className="relative shrink-0">
-//       <div className="w-9  sm:w-10 h-10 rounded-full bg-red-700 flex items-center justify-center text-white font-bold text-sm shadow-inner">
-//         {replyTarget.customer?.name?.charAt(0) || "V"}
-//       </div>
-//       <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
-//     </div>
-//     <div className="min-w-0">
-//       <h2 className="text-xs sm:text-sm font-black dark:text-white leading-tight truncate">
-//         {replyTarget.customer?.name || replyTarget.phone}
-//       </h2>
-//       <div className="flex items-center gap-1 mt-0.5">
-//         <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-//         <p className="text-[9px] text-green-500 font-bold tracking-wider">ONLINE</p>
-//       </div>
-//     </div>
-//   </div>
-
-//   <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-//     <div className="hidden lg:flex flex-col items-end px-3 border-e border-gray-200 dark:border-white/10">
-//       <span className="text-[9px] font-bold text-gray-400">CUSTOMER PHONE</span>
-//       <span className="text-[11px] font-mono">{replyTarget.phone}</span>
-//     </div>
-
-//     <button
-//       onClick={() => fetchChatMessages(replyTarget.phone)}
-//       title={isRTL ? "تحديث المحادثة" : "Refresh Chat"}
-//       className="p-2 text-gray-400 hover:text-red-700 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all active:scale-95 group"
-//     >
-//       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transform group-hover:rotate-180 transition-transform duration-500">
-//         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-//         <polyline points="21 3 21 8 16 8" />
-//       </svg>
-//     </button>
-//     <button
-//       onClick={() => handleClearChat(replyTarget.phone)}
-//       title={isRTL ? "إخفاء المحادثة" : "Hide Chat"}
-//       className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-all"
-//     >
-//       <Trash2 size={18} />
-//     </button>
-//     <MoreVertical className="text-gray-400 cursor-pointer hover:text-red-600 transition-colors" size={18} />
-//   </div>
-// </div>
-
-//             {/* صندوق الرسائل - هو الوحيد اللي مسموحله يعمل سكرول داخلي */}
-//             <div className="flex-1 overflow-y-auto p-4 mt-10 pb-12 sm:p-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar">
-//               <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.02] pointer-events-none"
-//                    style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '300px' }} />
-
-//               {activeChat.map((msg, idx) => {
-//                 const isMe = msg.direction === "outbound";
-//                 const isOrder = msg.type === "order";
-//                 return (
-//                   <div key={msg._id || idx} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-1 duration-200`}>
-//                     <div className={`relative max-w-[88%] sm:max-w-[70%] shadow-sm rounded-xl break-words
-//                       ${isOrder
-//                         ? "p-0.5 bg-transparent border-0 shadow-none"
-//                         : isMe
-//                           ? "px-2.5 pt-1.5 pb-1 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none"
-//                           : "px-2.5 pt-1.5 pb-1 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none"
-//                       }`}
-//                     >
-//                       {renderMedia(msg)}
-//                       <div className={`flex items-center justify-end gap-1 mt-0.5 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
-//                         <span className="text-[8.5px] font-medium opacity-60 uppercase">
-//                           {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-//                         </span>
-//                         {isMe && <StatusIcon status={msg.status} size={12} />}
-//                       </div>
-//                     </div>
-//                   </div>
-//                 );
-//               })}
-//               <div ref={chatEndRef} />
-//             </div>
-
-// {/* سطر الإدخال والكتابة المطور بالكامل */}
-// <div className="p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-2 border-t border-gray-200 dark:border-white/5 shrink-0 w-full relative">
-
-//   {/* زر الـ Media المطور */}
-//   <div className="flex items-center shrink-0">
-//     <label className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full cursor-pointer transition-colors text-gray-500 block active:scale-95">
-//       <Paperclip size={20} />
-//       <input
-//         type="file"
-//         className="hidden"
-//         accept="image/*,audio/*"
-//         multiple
-//         onChange={handleMediaSelect}
-//       />
-//     </label>
-//   </div>
-
-//   {/* زر الريكورد (المايك) */}
-//   <div className="flex items-center shrink-0">
-//     {isRecording ? (
-//       <button
-//         onClick={stopRecording}
-//         className="p-2 bg-red-500 text-white rounded-full animate-pulse transition-colors active:scale-95 flex items-center justify-center"
-//         title={isRTL ? "إيقاف التسجيل" : "Stop Recording"}
-//       >
-//         <Square size={18} fill="currentColor" />
-//       </button>
-//     ) : (
-//       <button
-//         onClick={startRecording}
-//         className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 rounded-full transition-colors active:scale-95 flex items-center justify-center"
-//         title={isRTL ? "تسجيل صوتي" : "Record Voice Note"}
-//       >
-//         <Mic size={20} />
-//       </button>
-//     )}
-//   </div>
-
-//   {/* صندوق النص */}
-//   <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-xl shadow-sm border border-gray-200 dark:border-white/5 overflow-hidden focus-within:ring-1 ring-red-500/30 transition-all">
-
-//     {/* مؤشر جاري التسجيل الآن */}
-//     {isRecording && (
-//       <div className="px-3 py-1.5 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 flex items-center gap-2 text-xs font-semibold animate-pulse border-b border-gray-200 dark:border-white/5">
-//         <span className="w-2 h-2 rounded-full bg-red-600 block"></span>
-//         <span>{isRTL ? "جاري تسجيل صوتك الآن..." : "Recording your voice..."}</span>
-//       </div>
-//     )}
-
-//     {/* معاينة الصور المتعددة */}
-//     {selectedFiles.length > 0 && (
-//       <div className="px-3 py-2 bg-gray-100 dark:bg-[#1f2c34] flex flex-wrap gap-1.5 items-center justify-between border-b border-gray-200 dark:border-white/5 text-xs">
-//         <div className="flex flex-wrap gap-1 max-w-[85%]">
-//           {selectedFiles.map((f, i) => (
-//             <span key={i} className="bg-white dark:bg-black/20 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-md border border-gray-200 dark:border-white/5 font-mono max-w-[120px] truncate">
-//               📷 {f.name}
-//             </span>
-//           ))}
-//         </div>
-//         <button onClick={() => setSelectedFiles([])} className="text-red-500 hover:text-red-700 font-bold px-1">✕</button>
-//       </div>
-//     )}
-
-//     {/* معاينة الريكورد الصوتي بعد الانتهاء وقبل الإرسال */}
-//     {audioBlob && !isRecording && (
-//       <div className="px-3 py-1.5 bg-gray-100 dark:bg-[#1f2c34] flex items-center justify-between border-b border-gray-200 dark:border-white/5 text-xs">
-//         <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
-//           🎙️ {isRTL ? "تسجيل صوتي جاهز للإرسال" : "Voice Note Ready to Send"}
-//           <span className="text-gray-400 font-mono font-normal">({Math.round(audioBlob.size / 1024)} KB)</span>
-//         </span>
-//         <button onClick={() => setAudioBlob(null)} className="text-red-500 hover:text-red-700 font-bold px-1">✕</button>
-//       </div>
-//     )}
-
-//     <textarea
-//       ref={textareaRef}
-//       rows="1"
-//       disabled={isRecording}
-//       placeholder={
-//         isRecording
-//           ? ""
-//           : selectedFiles.length > 0
-//             ? (isRTL ? "أضف تعليقاً على الصور..." : "Add a caption...")
-//             : audioBlob
-//               ? (isRTL ? "اضغط إرسال لتأكيد الريكورد..." : "Press send to confirm voice note...")
-//               : (isRTL ? "اكتب رسالة..." : "Type a message...")
-//       }
-//       className="w-full bg-transparent border-none outline-none py-2.5 px-3 text-[14px] sm:text-[15px] dark:text-white resize-none max-h-24 custom-scrollbar dynamic-textarea block disabled:opacity-50"
-//       value={replyText}
-//       onChange={handleTextareaChange}
-//       onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); }}}
-//     />
-//   </div>
-
-//   {/* زر الإرسال */}
-//   <button
-//     disabled={sending || isRecording || (!replyText.trim() && selectedFiles.length === 0 && !audioBlob)}
-//     onClick={handleSendReply}
-//     className="w-10 h-10 sm:w-11 h-11 bg-red-700 hover:bg-red-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 disabled:opacity-40 disabled:grayscale transition-all shrink-0"
-//   >
-//     {sending ? (
-//       <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
-//     ) : (
-//       <Send size={18} className={isRTL ? "rotate-180" : "ml-0.5"} />
-//     )}
-//   </button>
-// </div>
-//           </>
-//         ) : (
-//           /* واجهة الترحيب عند عدم فتح شات */
-//           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-gray-50 dark:bg-[#0c0c0c] h-full">
-//             <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 mb-4 animate-bounce shadow-lg shadow-red-500/5">
-//               <MessageCircle size={40} />
-//             </div>
-//             <h2 className="text-xl font-black mb-1 dark:text-white tracking-tight uppercase">
-//               {isRTL ? "منصة فيسترو للمحادثات" : "VESTRO CHAT HUB"}
-//             </h2>
-//             <p className="text-gray-500 dark:text-gray-400 max-w-xs text-xs sm:text-sm leading-relaxed">
-//               {isRTL ? "اختر محادثة من القائمة الجانبية لبدء الرد على العملاء بشكل مباشر" : "Select a conversation from the sidebar to start responding to customers in real-time."}
-//             </p>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-
-//     {/* ستايل مخصص */}
-//     <style>{`
-//       .font-arabic { font-family: 'Cairo', sans-serif; }
-//       .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-//       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-//       .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-//       .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
-
-//       .custom-audio::-webkit-media-controls-panel { background-color: #f1f3f4; }
-//       .dark .custom-audio { filter: invert(100%) hue-rotate(180deg) brightness(1.6) contrast(0.9); }
-//       .custom-audio { border-radius: 30px; }
-
-//       .dynamic-textarea { height: auto; min-height: 40px; }
-
-//       @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-//       .animate-in { animation: fadeIn 0.2s ease-out; contain-visibility: auto; }
-//     `}</style>
-
-//   </div>
-// );
-// }
-
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import axios from "../../api/axiosInstance";
 import { useLanguage } from "../../context/LanguageContext";
 import { io } from "socket.io-client";
@@ -1023,36 +24,229 @@ import {
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
 
+
+const cleanMediaUrl = (url) => {
+  if (!url) return "";
+
+  return url.includes("http")
+    ? url.substring(url.lastIndexOf("http"))
+    : url;
+};
+
+
+const MessageBubble = React.memo(
+  ({
+    msg,
+    isRTL,
+    renderMedia,
+    StatusIcon,
+    activeMenuMessageId,
+    setActiveMenuMessageId,
+    setForwardMessageId,
+    setIsForwardModalOpen,
+    setSearchCustomerQuery,
+    setActiveChat,
+  }) => {
+    const isMe = msg.direction === "outbound";
+    const isOrder = msg.type === "order";
+
+    return (
+      <div
+        id={`msg-${msg._id}`}
+        className={`flex w-full ${
+          isMe ? "justify-end pl-7" : "justify-start pr-7"
+        } animate-in fade-in slide-in-from-bottom-1 duration-150 group relative mb-1`}
+      >
+        {activeMenuMessageId === msg._id && (
+          <div
+            className="fixed inset-0 z-30 cursor-default"
+            onClick={() => setActiveMenuMessageId(null)}
+          />
+        )}
+
+        <div
+          className={`relative max-w-[88%] sm:max-w-[72%] shadow-sm rounded-xl transition-all duration-200 mb-12
+          ${
+            isOrder
+              ? "p-0 bg-transparent border-0 shadow-none"
+              : isMe
+              ? "px-3 pt-1.5 pb-1 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none select-all"
+              : "px-3 pt-1.5 pb-1 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none select-all"
+          }`}
+        >
+          {renderMedia(msg)}
+
+          <div
+            className={`flex items-center justify-end gap-1 mt-0.5 mb-1 select-none ${
+              isOrder
+                ? "px-1 text-slate-500 dark:text-slate-400"
+                : ""
+            }`}
+          >
+            {msg.isPinned && (
+              <span className="text-[9px] text-gray-400">📌</span>
+            )}
+
+            {msg.isForwarded && (
+              <span className="text-[9px] text-blue-500 italic">
+                ↩️ {isRTL ? "منقولة" : "Forwarded"}
+              </span>
+            )}
+
+            <span className="text-[8.5px] font-medium opacity-55 uppercase tracking-tighter tabular-nums">
+              {msg.createdAt
+                ? new Date(msg.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : ""}
+            </span>
+
+            {isMe && <StatusIcon status={msg.status} size={12} />}
+          </div>
+
+          {/* ========================= */}
+          {/* MESSAGE MENU */}
+          {/* ========================= */}
+
+          {!isOrder &&
+            msg._id &&
+            !String(msg._id).startsWith("temp_") && (
+              <div
+                className={`absolute top-1/2 -translate-y-1/2 flex items-center z-40 ${
+                  isMe ? "-left-7" : "-right-7"
+                }`}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+
+                    setActiveMenuMessageId(
+                      activeMenuMessageId === msg._id
+                        ? null
+                        : msg._id
+                    );
+                  }}
+                  className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-all text-sm font-bold active:scale-90"
+                >
+                  ⋮
+                </button>
+
+                {activeMenuMessageId === msg._id && (
+                  <div
+                    className={`absolute top-5 bg-white dark:bg-[#2a3942] shadow-2xl border border-gray-100 dark:border-white/5 rounded-xl py-1 w-32 z-50 animate-in fade-in zoom-in-95 duration-100 ${
+                      isMe
+                        ? "left-0 origin-top-left"
+                        : "right-0 origin-top-right"
+                    }`}
+                  >
+                    {/* PIN */}
+
+                    <button
+                      onClick={() => {
+                        axios
+                          .patch(`/chat-actions/pin/${msg._id}`)
+                          .then((response) => {
+                            setActiveMenuMessageId(null);
+
+                            if (response.data.success) {
+                              setActiveChat((prev) =>
+                                prev.map((m) =>
+                                  m._id === msg._id
+                                    ? {
+                                        ...m,
+                                        isPinned: !m.isPinned,
+                                      }
+                                    : m
+                                )
+                              );
+                            }
+                          })
+                          .catch((err) => console.error(err));
+                      }}
+                      className={`w-full px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-2 transition-colors ${
+                        isRTL
+                          ? "flex-row-reverse text-right"
+                          : "text-left"
+                      }`}
+                    >
+                      <span className="text-xs">📌</span>
+
+                      <span className="flex-1 font-medium">
+                        {msg.isPinned
+                          ? isRTL
+                            ? "إلغاء التثبيت"
+                            : "Unpin"
+                          : isRTL
+                          ? "تثبيت الرسالة"
+                          : "Pin"}
+                      </span>
+                    </button>
+
+                    {/* FORWARD */}
+
+                    <button
+                      onClick={() => {
+                        setForwardMessageId(msg._id);
+                        setIsForwardModalOpen(true);
+                        setSearchCustomerQuery("");
+                        setActiveMenuMessageId(null);
+                      }}
+                      className={`w-full px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-2 border-t border-gray-50 dark:border-white/5 transition-colors ${
+                        isRTL
+                          ? "flex-row-reverse text-right"
+                          : "text-left"
+                      }`}
+                    >
+                      <span className="text-xs transform scale-x-[-1]">
+                        ↩️
+                      </span>
+
+                      <span className="flex-1 font-medium">
+                        {isRTL
+                          ? "توجيه الرسالة"
+                          : "Forward"}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+        </div>
+      </div>
+    );
+  }
+);
+
 export default function MessageLogs() {
   const { language } = useLanguage();
   const isRTL = language === "ar";
 
+  // --- States ---
   const [logs, setLogs] = useState([]);
   const [activeChat, setActiveChat] = useState([]);
   const [replyTarget, setReplyTarget] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
-  const [isRecording, setIsRecording] = useState(false); // حالة التسجيل الحالي
-  const [mediaRecorder, setMediaRecorder] = useState(null); // كائن التسجيل
-  const [selectedFiles, setSelectedFiles] = useState([]); // مصفوفة للصور أو الميديا المتعددة
-  const [audioBlob, setAudioBlob] = useState(null); // لحفظ ملف الصوت أو الريكورد
+  const [isRecording, setIsRecording] = useState(false);
+const mediaRecorderRef = useRef(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [audioBlob, setAudioBlob] = useState(null);
 
   const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
   const [forwardMessageId, setForwardMessageId] = useState(null);
   const [searchCustomerQuery, setSearchCustomerQuery] = useState("");
   const [forwardCustomersList, setForwardCustomersList] = useState([]);
   const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
-  // حالات الرسائل المثبتة وقائمة الخيارات
+  
   const [pinnedMessages, setPinnedMessages] = useState([]);
-  const [activeMenuMessageId, setActiveMenuMessageId] = useState(null); // للـ Dropdown بتاع كل رسالة
+  const [activeMenuMessageId, setActiveMenuMessageId] = useState(null);
   const [isAssignMenuOpen, setIsAssignMenuOpen] = useState(false);
   const [employees, setEmployees] = useState([]);
-  // الخواص الجديدة للـ Typing Indicator والموظفين والـ Reactions
-  const [isPeerTyping, setIsPeerTyping] = useState(false); // حالة الطرف الآخر بيكتب ولا لأ
-  const typingTimeoutRef = useRef(null);
+  const [isPeerTyping, setIsPeerTyping] = useState(false);
 
-  // الـ localStorage هو المخزن الأساسي لعدد الرسائل غير المقروءة لايف
+  // --- LocalStorage Sync Optimized ---
   const [localUnreadPhones, setLocalUnreadPhones] = useState(() => {
     try {
       const saved = localStorage.getItem("vestro_unread_phones");
@@ -1062,36 +256,52 @@ export default function MessageLogs() {
     }
   });
 
+  // --- Refs (The Secret to High Performance) ---
   const socket = useRef(null);
   const chatEndRef = useRef(null);
   const activePhoneRef = useRef(null);
   const textareaRef = useRef(null);
-
-  // تحديث الـ localStorage كلما تغيرت الحسبة المحلية
+  const typingTimeoutRef = useRef(null);
+  
+  // حفظ الـ State جوة Ref عشان السوكيت يقراها فوراً بدون ما يعيد بناء الـ Listeners
+  const localUnreadPhonesRef = useRef(localUnreadPhones);
+  const notificationAudioRef = useRef(null);
   useEffect(() => {
-    localStorage.setItem(
-      "vestro_unread_phones",
-      JSON.stringify(localUnreadPhones),
-    );
+  notificationAudioRef.current = new Audio(
+    "/assets/sounds/notification.mp3"
+  );
+}, []);
+
+useEffect(() => {
+  return () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+  };
+}, []);
+
+
+  useEffect(() => {
+    localUnreadPhonesRef.current = localUnreadPhones;
+    localStorage.setItem("vestro_unread_phones", JSON.stringify(localUnreadPhones));
   }, [localUnreadPhones]);
 
   useEffect(() => {
     activePhoneRef.current = replyTarget?.phone;
   }, [replyTarget]);
 
-  const StatusIcon = ({ status, size = 16 }) => {
-    if (status === "read")
-      return <CheckCheck size={size} className="text-blue-500" />;
-    if (status === "delivered")
-      return <CheckCheck size={size} className="text-gray-400" />;
-    if (status === "sent")
-      return <Check size={size} className="text-gray-400" />;
-    if (status === "failed")
-      return <span className="text-red-500 text-[10px]">⚠️</span>;
-    return <Clock size={size - 2} className="text-gray-300" />;
-  };
+  // --- Sub-Components (Memoized) ---
+  const StatusIcon = useCallback(({ status, size = 16 }) => {
+    switch (status) {
+      case "read": return <CheckCheck size={size} className="text-blue-500" />;
+      case "delivered": return <CheckCheck size={size} className="text-gray-400" />;
+      case "sent": return <Check size={size} className="text-gray-400" />;
+      case "failed": return <span className="text-red-500 text-[10px]">⚠️</span>;
+      default: return <Clock size={size - 2} className="text-gray-300" />;
+    }
+  }, []);
 
-  // دالة القراءة: تصفر الـ localStorage والسيرفر فوراً
+  // --- Memoized Actions ---
   const markAsRead = useCallback((phone) => {
     if (socket.current?.connected) {
       socket.current.emit("mark_as_read", { phone });
@@ -1104,21 +314,47 @@ export default function MessageLogs() {
     });
 
     setLogs((prev) =>
-      prev.map((log) =>
-        log.phone === phone ? { ...log, unreadCount: 0 } : log,
-      ),
+      prev.map((log) => (log.phone === phone ? { ...log, unreadCount: 0 } : log))
     );
   }, []);
 
-  const handleClearChat = async (phone) => {
-    if (
-      !window.confirm(
-        isRTL
-          ? "هل أنت متأكد من رغبتك في إخفاء هذه المحادثة؟"
-          : "Are you sure you want to hide this chat?",
-      )
-    )
-      return;
+  const fetchLogs = useCallback(async () => {
+    try {
+      const { data } = await axios.get("/messages", { params: { search } });
+      const fetchedMessages = data.messages || [];
+
+      setLogs(
+        fetchedMessages.map((msg) => {
+          const localCount = localUnreadPhonesRef.current[msg.phone];
+          return {
+            ...msg,
+            unreadCount: localCount !== undefined ? Math.max(msg.unreadCount || 0, localCount) : msg.unreadCount || 0,
+          };
+        })
+      );
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+    }
+  }, [search]);
+
+  const fetchChatMessages = useCallback(async (phone) => {
+    if (!phone) return;
+    try {
+      const [chatRes] = await Promise.all([
+        axios.get(`/whatsapp/chat/${phone}`),
+        fetchLogs(),
+      ]);
+      if (chatRes.data.success) {
+        setActiveChat(chatRes.data.messages || []);
+      }
+    } catch (err) {
+      console.error("Failed to force refresh chat:", err);
+    }
+  }, [fetchLogs]);
+
+  const handleClearChat = useCallback(async (phone) => {
+    const confirmMsg = isRTL ? "هل أنت متأكد من رغبتك في إخفاء هذه المحادثة؟" : "Are you sure you want to hide this chat?";
+    if (!window.confirm(confirmMsg)) return;
     try {
       const res = await axios.delete(`/messages/clear/${phone}`);
       if (res.data.success) {
@@ -1136,25 +372,36 @@ export default function MessageLogs() {
     } catch (err) {
       console.error("Failed to clear chat:", err);
     }
-  };
+  }, [isRTL]);
 
-  // الدالة المحدثة لعمل ريفريش كامل (للشات المفتوح والسايد بار معاً)
-  const fetchChatMessages = async (phone) => {
-    if (!phone) return;
+  const openChat = useCallback(async (msg) => {
+    firstLoadRef.current = true;
+    setReplyTarget(msg);
+    // setActiveChat([]);
+    setIsPeerTyping(false);
+    markAsRead(msg.phone);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+
     try {
-      const [chatRes] = await Promise.all([
-        axios.get(`/whatsapp/chat/${phone}`),
-        fetchLogs(),
-      ]);
+      const { data } = await axios.get(`/whatsapp/chat/${msg.phone}`);
+      if (data.success) {
+  const messages = data.messages || [];
 
-      if (chatRes.data.success) {
-        setActiveChat(chatRes.data.messages || []);
-      }
+  setActiveChat(messages);
+
+  requestAnimationFrame(() => {
+    chatEndRef.current?.scrollIntoView({
+      behavior: "auto",
+      block: "end",
+    });
+  });
+}
     } catch (err) {
-      console.error("Failed to force refresh chat and sidebar:", err);
+      console.error("Chat loading failed", err);
     }
-  };
+  }, [markAsRead]);
 
+  // --- Socket Integration (Isolated & Anti-Leak) ---
   useEffect(() => {
     socket.current = io(SOCKET_URL, {
       transports: ["websocket"],
@@ -1165,9 +412,7 @@ export default function MessageLogs() {
 
     currentSocket.on("message_status_updated", (update) => {
       const updateIdStr = update.messageId ? String(update.messageId) : null;
-      const updateWamIdStr = update.whatsappMessageId
-        ? String(update.whatsappMessageId)
-        : null;
+      const updateWamIdStr = update.whatsappMessageId ? String(update.whatsappMessageId) : null;
 
       if (update.status === "read") {
         setLocalUnreadPhones((prev) => {
@@ -1175,46 +420,18 @@ export default function MessageLogs() {
           delete updated[update.phone];
           return updated;
         });
-        setLogs((prev) =>
-          prev.map((log) =>
-            log.phone === update.phone ? { ...log, unreadCount: 0 } : log,
-          ),
-        );
+        setLogs((prev) => prev.map((log) => log.phone === update.phone ? { ...log, unreadCount: 0 } : log));
       }
 
-      // === تحديث الشات المفتوح ===
-      setActiveChat((prev) => {
-        if (!prev || prev.length === 0) return prev;
-        return prev.map((msg) => {
-          const msgIdStr = msg._id ? String(msg._id) : null;
-          const msgWamIdStr = msg.whatsappMessageId
-            ? String(msg.whatsappMessageId)
-            : null;
-          const isMatch =
-            (updateIdStr && msgIdStr === updateIdStr) ||
-            (updateWamIdStr && msgWamIdStr === updateWamIdStr);
+      setActiveChat((prev) => prev.map((msg) => {
+        const isMatch = (updateIdStr && String(msg._id) === updateIdStr) || (updateWamIdStr && String(msg.whatsappMessageId) === updateWamIdStr);
+        return isMatch ? { ...msg, status: update.status } : msg;
+      }));
 
-          return isMatch ? { ...msg, status: update.status } : msg;
-        });
-      });
-
-      // === تحديث الـ Logs الجانبية ===
-      setLogs((prev) => {
-        if (!prev || prev.length === 0) return prev;
-        return prev.map((log) => {
-          const logIdStr = log._id ? String(log._id) : null;
-          const logWamIdStr = log.whatsappMessageId
-            ? String(log.whatsappMessageId)
-            : null;
-          const isMatch =
-            (updateIdStr && logIdStr === updateIdStr) ||
-            (updateWamIdStr && logWamIdStr === updateWamIdStr);
-
-          return isMatch || log.phone === update.phone
-            ? { ...log, status: update.status }
-            : log;
-        });
-      });
+      setLogs((prev) => prev.map((log) => {
+        const isMatch = (updateIdStr && String(log._id) === updateIdStr) || (updateWamIdStr && String(log.whatsappMessageId) === updateWamIdStr);
+        return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
+      }));
     });
 
     currentSocket.on("chat_cleared", (data) => {
@@ -1230,63 +447,37 @@ export default function MessageLogs() {
       setLogs((prev) => prev.filter((log) => log.phone !== data.phone));
     });
 
-    // الاستماع للـ Typing Indicator القادم من العميل
     currentSocket.on("user_typing_status", (data) => {
       if (activePhoneRef.current === data.phone) {
         setIsPeerTyping(data.isTyping);
       }
     });
 
-    // المزامنة الحية عند تحويل الشات لموظف آخر (متوافق مع الـ assignChat controller)
     currentSocket.on("chat_assigned", (data) => {
-      setLogs((prev) =>
-        prev.map((log) =>
-          log.phone === data.phone
-            ? { ...log, assignedTo: data.assignedTo, chatStatus: "Waiting" }
-            : log,
-        ),
-      );
+      setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, assignedTo: data.assignedTo, chatStatus: "Waiting" } : log));
       if (activePhoneRef.current === data.phone) {
-        setReplyTarget((prev) =>
-          prev
-            ? { ...prev, assignedTo: data.assignedTo, chatStatus: "Waiting" }
-            : null,
-        );
+        setReplyTarget((prev) => prev ? { ...prev, assignedTo: data.assignedTo, chatStatus: "Waiting" } : null);
       }
     });
 
-    // المزامنة الحية للتاجات والـ Status والتثبيت (متوافق مع الـ updateCustomerMeta controller)
     currentSocket.on("customer_meta_updated", (data) => {
-      setLogs((prev) =>
-        prev.map((log) =>
-          log.phone === data.phone ? { ...log, ...data.customer } : log,
-        ),
-      );
+      setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, ...data.customer } : log));
       if (activePhoneRef.current === data.phone) {
-        setReplyTarget((prev) => (prev ? { ...prev, ...data.customer } : null));
+        setReplyTarget((prev) => prev ? { ...prev, ...data.customer } : null);
       }
     });
 
-    // تنبيه صوتي للرسائل غير المقروءة في الشاتات الخلفية
     currentSocket.on("unread_alert", (data) => {
       if (activePhoneRef.current !== data.phone) {
         try {
-          const audio = new Audio("/assets/sounds/notification.mp3");
-          audio.play().catch(() => {});
+       notificationAudioRef.current?.play().catch(() => {});
         } catch (e) {}
       }
     });
 
-    // استقبال وإظهار الريأكشن على الرسائل لايف
     currentSocket.on("new_reaction", (data) => {
       if (activePhoneRef.current === data.phone) {
-        setActiveChat((prev) =>
-          prev.map((msg) =>
-            msg.whatsappMessageId === data.targetMessageId
-              ? { ...msg, reaction: data.emoji }
-              : msg,
-          ),
-        );
+        setActiveChat((prev) => prev.map((msg) => msg.whatsappMessageId === data.targetMessageId ? { ...msg, reaction: data.emoji } : msg));
       }
     });
 
@@ -1294,20 +485,14 @@ export default function MessageLogs() {
       const isChatOpen = activePhoneRef.current === newMessage.phone;
 
       if (isChatOpen) {
-        setIsPeerTyping(false); // إلغاء علامة الكتابة بمجرد استقبال الرسالة بالفعل
+        setIsPeerTyping(false);
         setActiveChat((prev) => {
           if (newMessage.direction === "outbound") {
-            const hasTemp = prev.some((msg) =>
-              msg._id?.toString().startsWith("temp_"),
-            );
+            const hasTemp = prev.some((msg) => msg._id?.toString().startsWith("temp_"));
             if (hasTemp) {
               let replaced = false;
               return prev.map((msg) => {
-                if (
-                  !replaced &&
-                  msg._id?.toString().startsWith("temp_") &&
-                  msg.text === newMessage.text
-                ) {
+                if (!replaced && msg._id?.toString().startsWith("temp_") && msg.text === newMessage.text) {
                   replaced = true;
                   return { ...newMessage, isRead: true };
                 }
@@ -1316,45 +501,24 @@ export default function MessageLogs() {
             }
           }
 
-          const newMsgIdStr = newMessage._id?.toString();
-          const newWamIdStr = newMessage.whatsappMessageId?.toString();
-          const isAlreadyExists = prev.some((msg) => {
-            const msgIdStr = msg._id?.toString();
-            const msgWamIdStr = msg.whatsappMessageId?.toString();
-            return (
-              (newMsgIdStr && msgIdStr === newMsgIdStr) ||
-              (newWamIdStr && msgWamIdStr === newWamIdStr)
-            );
-          });
-
-          if (isAlreadyExists) return prev;
-          return [...prev, { ...newMessage, isRead: true }];
+          const isAlreadyExists = prev.some((msg) => (newMessage._id && msg._id?.toString() === newMessage._id.toString()) || (newMessage.whatsappMessageId && msg.whatsappMessageId?.toString() === newMessage.whatsappMessageId.toString()));
+          return isAlreadyExists ? prev : [...prev, { ...newMessage, isRead: true }];
         });
       }
 
       const isCustomerMsg = newMessage.direction === "inbound";
-
       if (isCustomerMsg && !isChatOpen) {
         setLocalUnreadPhones((prevPhones) => {
           const currentLocalCount = prevPhones[newMessage.phone] || 0;
-          const updatedPhones = {
-            ...prevPhones,
-            [newMessage.phone]: currentLocalCount + 1,
-          };
+          const updatedPhones = { ...prevPhones, [newMessage.phone]: currentLocalCount + 1 };
 
           setLogs((prevLogs) => {
-            const existingLog = prevLogs.find(
-              (l) => l.phone === newMessage.phone,
-            );
-            const filtered = prevLogs.filter(
-              (l) => l.phone !== newMessage.phone,
-            );
-
+            const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
+            const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
             const updatedLog = {
               ...newMessage,
               unreadCount: updatedPhones[newMessage.phone],
-              customer: existingLog?.customer ||
-                newMessage.customer || { name: "Unknown Customer" },
+              customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" },
             };
             return [updatedLog, ...filtered];
           });
@@ -1363,61 +527,37 @@ export default function MessageLogs() {
         });
       } else {
         setLogs((prevLogs) => {
-          const existingLog = prevLogs.find(
-            (l) => l.phone === newMessage.phone,
-          );
+          const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
           const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
-          const updatedLog = {
+          return [{
             ...newMessage,
-            unreadCount: isChatOpen ? 0 : existingLog?.unreadCount || 0,
-            customer: existingLog?.customer ||
-              newMessage.customer || { name: "Unknown Customer" },
-          };
-          return [updatedLog, ...filtered];
+            unreadCount: isChatOpen ? 0 : (existingLog?.unreadCount || 0),
+            customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" },
+          }, ...filtered];
         });
       }
     });
 
     return () => {
-      currentSocket.off("message_status_updated");
-      currentSocket.off("chat_cleared");
-      currentSocket.off("user_typing_status");
-      currentSocket.off("chat_assigned");
-      currentSocket.off("customer_meta_updated");
-      currentSocket.off("unread_alert");
-      currentSocket.off("new_reaction");
-      currentSocket.off("receive-message");
       currentSocket.disconnect();
     };
-  }, []);
+  }, []); // مفيش أي dependencies هنا عشان الـ Listeners متتكررش!
 
   useEffect(() => {
     if (!isForwardModalOpen) return;
-
     const delayDebounceFn = setTimeout(() => {
       setIsSearchingCustomers(true);
-      axios
-        .get(`/chat-actions/customers?search=${searchCustomerQuery}`)
-        .then((res) => {
-          if (res.data.success) {
-            setForwardCustomersList(res.data.customers);
-          }
-        })
+      axios.get(`/chat-actions/customers?search=${searchCustomerQuery}`)
+        .then((res) => res.data.success && setForwardCustomersList(res.data.customers))
         .catch((err) => console.error("Error fetching customers:", err))
         .finally(() => setIsSearchingCustomers(false));
-    }, 300); // Debounce عشان ما يضغطش على السيرفر مع كل حرف
-
+    }, 300);
     return () => clearTimeout(delayDebounceFn);
   }, [searchCustomerQuery, isForwardModalOpen]);
+
   useEffect(() => {
-    // ⚠️ تأكد أن الـ الـ URL مطابق تماماً لراوت الباك إند بتاعك
-    axios
-      .get("/chat-actions/agents")
-      .then((res) => {
-        if (Array.isArray(res.data)) {
-          setEmployees(res.data);
-        }
-      })
+    axios.get("/chat-actions/agents")
+      .then((res) => Array.isArray(res.data) && setEmployees(res.data))
       .catch((err) => console.error("Error fetching agents:", err));
   }, []);
 
@@ -1425,91 +565,61 @@ export default function MessageLogs() {
     chatEndRef.current?.scrollIntoView({ behavior });
   }, []);
 
-  useEffect(() => {
-    if (activeChat.length > 0) {
-      const timer = setTimeout(() => scrollToBottom("smooth"), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [activeChat, scrollToBottom]);
+  const firstLoadRef = useRef(true);
 
-  useEffect(() => {
-    if (!activeChat || !activeChat.phone) return;
+useEffect(() => {
+  if (!activeChat.length) return;
 
-    // جلب الرسائل المثبتة للعميل الحالي
-    axios
-      .get(`/chat-actions/pinned/${activeChat.phone}`)
-      .then((res) => {
-        if (res.data.success) setPinnedMessages(res.data.pinned);
-      })
-      .catch((err) => console.error("Error fetching pinned messages:", err));
-  }, [activeChat]);
+  if (firstLoadRef.current) {
+    firstLoadRef.current = false;
 
-  const fetchLogs = async () => {
-    try {
-      const { data } = await axios.get("/messages", { params: { search } });
-      const fetchedMessages = data.messages || [];
+    requestAnimationFrame(() => {
+      chatEndRef.current?.scrollIntoView({
+        behavior: "auto",
+        block: "end",
+      });
+    });
 
-      setLogs(
-        fetchedMessages.map((msg) => {
-          const localCount = localUnreadPhones[msg.phone];
-          return {
-            ...msg,
-            unreadCount:
-              localCount !== undefined
-                ? Math.max(msg.unreadCount || 0, localCount)
-                : msg.unreadCount || 0,
-          };
-        }),
-      );
-    } catch (err) {
-      console.error("Error fetching logs:", err);
-    }
-  };
+    return;
+  }
+
+  scrollToBottom("smooth");
+}, [activeChat]);
+
+ useEffect(() => {
+  if (!replyTarget?.phone) return;
+
+  axios
+    .get(`/chat-actions/pinned/${replyTarget.phone}`)
+    .then((res) => {
+      if (res.data.success) {
+        setPinnedMessages(res.data.pinned || []);
+      }
+    })
+    .catch((err) => {
+      console.error("Error fetching pinned messages:", err);
+    });
+}, [replyTarget?.phone]);
 
   useEffect(() => {
     const handler = setTimeout(fetchLogs, 400);
     return () => clearTimeout(handler);
-  }, [search]);
+  }, [search, fetchLogs]);
 
-  const openChat = async (msg) => {
-    setReplyTarget(msg);
-    setActiveChat([]);
-    setIsPeerTyping(false);
-
-    markAsRead(msg.phone);
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
-
-    try {
-      const { data } = await axios.get(`/whatsapp/chat/${msg.phone}`);
-      if (data.success) {
-        setActiveChat(data.messages || []);
-      }
-    } catch (err) {
-      console.error("Chat loading failed", err);
-    }
-  };
-
-  const handleMediaSelect = (e) => {
+  const handleMediaSelect = useCallback((e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
     const maxSize = 16 * 1024 * 1024;
-    const validFiles = [];
-
-    for (let file of files) {
+    const validFiles = files.filter(file => {
       if (file.size > maxSize) {
-        alert(
-          isRTL
-            ? `الملف ${file.name} حجمه كبير جداً. الحد الأقصى 16 ميجابايت.`
-            : `File ${file.name} is too large. Max size is 16MB.`,
-        );
-        continue;
+        alert(isRTL ? `الملف ${file.name} حجمه كبير جداً. الحد الأقصى 16 ميجابايت.` : `File ${file.name} is too large. Max size is 16MB.`);
+        return false;
       }
-      validFiles.push(file);
-    }
+      return true;
+    });
 
     const hasAudio = validFiles.some((f) => f.type.startsWith("audio/"));
-
     if (hasAudio) {
       setAudioBlob(validFiles[0]);
       setSelectedFiles([]);
@@ -1517,13 +627,71 @@ export default function MessageLogs() {
       setSelectedFiles(validFiles);
       setAudioBlob(null);
     }
-  };
+  }, [isRTL]);
 
-  const handleSendReply = async () => {
+  const handleTextareaChange = useCallback((e) => {
+    setReplyText(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = `${e.target.scrollHeight}px`;
+
+    if (socket.current?.connected && activePhoneRef.current) {
+  socket.current.emit("agent_typing_status", {
+    phone: activePhoneRef.current,
+    isTyping: true,
+  });
+
+  if (typingTimeoutRef.current) {
+    clearTimeout(typingTimeoutRef.current);
+  }
+
+  typingTimeoutRef.current = setTimeout(() => {
+    socket.current.emit("agent_typing_status", {
+      phone: activePhoneRef.current,
+      isTyping: false,
+    });
+  }, 2000);
+}
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let options = {};
+      if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) options = { mimeType: "audio/ogg;codecs=opus" };
+      else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) options = { mimeType: "audio/webm;codecs=opus" };
+
+      const recorder = new MediaRecorder(stream, options);
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        setAudioBlob(blob);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorder.start();
+mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setSelectedFiles([]);
+    } catch (err) {
+      console.error("تعذر الوصول للمايكروفون:", err);
+      alert(isRTL ? "برجاء السماح بالوصول للمايكروفون أولاً." : "Please allow microphone access.");
+    }
+  }, [isRTL]);
+
+ const stopRecording = useCallback(() => {
+  if (mediaRecorderRef.current && isRecording) {
+    mediaRecorderRef.current.stop();
+    setIsRecording(false);
+  }
+}, [isRecording]);
+
+  const handleSendReply = useCallback(async () => {
     const hasImages = selectedFiles.length > 0;
     const hasAudio = !!audioBlob;
 
-    if ((!replyText.trim() && !hasImages && !hasAudio) || sending) return;
+    if ((!replyText.trim() && !hasImages && !hasAudio) || sending || !replyTarget?.phone) return;
 
     const content = replyText.trim();
     const tempId = "temp_" + Date.now().toString();
@@ -1532,25 +700,16 @@ export default function MessageLogs() {
     setReplyText("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    if (socket.current?.connected && replyTarget?.phone) {
-      socket.current.emit("agent_typing_status", {
-        phone: replyTarget.phone,
-        isTyping: false,
-      });
+    if (socket.current?.connected) {
+      socket.current.emit("agent_typing_status", { phone: replyTarget.phone, isTyping: false });
     }
 
     let optimisticText = content;
     let optimisticType = "text";
 
     if (!optimisticText) {
-      if (hasImages)
-        optimisticText = isRTL
-          ? `📷 جاري إرسال ${selectedFiles.length} صور...`
-          : `📷 Sending ${selectedFiles.length} images...`;
-      if (hasAudio)
-        optimisticText = isRTL
-          ? "🎵 جاري إرسال تسجيل صوتي..."
-          : "🎵 Sending audio...";
+      if (hasImages) optimisticText = isRTL ? `📷 جاري إرسال ${selectedFiles.length} صور...` : `📷 Sending ${selectedFiles.length} images...`;
+      if (hasAudio) optimisticText = isRTL ? "🎵 جاري إرسال تسجيل صوتي..." : "🎵 Sending audio...";
     }
 
     if (hasImages) optimisticType = "image";
@@ -1573,39 +732,24 @@ export default function MessageLogs() {
 
       if (hasImages) {
         formData.append("type", "image");
-        selectedFiles.forEach((file) => {
-          formData.append("file", file);
-        });
+        selectedFiles.forEach((file) => formData.append("file", file));
       } else if (hasAudio) {
         formData.append("type", "audio");
-        const audioFile =
-          audioBlob instanceof File
-            ? audioBlob
-            : new File([audioBlob], "voice.mp3", {
-                type: audioBlob.type || "audio/mp3",
-              });
+        const audioFile = audioBlob instanceof File ? audioBlob : new File([audioBlob], "voice.mp3", { type: audioBlob.type || "audio/mp3" });
         formData.append("file", audioFile);
       } else {
         formData.append("type", "text");
       }
 
       const res = await axios.post("/whatsapp/send", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (res.data.success) {
         const finalMessage = {
           _id: res.data.data?._id || res.data.dbId || tempId,
           whatsappMessageId: res.data.messageId || res.data.whatsappMessageId,
-          text:
-            content ||
-            (hasImages
-              ? `📷 Photo (${selectedFiles.length})`
-              : hasAudio
-                ? "🎵 Audio"
-                : ""),
+          text: content || (hasImages ? `📷 Photo (${selectedFiles.length})` : hasAudio ? "🎵 Audio" : ""),
           direction: "outbound",
           status: "sent",
           createdAt: new Date().toISOString(),
@@ -1614,15 +758,10 @@ export default function MessageLogs() {
           mediaUrls: res.data.data?.mediaUrls || null,
         };
 
-        setActiveChat((prev) =>
-          prev.map((msg) =>
-            msg._id?.toString() === tempId ? finalMessage : msg,
-          ),
-        );
-
+        setActiveChat((prev) => prev.map((msg) => msg._id?.toString() === tempId ? finalMessage : msg));
         setLogs((prev) => {
           const filtered = prev.filter((l) => l.phone !== replyTarget.phone);
-          const updatedLog = {
+          return [{
             ...replyTarget,
             text: finalMessage.text,
             status: "sent",
@@ -1630,8 +769,7 @@ export default function MessageLogs() {
             direction: "outbound",
             whatsappMessageId: finalMessage.whatsappMessageId,
             unreadCount: 0,
-          };
-          return [updatedLog, ...filtered];
+          }, ...filtered];
         });
 
         setSelectedFiles([]);
@@ -1639,85 +777,16 @@ export default function MessageLogs() {
       }
     } catch (err) {
       console.error("حدث خطأ أثناء الإرسال:", err);
-      setActiveChat((prev) =>
-        prev.map((msg) =>
-          msg._id?.toString() === tempId ? { ...msg, status: "failed" } : msg,
-        ),
-      );
+      setActiveChat((prev) => prev.map((msg) => msg._id?.toString() === tempId ? { ...msg, status: "failed" } : msg));
     } finally {
       setSending(false);
     }
-  };
+  }, [replyText, selectedFiles, audioBlob, sending, replyTarget, isRTL]);
 
-  const handleTextareaChange = (e) => {
-    setReplyText(e.target.value);
-    e.target.style.height = "auto";
-    e.target.style.height = `${e.target.scrollHeight}px`;
 
-    if (socket.current?.connected && replyTarget?.phone) {
-      socket.current.emit("agent_typing_status", {
-        phone: replyTarget.phone,
-        isTyping: true,
-      });
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
-      typingTimeoutRef.current = setTimeout(() => {
-        socket.current.emit("agent_typing_status", {
-          phone: replyTarget.phone,
-          isTyping: false,
-        });
-      }, 2000);
-    }
-  };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      let options = {};
-      if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) {
-        options = { mimeType: "audio/ogg;codecs=opus" };
-      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
-        options = { mimeType: "audio/webm;codecs=opus" };
-      }
-
-      const recorder = new MediaRecorder(stream, options);
-      const chunks = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, {
-          type: recorder.mimeType || "audio/webm",
-        });
-        setAudioBlob(blob);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-      setSelectedFiles([]);
-    } catch (err) {
-      console.error("تعذر الوصول للمايكروفون:", err);
-      alert(
-        isRTL
-          ? "برجاء السماح بالوصول للمايكروفون أولاً."
-          : "Please allow microphone access.",
-      );
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const renderMedia = (msg) => {
+  const renderMedia = useCallback((msg) => {
     if (msg.type === "text" && !msg.mediaUrl) {
       return (
         <div className="relative group">
@@ -1889,13 +958,7 @@ export default function MessageLogs() {
       );
     }
 
-    const cleanUrl = (url) => {
-      if (!url) return "";
-      return url.includes("http")
-        ? url.substring(url.lastIndexOf("http"))
-        : url;
-    };
-
+   
     if (msg.type === "image") {
       if (msg.mediaUrls && msg.mediaUrls.length > 0) {
         return (
@@ -1903,7 +966,7 @@ export default function MessageLogs() {
             className={`grid ${msg.mediaUrls.length > 1 ? "grid-cols-2" : "grid-cols-1"} gap-1.5 p-1 max-w-[280px] sm:max-w-xs relative group`}
           >
             {msg.mediaUrls.map((rawUrl, index) => {
-              const finalUrl = cleanUrl(rawUrl);
+              const finalUrl = cleanMediaUrl(rawUrl);
               return (
                 <img
                   key={index}
@@ -1926,7 +989,7 @@ export default function MessageLogs() {
         );
       }
 
-      const singleMediaUrl = cleanUrl(msg.mediaUrl);
+      const singleMediaUrl = cleanMediaUrl(msg.mediaUrl);
       return (
         <div className="relative group">
           <img
@@ -1948,7 +1011,7 @@ export default function MessageLogs() {
     }
 
     if (msg.type === "audio" || msg.type === "voice") {
-      let audioUrl = cleanUrl(msg.mediaUrl);
+      let audioUrl = cleanMediaUrl(msg.mediaUrl);
       if (
         audioUrl &&
         audioUrl.endsWith(".ogg") &&
@@ -1981,7 +1044,7 @@ export default function MessageLogs() {
         📎 Attachment: {msg.type}
       </div>
     );
-  };
+  }, [isRTL]);
 
   return (
     <div
@@ -2184,14 +1247,20 @@ export default function MessageLogs() {
                           ?.charAt(0)
                           ?.toUpperCase() || "V"}
                       </div>
+                      
                       <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <h2 className="text-xs sm:text-sm font-black dark:text-white leading-tight truncate flex items-center gap-1">
-                        <span className="truncate">
-                          {replyTarget.customer?.name || replyTarget.phone}
-                        </span>
+                        <span className="truncate ">
+                          {replyTarget.customer?.name }
+                        </span> 
+                         <span className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-mono tracking-wide mt-0.5 block">
+                        {replyTarget.phone}
+                      </span>
+  {/* رقم الهاتف تحت الاسم مباشرة */}
+                     
                         {activeChat.some((m) => m.isPinned) && (
                           <span className="text-[10px] text-red-500 shrink-0">
                             📌
@@ -2493,108 +1562,21 @@ export default function MessageLogs() {
 
   <div className="flex-1" />
 
-  {/* رندرة فقاعات المحادثة */}
-  {activeChat.map((msg, idx) => {
-    const isMe = msg.direction === "outbound";
-    const isOrder = msg.type === "order";
-    
-    return (
-      <div 
-        key={msg._id || idx} 
-        id={`msg-${msg._id}`}
-        className={`flex w-full ${isMe ? "justify-end pl-7" : "justify-start pr-7"} animate-in fade-in slide-in-from-bottom-1 duration-150 group relative mb-1`}
-      >
-        {/* خلفية نقرة سريعة لقفل القائمة في أي حتة فاضية */}
-        {activeMenuMessageId === msg._id && (
-          <div 
-            className="fixed inset-0 z-30 cursor-default" 
-            onClick={() => setActiveMenuMessageId(null)}
-          />
-        )}
-
-        {/* تم حذف كلاس mb-8 اللي كان مسبب المشكلة وتعديله لـ mb-1 طبيعي وسلس */}
-        <div className={`relative max-w-[88%] sm:max-w-[72%] shadow-sm rounded-xl transition-all duration-200 mb-1
-          ${isOrder 
-            ? "p-0 bg-transparent border-0 shadow-none" 
-            : isMe 
-              ? "px-3 pt-1.5 pb-1 bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-50 rounded-tr-none select-all" 
-              : "px-3 pt-1.5 pb-1 bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 rounded-tl-none select-all"
-          }`}
-        >
-          {/* عرض محتوى الميديا أو الكتالوج أو النصوص */}
-          {renderMedia(msg)}
-          
-          {/* الوقت وحالة الإرسال */}
-          <div className={`flex items-center justify-end gap-1 mt-0.5 mb-1 select-none ${isOrder ? "px-1 text-slate-500 dark:text-slate-400" : ""}`}>
-            {msg.isPinned && <span className="text-[9px] text-gray-400">📌</span>}
-            {msg.isForwarded && <span className="text-[9px] text-blue-500 italic">↩️ {isRTL ? "منقولة" : "Forwarded"}</span>}
-            <span className="text-[8.5px] font-medium opacity-55 uppercase tracking-tighter tabular-nums">
-              {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-            </span>
-            {isMe && <StatusIcon status={msg.status} size={12} />}
-          </div>
-
-          {/* ⚙️ زر الـ 3 نقط والـ Dropdown خيارات الرسالة */}
-          {!isOrder && msg._id && !msg._id.startsWith("temp_") && (
-            <div className={`absolute top-1/2 -translate-y-1/2 flex items-center z-40
-              ${isMe ? '-left-7' : '-right-7'}`}
-            >
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveMenuMessageId(activeMenuMessageId === msg._id ? null : msg._id);
-                }}
-                className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-all text-sm font-bold active:scale-90"
-                title={isRTL ? "خيارات الرسالة" : "Message Options"}
-              >
-                ⋮
-              </button>
-
-              {activeMenuMessageId === msg._id && (
-                <div className={`absolute top-5 bg-white dark:bg-[#2a3942] shadow-2xl border border-gray-100 dark:border-white/5 rounded-xl py-1 w-32 z-50 animate-in fade-in zoom-in-95 duration-100
-                  ${isMe ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`}
-                >
-                  {/* 📌 خيار التثبيت */}
-                  <button
-                    onClick={() => {
-                      axios.patch(`/chat-actions/pin/${msg._id}`)
-                        .then((response) => {
-                          setActiveMenuMessageId(null);
-                          if (response.data.success) {
-                            setActiveChat(prev => prev.map(m => m._id === msg._id ? { ...m, isPinned: !m.isPinned } : m));
-                          }
-                        })
-                        .catch(err => console.error(err));
-                    }}
-                    className={`w-full px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-2 transition-colors
-                      ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}
-                  >
-                    <span className="text-xs">📌</span>
-                    <span className="flex-1 font-medium">{msg.isPinned ? (isRTL ? "إلغاء التثبيت" : "Unpin") : (isRTL ? "تثبيت الرسالة" : "Pin")}</span>
-                  </button>
-
-                  {/* ↩️ خيار التوجيه */}
-                  <button
-                    onClick={() => {
-                      setForwardMessageId(msg._id);
-                      setIsForwardModalOpen(true);
-                      setSearchCustomerQuery("");
-                      setActiveMenuMessageId(null);
-                    }}
-                    className={`w-full px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-2 border-t border-gray-50 dark:border-white/5 transition-colors
-                      ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}
-                  >
-                    <span className="text-xs transform scale-x-[-1]">↩️</span>
-                    <span className="flex-1 font-medium">{isRTL ? "توجيه الرسالة" : "Forward"}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  })}
+  {activeChat.map((msg) => (
+  <MessageBubble
+    key={msg._id || msg.whatsappMessageId}
+    msg={msg}
+    isRTL={isRTL}
+    renderMedia={renderMedia}
+    StatusIcon={StatusIcon}
+    activeMenuMessageId={activeMenuMessageId}
+    setActiveMenuMessageId={setActiveMenuMessageId}
+    setForwardMessageId={setForwardMessageId}
+    setIsForwardModalOpen={setIsForwardModalOpen}
+    setSearchCustomerQuery={setSearchCustomerQuery}
+    setActiveChat={setActiveChat}
+  />
+))}
   <div ref={chatEndRef} />
 </div>
 
@@ -2912,4 +1894,1704 @@ export default function MessageLogs() {
     `}</style>
     </div>
   );
+
+  
 }
+
+
+
+
+
+
+
+
+
+
+
+
+// ---------------------------------------------------------------------------------------
+// import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+// import axios from "../../api/axiosInstance";
+// import { useLanguage } from "../../context/LanguageContext";
+// import { io } from "socket.io-client";
+// import {
+//   Search,
+//   CheckCheck,
+//   Check,
+//   User,
+//   Send,
+//   Headset,
+//   MessageCircle,
+//   ChevronLeft,
+//   MoreVertical,
+//   Clock,
+//   Trash2,
+//   ShoppingBag,
+//   Hash,
+//   Paperclip,
+//   Mic,
+//   Square,
+//   Tag,
+// } from "lucide-react";
+
+// const SOCKET_URL = import.meta.env.VITE_API_URL;
+
+// export default function MessageLogs() {
+//   const { language } = useLanguage();
+//   const isRTL = language === "ar";
+
+//   // --- States ---
+//   const [logs, setLogs] = useState([]);
+//   const [activeChat, setActiveChat] = useState([]);
+//   const [replyTarget, setReplyTarget] = useState(null);
+//   const [replyText, setReplyText] = useState("");
+//   const [sending, setSending] = useState(false);
+//   const [search, setSearch] = useState("");
+//   const [isRecording, setIsRecording] = useState(false);
+//   const [mediaRecorder, setMediaRecorder] = useState(null);
+//   const [selectedFiles, setSelectedFiles] = useState([]);
+//   const [audioBlob, setAudioBlob] = useState(null);
+
+//   const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
+//   const [forwardMessageId, setForwardMessageId] = useState(null);
+//   const [searchCustomerQuery, setSearchCustomerQuery] = useState("");
+//   const [forwardCustomersList, setForwardCustomersList] = useState([]);
+//   const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+  
+//   const [pinnedMessages, setPinnedMessages] = useState([]);
+//   const [activeMenuMessageId, setActiveMenuMessageId] = useState(null);
+//   const [isAssignMenuOpen, setIsAssignMenuOpen] = useState(false);
+//   const [employees, setEmployees] = useState([]);
+//   const [isPeerTyping, setIsPeerTyping] = useState(false);
+
+//   // --- LocalStorage Sync Optimized ---
+//   const [localUnreadPhones, setLocalUnreadPhones] = useState(() => {
+//     try {
+//       const saved = localStorage.getItem("vestro_unread_phones");
+//       return saved ? JSON.parse(saved) : {};
+//     } catch {
+//       return {};
+//     }
+//   });
+
+//   // --- Refs (The Secret to High Performance) ---
+//   const socket = useRef(null);
+//   const chatEndRef = useRef(null);
+//   const activePhoneRef = useRef(null);
+//   const textareaRef = useRef(null);
+//   const typingTimeoutRef = useRef(null);
+  
+//   // حفظ الـ State جوة Ref عشان السوكيت يقراها فوراً بدون ما يعيد بناء الـ Listeners
+//   const localUnreadPhonesRef = useRef(localUnreadPhones);
+//   useEffect(() => {
+//     localUnreadPhonesRef.current = localUnreadPhones;
+//     localStorage.setItem("vestro_unread_phones", JSON.stringify(localUnreadPhones));
+//   }, [localUnreadPhones]);
+
+//   useEffect(() => {
+//     activePhoneRef.current = replyTarget?.phone;
+//   }, [replyTarget]);
+
+//   // --- Sub-Components (Memoized) ---
+//   const StatusIcon = useCallback(({ status, size = 16 }) => {
+//     switch (status) {
+//       case "read": return <CheckCheck size={size} className="text-blue-500" />;
+//       case "delivered": return <CheckCheck size={size} className="text-gray-400" />;
+//       case "sent": return <Check size={size} className="text-gray-400" />;
+//       case "failed": return <span className="text-red-500 text-[10px]">⚠️</span>;
+//       default: return <Clock size={size - 2} className="text-gray-300" />;
+//     }
+//   }, []);
+
+//   // --- Memoized Actions ---
+//   const markAsRead = useCallback((phone) => {
+//     if (socket.current?.connected) {
+//       socket.current.emit("mark_as_read", { phone });
+//     }
+
+//     setLocalUnreadPhones((prev) => {
+//       const updated = { ...prev };
+//       delete updated[phone];
+//       return updated;
+//     });
+
+//     setLogs((prev) =>
+//       prev.map((log) => (log.phone === phone ? { ...log, unreadCount: 0 } : log))
+//     );
+//   }, []);
+
+//   const fetchLogs = useCallback(async () => {
+//     try {
+//       const { data } = await axios.get("/messages", { params: { search } });
+//       const fetchedMessages = data.messages || [];
+
+//       setLogs(
+//         fetchedMessages.map((msg) => {
+//           const localCount = localUnreadPhonesRef.current[msg.phone];
+//           return {
+//             ...msg,
+//             unreadCount: localCount !== undefined ? Math.max(msg.unreadCount || 0, localCount) : msg.unreadCount || 0,
+//           };
+//         })
+//       );
+//     } catch (err) {
+//       console.error("Error fetching logs:", err);
+//     }
+//   }, [search]);
+
+//   // دالة جلب الشات المنفصلة
+//   const fetchChatMessages = useCallback(async (phone) => {
+//     if (!phone) return;
+//     try {
+//       const [chatRes] = await Promise.all([
+//         axios.get(`/whatsapp/chat/${phone}`),
+//         fetchLogs(),
+//       ]);
+//       if (chatRes.data.success) {
+//         setActiveChat(chatRes.data.messages || []);
+//       }
+//     } catch (err) {
+//       console.error("Failed to force refresh chat:", err);
+//     }
+//   }, [fetchLogs]);
+
+//   const handleClearChat = useCallback(async (phone) => {
+//     const confirmMsg = isRTL ? "هل أنت متأكد من رغبتك في إخفاء هذه المحادثة؟" : "Are you sure you want to hide this chat?";
+//     if (!window.confirm(confirmMsg)) return;
+//     try {
+//       const res = await axios.delete(`/messages/clear/${phone}`);
+//       if (res.data.success) {
+//         if (activePhoneRef.current === phone) {
+//           setReplyTarget(null);
+//           setActiveChat([]);
+//         }
+//         setLocalUnreadPhones((prev) => {
+//           const updated = { ...prev };
+//           delete updated[phone];
+//           return updated;
+//         });
+//         setLogs((prev) => prev.filter((log) => log.phone !== phone));
+//       }
+//     } catch (err) {
+//       console.error("Failed to clear chat:", err);
+//     }
+//   }, [isRTL]);
+
+//   const openChat = useCallback(async (msg) => {
+//     setReplyTarget(msg);
+//     setActiveChat([]);
+//     setIsPeerTyping(false);
+//     markAsRead(msg.phone);
+//     if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+//     try {
+//       const { data } = await axios.get(`/whatsapp/chat/${msg.phone}`);
+//       if (data.success) {
+//         setActiveChat(data.messages || []);
+//       }
+//     } catch (err) {
+//       console.error("Chat loading failed", err);
+//     }
+//   }, [markAsRead]);
+
+//   // --- Socket Integration (Isolated & Anti-Leak) ---
+//   useEffect(() => {
+//     socket.current = io(SOCKET_URL, {
+//       transports: ["websocket"],
+//       reconnection: true,
+//     });
+
+//     const currentSocket = socket.current;
+
+//     currentSocket.on("message_status_updated", (update) => {
+//       const updateIdStr = update.messageId ? String(update.messageId) : null;
+//       const updateWamIdStr = update.whatsappMessageId ? String(update.whatsappMessageId) : null;
+
+//       if (update.status === "read") {
+//         setLocalUnreadPhones((prev) => {
+//           const updated = { ...prev };
+//           delete updated[update.phone];
+//           return updated;
+//         });
+//         setLogs((prev) => prev.map((log) => log.phone === update.phone ? { ...log, unreadCount: 0 } : log));
+//       }
+
+//       setActiveChat((prev) => prev.map((msg) => {
+//         const isMatch = (updateIdStr && String(msg._id) === updateIdStr) || (updateWamIdStr && String(msg.whatsappMessageId) === updateWamIdStr);
+//         return isMatch ? { ...msg, status: update.status } : msg;
+//       }));
+
+//       setLogs((prev) => prev.map((log) => {
+//         const isMatch = (updateIdStr && String(log._id) === updateIdStr) || (updateWamIdStr && String(log.whatsappMessageId) === updateWamIdStr);
+//         return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
+//       }));
+//     });
+
+//     currentSocket.on("chat_cleared", (data) => {
+//       if (activePhoneRef.current === data.phone) {
+//         setReplyTarget(null);
+//         setActiveChat([]);
+//       }
+//       setLocalUnreadPhones((prev) => {
+//         const updated = { ...prev };
+//         delete updated[data.phone];
+//         return updated;
+//       });
+//       setLogs((prev) => prev.filter((log) => log.phone !== data.phone));
+//     });
+
+//     currentSocket.on("user_typing_status", (data) => {
+//       if (activePhoneRef.current === data.phone) {
+//         setIsPeerTyping(data.isTyping);
+//       }
+//     });
+
+//     currentSocket.on("chat_assigned", (data) => {
+//       setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, assignedTo: data.assignedTo, chatStatus: "Waiting" } : log));
+//       if (activePhoneRef.current === data.phone) {
+//         setReplyTarget((prev) => prev ? { ...prev, assignedTo: data.assignedTo, chatStatus: "Waiting" } : null);
+//       }
+//     });
+
+//     currentSocket.on("customer_meta_updated", (data) => {
+//       setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, ...data.customer } : log));
+//       if (activePhoneRef.current === data.phone) {
+//         setReplyTarget((prev) => prev ? { ...prev, ...data.customer } : null);
+//       }
+//     });
+
+//     currentSocket.on("unread_alert", (data) => {
+//       if (activePhoneRef.current !== data.phone) {
+//         try {
+//           const audio = new Audio("/assets/sounds/notification.mp3");
+//           audio.play().catch(() => {});
+//         } catch (e) {}
+//       }
+//     });
+
+//     currentSocket.on("new_reaction", (data) => {
+//       if (activePhoneRef.current === data.phone) {
+//         setActiveChat((prev) => prev.map((msg) => msg.whatsappMessageId === data.targetMessageId ? { ...msg, reaction: data.emoji } : msg));
+//       }
+//     });
+
+//     currentSocket.on("receive-message", (newMessage) => {
+//       const isChatOpen = activePhoneRef.current === newMessage.phone;
+
+//       if (isChatOpen) {
+//         setIsPeerTyping(false);
+//         setActiveChat((prev) => {
+//           if (newMessage.direction === "outbound") {
+//             const hasTemp = prev.some((msg) => msg._id?.toString().startsWith("temp_"));
+//             if (hasTemp) {
+//               let replaced = false;
+//               return prev.map((msg) => {
+//                 if (!replaced && msg._id?.toString().startsWith("temp_") && msg.text === newMessage.text) {
+//                   replaced = true;
+//                   return { ...newMessage, isRead: true };
+//                 }
+//                 return msg;
+//               });
+//             }
+//           }
+
+//           const isAlreadyExists = prev.some((msg) => (newMessage._id && msg._id?.toString() === newMessage._id.toString()) || (newMessage.whatsappMessageId && msg.whatsappMessageId?.toString() === newMessage.whatsappMessageId.toString()));
+//           return isAlreadyExists ? prev : [...prev, { ...newMessage, isRead: true }];
+//         });
+//       }
+
+//       const isCustomerMsg = newMessage.direction === "inbound";
+//       if (isCustomerMsg && !isChatOpen) {
+//         setLocalUnreadPhones((prevPhones) => {
+//           const currentLocalCount = prevPhones[newMessage.phone] || 0;
+//           const updatedPhones = { ...prevPhones, [newMessage.phone]: currentLocalCount + 1 };
+
+//           setLogs((prevLogs) => {
+//             const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
+//             const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
+//             const updatedLog = {
+//               ...newMessage,
+//               unreadCount: updatedPhones[newMessage.phone],
+//               customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" },
+//             };
+//             return [updatedLog, ...filtered];
+//           });
+
+//           return updatedPhones;
+//         });
+//       } else {
+//         setLogs((prevLogs) => {
+//           const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
+//           const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
+//           return [{
+//             ...newMessage,
+//             unreadCount: isChatOpen ? 0 : (existingLog?.unreadCount || 0),
+//             customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" },
+//           }, ...filtered];
+//         });
+//       }
+//     });
+
+//     return () => {
+//       currentSocket.disconnect();
+//     };
+//   }, []); // مفيش أي dependencies هنا عشان الـ Listeners متتكررش!
+
+//   // --- Handling Side Effects & APIs ---
+//   useEffect(() => {
+//     if (!isForwardModalOpen) return;
+//     const delayDebounceFn = setTimeout(() => {
+//       setIsSearchingCustomers(true);
+//       axios.get(`/chat-actions/customers?search=${searchCustomerQuery}`)
+//         .then((res) => res.data.success && setForwardCustomersList(res.data.customers))
+//         .catch((err) => console.error("Error fetching customers:", err))
+//         .finally(() => setIsSearchingCustomers(false));
+//     }, 300);
+//     return () => clearTimeout(delayDebounceFn);
+//   }, [searchCustomerQuery, isForwardModalOpen]);
+
+//   useEffect(() => {
+//     axios.get("/chat-actions/agents")
+//       .then((res) => Array.isArray(res.data) && setEmployees(res.data))
+//       .catch((err) => console.error("Error fetching agents:", err));
+//   }, []);
+
+//   const scrollToBottom = useCallback((behavior = "smooth") => {
+//     chatEndRef.current?.scrollIntoView({ behavior });
+//   }, []);
+
+//   useEffect(() => {
+//     if (activeChat.length > 0) {
+//       const timer = setTimeout(() => scrollToBottom("smooth"), 100);
+//       return () => clearTimeout(timer);
+//     }
+//   }, [activeChat.length, scrollToBottom]);
+
+//   useEffect(() => {
+//     if (!activeChat || !activeChat.phone) return;
+//     axios.get(`/chat-actions/pinned/${activeChat.phone}`)
+//       .then((res) => res.data.success && setPinnedMessages(res.data.pinned))
+//       .catch((err) => console.error("Error fetching pinned messages:", err));
+//   }, [activeChat?.phone]);
+
+//   useEffect(() => {
+//     const handler = setTimeout(fetchLogs, 400);
+//     return () => clearTimeout(handler);
+//   }, [search, fetchLogs]);
+
+//   // --- Handling Media & Inputs ---
+//   const handleMediaSelect = useCallback((e) => {
+//     const files = Array.from(e.target.files);
+//     if (files.length === 0) return;
+
+//     const maxSize = 16 * 1024 * 1024;
+//     const validFiles = files.filter(file => {
+//       if (file.size > maxSize) {
+//         alert(isRTL ? `الملف ${file.name} حجمه كبير جداً. الحد الأقصى 16 ميجابايت.` : `File ${file.name} is too large. Max size is 16MB.`);
+//         return false;
+//       }
+//       return true;
+//     });
+
+//     const hasAudio = validFiles.some((f) => f.type.startsWith("audio/"));
+//     if (hasAudio) {
+//       setAudioBlob(validFiles[0]);
+//       setSelectedFiles([]);
+//     } else {
+//       setSelectedFiles(validFiles);
+//       setAudioBlob(null);
+//     }
+//   }, [isRTL]);
+
+//   const handleTextareaChange = useCallback((e) => {
+//     setReplyText(e.target.value);
+//     e.target.style.height = "auto";
+//     e.target.style.height = `${e.target.scrollHeight}px`;
+
+//     if (socket.current?.connected && activePhoneRef.current) {
+//       socket.current.emit("agent_typing_status", { phone: activePhoneRef.current, isTyping: true });
+//       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+//       typingTimeoutRef.current = setTimeout(() => {
+//         socket.current.emit("agent_typing_status", { phone: activePhoneRef.current, isTyping: false });
+//       }, 2000);
+//     }
+//   }, []);
+
+//   const startRecording = useCallback(async () => {
+//     try {
+//       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+//       let options = {};
+//       if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) options = { mimeType: "audio/ogg;codecs=opus" };
+//       else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) options = { mimeType: "audio/webm;codecs=opus" };
+
+//       const recorder = new MediaRecorder(stream, options);
+//       const chunks = [];
+
+//       recorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
+//       recorder.onstop = () => {
+//         const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+//         setAudioBlob(blob);
+//         stream.getTracks().forEach((track) => track.stop());
+//       };
+
+//       recorder.start();
+//       setMediaRecorder(recorder);
+//       setIsRecording(true);
+//       setSelectedFiles([]);
+//     } catch (err) {
+//       console.error("تعذر الوصول للمايكروفون:", err);
+//       alert(isRTL ? "برجاء السماح بالوصول للمايكروفون أولاً." : "Please allow microphone access.");
+//     }
+//   }, [isRTL]);
+
+//   const stopRecording = useCallback(() => {
+//     if (mediaRecorder && isRecording) {
+//       mediaRecorder.stop();
+//       setIsRecording(false);
+//     }
+//   }, [mediaRecorder, isRecording]);
+
+//   const handleSendReply = useCallback(async () => {
+//     const hasImages = selectedFiles.length > 0;
+//     const hasAudio = !!audioBlob;
+
+//     if ((!replyText.trim() && !hasImages && !hasAudio) || sending || !replyTarget?.phone) return;
+
+//     const content = replyText.trim();
+//     const tempId = "temp_" + Date.now().toString();
+
+//     setSending(true);
+//     setReplyText("");
+//     if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+//     if (socket.current?.connected) {
+//       socket.current.emit("agent_typing_status", { phone: replyTarget.phone, isTyping: false });
+//     }
+
+//     let optimisticText = content;
+//     let optimisticType = "text";
+
+//     if (!optimisticText) {
+//       if (hasImages) optimisticText = isRTL ? `📷 جاري إرسال ${selectedFiles.length} صور...` : `📷 Sending ${selectedFiles.length} images...`;
+//       if (hasAudio) optimisticText = isRTL ? "🎵 جاري إرسال تسجيل صوتي..." : "🎵 Sending audio...";
+//     }
+
+//     if (hasImages) optimisticType = "image";
+//     if (hasAudio) optimisticType = "audio";
+
+//     const optimisticMessage = {
+//       _id: tempId,
+//       text: optimisticText,
+//       direction: "outbound",
+//       status: "pending",
+//       createdAt: new Date().toISOString(),
+//       type: optimisticType,
+//     };
+//     setActiveChat((prev) => [...prev, optimisticMessage]);
+
+//     try {
+//       const formData = new FormData();
+//       formData.append("phone", replyTarget.phone);
+//       formData.append("message", content);
+
+//       if (hasImages) {
+//         formData.append("type", "image");
+//         selectedFiles.forEach((file) => formData.append("file", file));
+//       } else if (hasAudio) {
+//         formData.append("type", "audio");
+//         const audioFile = audioBlob instanceof File ? audioBlob : new File([audioBlob], "voice.mp3", { type: audioBlob.type || "audio/mp3" });
+//         formData.append("file", audioFile);
+//       } else {
+//         formData.append("type", "text");
+//       }
+
+//       const res = await axios.post("/whatsapp/send", formData, {
+//         headers: { "Content-Type": "multipart/form-data" },
+//       });
+
+//       if (res.data.success) {
+//         const finalMessage = {
+//           _id: res.data.data?._id || res.data.dbId || tempId,
+//           whatsappMessageId: res.data.messageId || res.data.whatsappMessageId,
+//           text: content || (hasImages ? `📷 Photo (${selectedFiles.length})` : hasAudio ? "🎵 Audio" : ""),
+//           direction: "outbound",
+//           status: "sent",
+//           createdAt: new Date().toISOString(),
+//           type: optimisticType,
+//           mediaUrl: res.data.data?.mediaUrl || null,
+//           mediaUrls: res.data.data?.mediaUrls || null,
+//         };
+
+//         setActiveChat((prev) => prev.map((msg) => msg._id?.toString() === tempId ? finalMessage : msg));
+//         setLogs((prev) => {
+//           const filtered = prev.filter((l) => l.phone !== replyTarget.phone);
+//           return [{
+//             ...replyTarget,
+//             text: finalMessage.text,
+//             status: "sent",
+//             createdAt: finalMessage.createdAt,
+//             direction: "outbound",
+//             whatsappMessageId: finalMessage.whatsappMessageId,
+//             unreadCount: 0,
+//           }, ...filtered];
+//         });
+
+//         setSelectedFiles([]);
+//         setAudioBlob(null);
+//       }
+//     } catch (err) {
+//       console.error("حدث خطأ أثناء الإرسال:", err);
+//       setActiveChat((prev) => prev.map((msg) => msg._id?.toString() === tempId ? { ...msg, status: "failed" } : msg));
+//     } finally {
+//       setSending(false);
+//     }
+//   }, [replyText, selectedFiles, audioBlob, sending, replyTarget, isRTL]);
+  
+  
+//   const renderMedia = (msg) => {
+//     // 1. دالة داخلية لتنظيف اللينكات المكسورة
+//     const cleanUrl = (url) => {
+//       if (!url) return "";
+//       return url.includes("http") ? url.substring(url.lastIndexOf("http")) : url;
+//     };
+
+//     // 2. دالة داخلية لتوحيد شكل التفاعلات (Reactions) تحت الرسايل
+//     const renderReactionBadge = () => {
+//       if (!msg.reaction) return null;
+//       return (
+//         <div
+//           className={`absolute -bottom-2.5 ${msg.direction === "outbound" ? "left-2" : "right-2"} bg-white dark:bg-[#222e35] text-xs px-1.5 py-0.5 rounded-full border border-gray-100 dark:border-white/10 shadow-md select-none z-10`}
+//         >
+//           {msg.reaction}
+//         </div>
+//       );
+//     };
+
+//     // === [حالة 1] الرسالة النصية العادية ===
+//     if (msg.type === "text" && !msg.mediaUrl) {
+//       return (
+//         <div className="relative group">
+//           <p className="text-[14px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words text-neutral-900 dark:text-neutral-100 font-normal">
+//             {msg.text}
+//           </p>
+//           {renderReactionBadge()}
+//         </div>
+//       );
+//     }
+
+//     // === [حالة 2] رسالة التفاعل المستقلة ===
+//     if (msg.type === "reaction") {
+//       return (
+//         <div className="flex items-center gap-1.5 py-1 px-2 bg-neutral-100 dark:bg-white/5 rounded-lg border border-neutral-200/20">
+//           <span className="text-sm select-none">{msg.text}</span>
+//           <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">
+//             {isRTL ? "تفاعل على رسالة" : "Reacted to a message"}
+//           </span>
+//         </div>
+//       );
+//     }
+
+//     // === [حالة 3] كارت أوردر المنتجات (Catalog Order) ===
+//     if (msg.type === "order") {
+//       const items = msg.orderDetails?.product_items || [];
+//       const totalCartPrice = items.reduce((sum, item) => sum + (item.item_price * item.quantity), 0);
+//       const currencyStr = items[0]?.currency || (isRTL ? "ج.م" : "EGP");
+
+//       return (
+//         <div className="relative">
+//           <div className="w-full min-w-[250px] max-w-[300px] sm:max-w-sm rounded-xl overflow-hidden bg-white dark:bg-[#1c2931] border border-gray-100 dark:border-white/5 shadow-xl">
+//             {/* Header الكارت */}
+//             <div className="bg-gradient-to-r from-neutral-900 to-neutral-800 dark:from-[#20313c] dark:to-[#1a2730] px-3.5 py-2.5 flex items-center justify-between text-white border-b border-white/5 shadow-sm">
+//               <div className="flex items-center gap-2 min-w-0">
+//                 <ShoppingBag size={15} className="shrink-0 text-neutral-400" />
+//                 <span className="text-[11px] sm:text-[12px] font-bold tracking-wider uppercase text-neutral-100">
+//                   {isRTL ? "طلب كتالوج جديد" : "NEW CATALOG ORDER"}
+//                 </span>
+//               </div>
+//               {msg.orderDetails?.catalog_id && (
+//                 <div className="flex items-center gap-0.5 text-[10px] bg-white/10 px-2 py-0.5 rounded-md font-mono shrink-0 text-neutral-300">
+//                   <Hash size={10} />
+//                   <span>{msg.orderDetails.catalog_id.slice(-6)}</span>
+//                 </div>
+//               )}
+//             </div>
+
+//             {/* قائمة المنتجات جوه الأوردر */}
+//             <div className="p-3.5 space-y-3 max-h-56 overflow-y-auto custom-scrollbar">
+//               {items.length > 0 ? (
+//                 items.map((item, index) => {
+//                   const productImg = item.primary_image || item.image_url || item.product_image || item.images?.[0]?.url;
+//                   const rawName = item.product_name || item.name || (isRTL ? "منتج غير معروف" : "Unknown Product");
+//                   const variantColor = item.color && item.color !== "N/A" ? item.color : null;
+//                   const variantSize = item.size && item.size !== "N/A" ? item.size : null;
+
+//                   return (
+//                     <div key={index} className="flex items-start justify-between gap-2.5 text-xs border-b border-gray-100 dark:border-white/5 pb-3 last:border-0 last:pb-0">
+//                       <div className="min-w-0 flex-1 flex items-start gap-2.5">
+//                         {productImg ? (
+//                           <img
+//                             src={productImg}
+//                             alt={rawName}
+//                             loading="lazy"
+//                             className="w-11 h-11 object-cover rounded-lg border border-gray-200/60 dark:border-white/10 shrink-0 aspect-square"
+//                           />
+//                         ) : (
+//                           <div className="w-11 h-11 bg-neutral-100 dark:bg-neutral-800 text-neutral-400 rounded-lg flex items-center justify-center shrink-0 border border-neutral-200/50 dark:border-white/5 aspect-square">
+//                             <ShoppingBag size={14} />
+//                           </div>
+//                         )}
+
+//                         <div className="min-w-0 flex-1">
+//                           <p className="font-semibold text-neutral-800 dark:text-neutral-200 text-[12.5px] leading-snug mb-0.5 truncate">
+//                             {rawName}
+//                           </p>
+//                           <p className="text-neutral-400 dark:text-neutral-500 text-[11px]">
+//                             {isRTL ? "الكمية: " : "Qty: "}<span className="font-bold text-neutral-700 dark:text-neutral-300">{item.quantity}</span>
+//                           </p>
+//                           {(variantColor || variantSize) && (
+//                             <div className="flex flex-wrap gap-1 mt-1 text-[10px] font-medium">
+//                               {variantColor && (
+//                                 <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 px-1.5 py-0.5 rounded">
+//                                   {variantColor}
+//                                 </span>
+//                               )}
+//                               {variantSize && (
+//                                 <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-300 px-1.5 py-0.5 rounded font-mono font-bold">
+//                                   {variantSize}
+//                                 </span>
+//                               )}
+//                             </div>
+//                           )}
+//                         </div>
+//                       </div>
+
+//                       <div className="text-end shrink-0 font-semibold pt-0.5 text-neutral-800 dark:text-neutral-200 tracking-tight">
+//                         <span>{(item.item_price * item.quantity).toLocaleString()}</span>
+//                         <span className="text-[9px] text-neutral-400 ms-0.5 font-normal">{currencyStr}</span>
+//                       </div>
+//                     </div>
+//                   );
+//                 })
+//               ) : (
+//                 <p className="text-xs text-neutral-400 text-center py-2 italic">
+//                   {isRTL ? "لا توجد تفاصيل للمنتجات" : "No product items included"}
+//                 </p>
+//               )}
+//             </div>
+
+//             {/* ملاحظة العميل */}
+//             {msg.orderDetails?.text && (
+//               <div className="mx-3 mb-3 p-2.5 bg-neutral-50 dark:bg-[#182229] border-s-2 border-neutral-400 dark:border-neutral-600 rounded-r text-[11.5px] text-neutral-600 dark:text-neutral-400 break-words leading-relaxed">
+//                 "{msg.orderDetails.text}"
+//               </div>
+//             )}
+
+//             {/* الفوتر والإجمالي */}
+//             <div className="bg-neutral-50 dark:bg-[#182229] px-3.5 py-2.5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-semibold">
+//               <span className="text-neutral-500 dark:text-neutral-400">{isRTL ? "إجمالي المنتجات:" : "Total Price:"}</span>
+//               <span className="text-[13px] font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
+//                 {totalCartPrice.toLocaleString()} <span className="text-[9px] font-normal text-neutral-400">{currencyStr}</span>
+//               </span>
+//             </div>
+//           </div>
+//           {renderReactionBadge()}
+//         </div>
+//       );
+//     }
+
+//     // حماية ضد داتا الميديا التالفة أو الفاضية
+//     if (!msg.mediaUrl && (!msg.mediaUrls || msg.mediaUrls.length === 0)) {
+//       return (
+//         <p className="text-[12px] text-neutral-400 italic flex items-center gap-1">
+//           <span>⚠️</span> {isRTL ? "ملف وسائط غير صالح" : "Invalid media file"}
+//         </p>
+//       );
+//     }
+
+//     // === [حالة 4] الصور (منفردة أو متعددة) ===
+//     if (msg.type === "image") {
+//       if (msg.mediaUrls && msg.mediaUrls.length > 0) {
+//         return (
+//           <div className="relative">
+//             <div className={`grid ${msg.mediaUrls.length > 1 ? "grid-cols-2" : "grid-cols-1"} gap-1 p-1 max-w-[260px] sm:max-w-xs group`}>
+//               {msg.mediaUrls.map((rawUrl, index) => {
+//                 const finalUrl = cleanUrl(rawUrl);
+//                 return (
+//                   <img
+//                     key={index}
+//                     src={finalUrl}
+//                     loading="lazy"
+//                     className="rounded-lg max-h-36 w-full object-cover cursor-zoom-in aspect-square border border-black/5 dark:border-white/5 transition-all duration-200 hover:opacity-90 active:scale-98 shadow-sm"
+//                     alt={`attachment-${index}`}
+//                     onClick={() => window.open(finalUrl, "_blank")}
+//                   />
+//                 );
+//               })}
+//             </div>
+//             {renderReactionBadge()}
+//           </div>
+//         );
+//       }
+
+//       const singleMediaUrl = cleanUrl(msg.mediaUrl);
+//       return (
+//         <div className="relative">
+//           <div className="relative group max-w-[280px] sm:max-w-xs overflow-hidden rounded-lg shadow-sm border border-black/5 dark:border-white/5">
+//             <img
+//               src={singleMediaUrl}
+//               loading="lazy"
+//               className="w-full object-cover cursor-zoom-in max-h-64 sm:max-h-72 transition-all duration-200 hover:brightness-95"
+//               alt="media"
+//               onClick={() => window.open(singleMediaUrl, "_blank")}
+//             />
+//           </div>
+//           {renderReactionBadge()}
+//         </div>
+//       );
+//     }
+
+//     // === [حالة 5] الريكوردات والملفات الصوتية ===
+//     if (msg.type === "audio" || msg.type === "voice") {
+//       let audioUrl = cleanUrl(msg.mediaUrl);
+//       if (audioUrl && audioUrl.endsWith(".ogg") && audioUrl.includes("cloudinary")) {
+//         audioUrl = audioUrl.replace(".ogg", ".webm");
+//       }
+
+//       return (
+//         <div className="pt-0.5 w-full min-w-[220px] max-w-full relative group">
+//           <audio
+//             src={audioUrl}
+//             controls
+//             preload="metadata"
+//             className="w-full h-8 custom-audio accent-neutral-900"
+//           />
+//           {renderReactionBadge()}
+//         </div>
+//       );
+//     }
+
+//     // === [حالة 6] أي مرفقات أخرى ===
+//     return (
+//       <div className="p-2 bg-neutral-100 dark:bg-white/5 rounded-lg text-xs font-mono text-neutral-500 flex items-center gap-1.5 break-all">
+//         <Paperclip size={12} />
+//         <span>Attachment: {msg.type}</span>
+//       </div>
+//     );
+//   };
+  
+  
+//   return (
+//     <div
+//       className={`flex flex-col h-screen w-full bg-[#f0f2f5] dark:bg-[#0c0c0c] text-slate-900 dark:text-slate-100 overflow-hidden ${isRTL ? "font-arabic" : ""}`}
+//       dir={isRTL ? "rtl" : "ltr"}
+//     >
+//       <div className="flex flex-1 h-full w-full overflow-hidden relative">
+// 	  {/* SIDEBAR (قائمة المحادثات) */}
+//         <div
+//           className={`w-full md:w-[360px] lg:w-[380px] flex flex-col bg-white dark:bg-[#111] border-e border-neutral-200/80 dark:border-white/5 shrink-0 h-full transition-all duration-300 ${replyTarget ? "hidden md:flex" : "flex"}`}
+//         >
+//           {/* الـ Header الفاخر للمنصة مع خانة البحث */}
+//           <div className="p-4 space-y-3.5 shrink-0 bg-white dark:bg-[#111] z-10 border-b border-neutral-100 dark:border-white/5 shadow-sm">
+//             <div className="flex items-center justify-between">
+//               <h1 className="text-[16px] font-black text-neutral-950 dark:text-white tracking-widest flex items-center gap-2">
+//                 <Headset size={20} className="text-neutral-900 dark:text-neutral-400" /> 
+//                 <span>VESTRO</span>
+//                 <span className="text-[9px] font-bold bg-neutral-900 dark:bg-white text-white dark:text-black px-2 py-0.5 rounded-sm tracking-normal">
+//                   LIVE
+//                 </span>
+//               </h1>
+//             </div>
+            
+//             {/* حقل البحث الأنيق */}
+//             <div className="relative group">
+//               <Search
+//                 className={`${isRTL ? "right-3" : "left-3"} absolute top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-neutral-900 dark:group-focus-within:text-white transition-colors duration-200`}
+//                 size={15}
+//               />
+//               <input
+//                 type="text"
+//                 placeholder={isRTL ? "بحث في المحادثات أو الأرقام..." : "Search chats or numbers..."}
+//                 className={`w-full bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 rounded-xl py-2 ${isRTL ? "pr-9 pl-4" : "pl-9 pr-4"} text-xs sm:text-[13px] outline-none border border-neutral-200/20 dark:border-transparent focus:border-neutral-900/30 dark:focus:border-white/20 focus:bg-white dark:focus:bg-[#151515] transition-all duration-200 shadow-inner`}
+//                 value={search}
+//                 onChange={(e) => setSearch(e.target.value)}
+//               />
+//             </div>
+//           </div>
+
+//           {/* قائمة المحادثات المدعمة بالتثبيت وحالة الشات */}
+//           <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-neutral-100 dark:divide-white/[0.03]">
+//             {logs.length === 0 ? (
+//               <div className="p-8 text-center text-xs text-neutral-400 font-medium">
+//                 {isRTL ? "لا توجد محادثات متاحة" : "No conversations found"}
+//               </div>
+//             ) : (
+//               // ترتيب المحادثات: المثبت أولاً (isPinned) ثم بالأحدث زمانياً مع حماية الأداء
+//               [...logs]
+//                 .sort((a, b) => {
+//                   if (a.isPinned !== b.isPinned) return b.isPinned ? 1 : -1;
+//                   const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+//                   const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+//                   return timeB - timeA;
+//                 })
+//                 .map((msg) => {
+//                   const isCurrentActive = replyTarget?.phone === msg.phone;
+//                   const hasUnread = msg.unreadCount > 0 && !isCurrentActive;
+
+//                   return (
+//                     <div
+//                       key={msg._id || msg.phone}
+//                       onClick={() => openChat(msg)}
+//                       className={`flex items-center gap-3 p-3.5 cursor-pointer transition-all duration-200 relative border-s-2
+//                         ${isCurrentActive 
+//                           ? "bg-neutral-50 dark:bg-white/[0.03] border-neutral-900 dark:border-white" 
+//                           : "border-transparent hover:bg-neutral-50/60 dark:hover:bg-white/[0.01]"
+//                         }
+//                         ${hasUnread ? "bg-neutral-50/40 dark:bg-neutral-900/10" : ""}`}
+//                     >
+//                       {/* دبلة الأفتار الشخصي الدائري */}
+//                       <div className="w-11 h-11 rounded-full bg-neutral-900 dark:bg-neutral-800 flex items-center justify-center text-white dark:text-neutral-200 font-bold shrink-0 shadow-sm relative text-[13px] border border-neutral-200/10">
+//                         {msg.customer?.name && msg.customer.name !== "Unknown Customer" ? (
+//                           msg.customer.name.charAt(0).toUpperCase()
+//                         ) : (
+//                           <User size={18} className="text-neutral-400" />
+//                         )}
+//                         {/* نقطة الإشعار الأخضر غير المقروء الأنيقة */}
+//                         {hasUnread && (
+//                           <span className="absolute top-0 right-0 w-3 h-3 bg-neutral-900 dark:bg-white rounded-full border-2 border-white dark:border-[#111]"></span>
+//                         )}
+//                       </div>
+
+//                       {/* تفاصيل المحادثة */}
+//                       <div className="flex-1 min-w-0">
+//                         <div className="flex justify-between items-center mb-0.5 gap-1">
+//                           <div className="flex items-center gap-1.5 min-w-0">
+//                             <h3
+//                               className={`text-[13px] sm:text-[13.5px] truncate tracking-tight
+//                                 ${hasUnread 
+//                                   ? "font-black text-neutral-950 dark:text-white" 
+//                                   : "font-semibold text-neutral-800 dark:text-neutral-200"
+//                                 }`}
+//                             >
+//                               {msg.customer?.name && msg.customer.name !== "Unknown Customer"
+//                                 ? msg.customer.name
+//                                 : msg.phone}
+//                             </h3>
+//                             {msg.isPinned && (
+//                               <span className="text-[11px] text-neutral-400 shrink-0 transform scale-90" title="Pinned Chat">
+//                                 📌
+//                               </span>
+//                             )}
+//                           </div>
+                          
+//                           {/* وقت الرسالة */}
+//                           <span
+//                             className={`text-[9.5px] shrink-0 tabular-nums font-medium ${hasUnread ? "text-neutral-950 dark:text-white font-bold" : "text-neutral-400"}`}
+//                           >
+//                             {msg.createdAt
+//                               ? new Date(msg.createdAt).toLocaleTimeString([], {
+//                                   hour: "2-digit",
+//                                   minute: "2-digit",
+//                                 })
+//                               : ""}
+//                           </span>
+//                         </div>
+
+//                         {/* نص الرسالة الأخير والـ Badges */}
+//                         <div className="flex items-center justify-between gap-1.5">
+//                           <div className="flex items-center gap-1 min-w-0 flex-1">
+//                             {msg.direction === "outbound" && (
+//                               <StatusIcon status={msg.status} size={12} className="text-neutral-400 shrink-0" />
+//                             )}
+//                             <p
+//                               className={`text-[12px] truncate leading-normal
+//                                 ${hasUnread 
+//                                   ? "text-neutral-950 dark:text-neutral-100 font-bold" 
+//                                   : "text-neutral-400 dark:text-neutral-500"
+//                                 }`}
+//                             >
+//                               {msg.text ||
+//                                 (msg.type === "image"
+//                                   ? (isRTL ? "📷 صورة" : "📷 Photo")
+//                                   : msg.type === "audio" || msg.type === "voice"
+//                                     ? (isRTL ? "🎙️ ريكورد" : "🎙️ Voice Note")
+//                                     : (isRTL ? "📎 وسائط" : "📎 Media"))}
+//                             </p>
+//                           </div>
+
+//                           <div className="flex items-center gap-1 shrink-0">
+//                             {/* الـ Badges الإدارية الهادئة جداً للمنصة */}
+//                             {msg.chatStatus === "Waiting" && (
+//                               <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 font-medium text-[9px] px-1.5 py-0.5 rounded-sm">
+//                                 {isRTL ? "انتظار" : "Waiting"}
+//                               </span>
+//                             )}
+//                             {msg.assignedTo?.name && (
+//                               <span
+//                                 className="bg-neutral-50 dark:bg-white/5 border border-neutral-200/30 text-neutral-600 dark:text-neutral-400 text-[9px] px-1.5 py-0.5 rounded-sm truncate max-w-[65px]"
+//                                 title={`Assigned to ${msg.assignedTo.name}`}
+//                               >
+//                                 👤 {msg.assignedTo.name.split(" ")[0]}
+//                               </span>
+//                             )}
+//                             {hasUnread && (
+//                               <span className="bg-neutral-950 dark:bg-white text-white dark:text-black font-mono font-bold text-[9px] min-w-[15px] h-3.5 px-1 rounded-full flex items-center justify-center shadow-sm">
+//                                 {msg.unreadCount}
+//                               </span>
+//                             )}
+//                           </div>
+//                         </div>
+
+//                         {/* تاجات العميل الفاخرة الـ Minimal */}
+//                         {msg.tags && msg.tags.length > 0 && (
+//                           <div className="flex flex-wrap gap-1 mt-1.5 overflow-hidden max-h-5">
+//                             {msg.tags.slice(0, 3).map((tag, tIdx) => (
+//                               <span
+//                                 key={tIdx}
+//                                 className="text-[9px] bg-neutral-50 dark:bg-white/5 text-neutral-500 dark:text-neutral-400 px-1.5 py-0.2 rounded-sm font-medium border border-neutral-200/10"
+//                               >
+//                                 #{tag}
+//                               </span>
+//                             ))}
+//                           </div>
+//                         )}
+//                       </div>
+//                     </div>
+//                   );
+//                 })
+//             )}
+//           </div>
+//         </div>
+		
+		
+// 		{/* CHAT WINDOW */}
+// <div
+//   className={`flex-1 flex flex-col h-full overflow-hidden bg-zinc-50 dark:bg-zinc-950 relative ${
+//     !replyTarget ? "hidden md:flex" : "flex"
+//   }`}
+// >
+//   {replyTarget ? (
+//     <>
+//       {/* 1️⃣ HEADER CONTAINER (Sticky Header + Sub-Header Pinned) */}
+//       <div className="sticky top-0 w-full flex flex-col shrink-0 select-none z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 shadow-sm">
+        
+//         {/* Main Conversation Header */}
+//         <div className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-5 gap-2 w-full">
+          
+//           {/* Left Side: Customer Data & Status */}
+//           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+//             <button
+//               onClick={() => setReplyTarget(null)}
+//               className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors md:hidden text-zinc-600 dark:text-zinc-400 shrink-0"
+//             >
+//               <ChevronLeft
+//                 size={20}
+//                 className={isRTL ? "rotate-180" : ""}
+//               />
+//             </button>
+
+//             {/* Avatar with Status Badge */}
+//             <div className="relative shrink-0">
+//               <div className="w-9 sm:w-11 h-9 sm:h-11 rounded-full bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-900 font-bold text-xs sm:text-sm shadow-sm border border-zinc-200 dark:border-zinc-800">
+//                 {replyTarget.customer?.name
+//                   ?.trim()
+//                   ?.charAt(0)
+//                   ?.toUpperCase() || "V"}
+//               </div>
+//               <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full shadow-sm"></div>
+//             </div>
+
+//             {/* Name & Dynamic Status */}
+//             <div className="min-w-0 flex-1">
+//               <h2 className="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-zinc-50 leading-tight truncate flex items-center gap-1.5">
+//                 <span className="truncate">
+//                   {replyTarget.customer?.name || replyTarget.phone}
+//                 </span>
+//                 {activeChat.some((m) => m.isPinned) && (
+//                   <span className="text-[10px] text-amber-500 shrink-0" title="Contains Pinned Items">
+//                     📌
+//                   </span>
+//                 )}
+//               </h2>
+              
+//               <div className="flex items-center gap-1 mt-0.5">
+//                 {isPeerTyping ? (
+//                   <p className="text-[10px] text-emerald-500 font-medium animate-pulse tracking-wide">
+//                     {isRTL ? "جاري الكتابة..." : "Typing..."}
+//                   </p>
+//                 ) : (
+//                   <div className="flex items-center gap-1.5 min-w-0 w-full">
+//                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0"></div>
+//                     <p className="text-[9px] sm:text-[10px] text-zinc-500 dark:text-zinc-400 font-medium tracking-wider uppercase shrink-0">
+//                       {replyTarget.chatStatus || "ONLINE"}
+//                     </p>
+//                     {replyTarget.assignedTo?.name && (
+//                       <span className="text-[9px] sm:text-[10px] text-zinc-400 dark:text-zinc-500 truncate max-w-[80px] sm:max-w-[120px]">
+//                         • {isRTL ? "المسؤول:" : "Agent:"} {replyTarget.assignedTo.name.split(" ")[0]}
+//                       </span>
+//                     )}
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* Right Side: Action Controllers */}
+//           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            
+//             {/* Smart Chat Forwarder Dropdown */}
+//             <div className="relative">
+//               <button
+//                 onClick={(e) => {
+//                   e.stopPropagation();
+//                   setIsAssignMenuOpen(!isAssignMenuOpen);
+//                 }}
+//                 title={isRTL ? "تحويل الشات لموظف آخر" : "Forward / Assign Chat"}
+//                 className={`p-2 rounded-full transition-all active:scale-95 flex items-center justify-center relative z-10
+//                   ${isAssignMenuOpen
+//                     ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950"
+//                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+//                   }`}
+//               >
+//                 <svg
+//                   xmlns="http://www.w3.org/2000/svg"
+//                   className="w-[18px] h-[18px]"
+//                   viewBox="0 0 24 24"
+//                   fill="none"
+//                   stroke="currentColor"
+//                   strokeWidth="2"
+//                   strokeLinecap="round"
+//                   strokeLinejoin="round"
+//                 >
+//                   <polyline points="15 3 21 3 21 9" />
+//                   <line x1="10" y1="14" x2="21" y2="3" />
+//                   <path d="M18 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
+//                 </svg>
+//               </button>
+
+//               {/* Outside click handler overlay */}
+//               {isAssignMenuOpen && (
+//                 <div
+//                   className="fixed inset-0 z-40 cursor-default"
+//                   onClick={() => setIsAssignMenuOpen(false)}
+//                 />
+//               )}
+
+//               {/* Dropdown Menu List */}
+//               {isAssignMenuOpen && (
+//                 <div
+//                   className={`absolute top-12 bg-white dark:bg-zinc-900 shadow-xl border border-zinc-200/60 dark:border-zinc-800/60 rounded-xl py-1.5 w-48 z-50 animate-in fade-in zoom-in-95 duration-150 max-h-56 overflow-y-auto custom-scrollbar
+//                     ${isRTL ? "left-0 origin-top-left" : "right-0 origin-top-right"}`}
+//                 >
+//                   <div
+//                     className={`px-3 py-1.5 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 tracking-wider uppercase border-b border-zinc-100 dark:border-zinc-800/60 pb-1 mb-1
+//                       ${isRTL ? "text-right" : "text-left"}`}
+//                   >
+//                     {isRTL ? "اختر موظف للتحويل" : "Assign to agent"}
+//                   </div>
+
+//                   {typeof employees !== "undefined" && employees.length > 0 ? (
+//                     employees.map((emp) => (
+//                       <button
+//                         key={emp._id}
+//                         onClick={() => {
+//                           setIsAssignMenuOpen(false);
+//                           axios
+//                             .patch(`/chat-actions/${replyTarget.phone}/assign`, { userId: emp._id })
+//                             .then(() => {
+//                               alert(isRTL ? `تم تحويل المحادثة إلى ${emp.name}` : `Chat assigned to ${emp.name}`);
+//                               fetchChatMessages(replyTarget.phone);
+//                             })
+//                             .catch(() => alert(isRTL ? "خطأ في التحويل" : "Error forwarding"));
+//                         }}
+//                         className={`w-full px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 text-xs text-zinc-700 dark:text-zinc-300 flex items-center gap-2 transition-colors
+//                           ${isRTL ? "flex-row-reverse text-right justify-start" : "text-left justify-start"}`}
+//                       >
+//                         <span className="shrink-0 text-zinc-400 text-xs">👤</span>
+//                         <span className="truncate font-medium flex-1">{emp.name}</span>
+//                       </button>
+//                     ))
+//                   ) : (
+//                     <div className="px-3 py-3 text-[11px] text-zinc-400 dark:text-zinc-500 italic text-center">
+//                       {isRTL ? "لا يوجد موظفين متاحين" : "No agents available"}
+//                     </div>
+//                   )}
+//                 </div>
+//               )}
+//             </div>
+
+//             {/* Quick Chat Status Updater */}
+//             <button
+//               onClick={() => {
+//                 const status = window.prompt(isRTL ? "أدخل الحالة الجديدة (Waiting, Replied, Closed):" : "Enter status:");
+//                 if (status) {
+//                   axios
+//                     .patch(`/chat-actions/${replyTarget.phone}/meta`, { chatStatus: status })
+//                     .then(() => fetchChatMessages(replyTarget.phone));
+//                 }
+//               }}
+//               title={isRTL ? "تحديث حالة الشات" : "Update Status"}
+//               className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all active:scale-95"
+//             >
+//               <Tag size={18} />
+//             </button>
+
+//             {/* Refresh / Sync Buttons */}
+//             <button
+//               onClick={() => fetchChatMessages(replyTarget.phone)}
+//               title={isRTL ? "تحديث الداتا" : "Force Sync"}
+//               className="p-2 text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all active:scale-95 group"
+//             >
+//               <svg
+//                 xmlns="http://www.w3.org/2000/svg"
+//                 className="w-[18px] h-[18px] transform group-hover:rotate-180 transition-transform duration-500"
+//                 viewBox="0 0 24 24"
+//                 fill="none"
+//                 stroke="currentColor"
+//                 strokeWidth="2"
+//                 strokeLinecap="round"
+//                 strokeLinejoin="round"
+//               >
+//                 <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+//                 <polyline points="21 3 21 8 16 8" />
+//               </svg>
+//             </button>
+
+//             {/* Hide/Archive Chat Button */}
+//             <button
+//               onClick={() => handleClearChat(replyTarget.phone)}
+//               title={isRTL ? "إخفاء المحادثة" : "Hide Conversation"}
+//               className="p-2 text-zinc-400 dark:text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all active:scale-95"
+//             >
+//               <Trash2 size={18} />
+//             </button>
+//           </div>
+//         </div>
+
+//         {/* 2️⃣ Sub-Header for Global Pinned Target */}
+//         {pinnedMessages && pinnedMessages.length > 0 && (
+//           <div className="w-full bg-zinc-50/90 dark:bg-zinc-900/90 backdrop-blur px-4 py-2 flex items-center justify-between gap-3 text-xs text-zinc-600 dark:text-zinc-400 border-t border-zinc-200/50 dark:border-zinc-800/50 animate-in slide-in-from-top duration-250">
+//             <div className="flex items-center gap-2 truncate flex-1">
+//               <span className="shrink-0">📌</span>
+//               <div className={`truncate font-medium flex-1 ${isRTL ? "text-right" : "text-left"}`}>
+//                 {pinnedMessages[pinnedMessages.length - 1].text || (isRTL ? "ملف مرفق مثبت" : "Pinned attachment")}
+//               </div>
+//             </div>
+//             <button
+//               onClick={() => {
+//                 axios
+//                   .patch(`/chat-actions/pin/${pinnedMessages[pinnedMessages.length - 1]._id}`)
+//                   .then(() => setPinnedMessages([]))
+//                   .catch((err) => console.error(err));
+//               }}
+//               className="text-zinc-400 hover:text-rose-500 font-medium px-2 py-0.5 transition-colors text-xs shrink-0"
+//               title={isRTL ? "إلغاء التثبيت" : "Unpin"}
+//             >
+//               ✕
+//             </button>
+//           </div>
+//         )}
+//       </div>
+
+//       {/* 3️⃣ MESSAGES SCROLL AREA */}
+//       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 bg-zinc-100 dark:bg-zinc-950 relative custom-scrollbar flex flex-col">
+//         {/* Minimalist Background pattern fallback if needed */}
+//         <div className="absolute inset-0 opacity-[0.015] dark:opacity-[0.008] pointer-events-none bg-repeat" 
+//              style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '360px' }} />
+        
+//         {/* Inline Floating Sticky Pin Alert Banner */}
+//         {activeChat.some(m => m.isPinned) && (
+//           <div className="sticky top-2 z-20 mx-auto max-w-md w-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur shadow-sm rounded-xl p-2.5 flex items-center justify-between text-xs border border-zinc-200/60 dark:border-zinc-800/60 animate-in fade-in slide-in-from-top-2 duration-300">
+//             <div 
+//               onClick={async () => {
+//                 const pinnedMsg = activeChat.find(m => m.isPinned);
+//                 if (!pinnedMsg?._id) return;
+
+//                 let element = document.getElementById(`msg-${pinnedMsg._id}`);
+//                 if (element) {
+//                   element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+//                   element.classList.add('ring-2', 'ring-amber-500/40', 'dark:ring-amber-500/20', 'transition-all', 'duration-300');
+//                   setTimeout(() => element.classList.remove('ring-2', 'ring-amber-500/40', 'dark:ring-amber-500/20'), 2000);
+//                 } else {
+//                   if (typeof fetchChatMessages === "function") {
+//                     await fetchChatMessages(replyTarget.phone);
+//                     setTimeout(() => {
+//                       const reFetchedElement = document.getElementById(`msg-${pinnedMsg._id}`);
+//                       if (reFetchedElement) {
+//                         reFetchedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+//                         reFetchedElement.classList.add('ring-2', 'ring-amber-500/40', 'transition-all', 'duration-300');
+//                         setTimeout(() => reFetchedElement.classList.remove('ring-2', 'ring-amber-500/40'), 2000);
+//                       } else {
+//                         alert(isRTL ? "الرسالة قديمة جداً، يرجى التمرير لأعلى لتحميلها." : "Message is too old, please scroll up to load.");
+//                       }
+//                     }, 400);
+//                   }
+//                 }
+//               }}
+//               className="flex items-center gap-2 truncate flex-1 cursor-pointer active:opacity-75 group"
+//               title={isRTL ? "اضغط للذهاب إلى الرسالة" : "Click to view message"}
+//             >
+//               <span className="text-amber-500 font-semibold shrink-0 group-hover:underline">
+//                 📌 {isRTL ? "مثبتة:" : "Pinned:"}
+//               </span>
+//               <p className="text-zinc-600 dark:text-zinc-300 truncate font-medium group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
+//                 {activeChat.find(m => m.isPinned)?.text || (isRTL ? "رسالة ميديا مثبتة" : "Pinned Media")}
+//               </p>
+//             </div>
+            
+//             <div className="flex items-center gap-2 shrink-0 pl-2">
+//               {activeChat.find(m => m.isPinned)?.pinnedBy?.name && (
+//                 <span className="text-[10px] text-zinc-400 italic">
+//                   by {activeChat.find(m => m.isPinned).pinnedBy.name.split(' ')[0]}
+//                 </span>
+//               )}
+              
+//               <button 
+//                 onClick={(e) => {
+//                   e.stopPropagation(); 
+//                   const pinnedMsg = activeChat.find(m => m.isPinned);
+//                   if (pinnedMsg?._id) {
+//                     axios.patch(`/chat-actions/pin/${pinnedMsg._id}`)
+//                       .then((response) => {
+//                         if (response.data.success) {
+//                           setActiveChat(prev => prev.map(msg => msg._id === pinnedMsg._id ? { ...msg, isPinned: false } : msg));
+//                         }
+//                       })
+//                       .catch(err => console.error(err));
+//                   }
+//                 }}
+//                 className="w-5 h-5 bg-zinc-100 dark:bg-zinc-800 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 rounded-full flex items-center justify-center font-bold text-[10px] transition-colors text-zinc-400"
+//               >
+//                 ✕
+//               </button>
+//             </div>
+//           </div>
+//         )}
+
+//         <div className="flex-1" />
+
+//         {/* Dynamic Bubbles Renderer */}
+//         {activeChat.map((msg, idx) => {
+//           const isMe = msg.direction === "outbound";
+//           const isOrder = msg.type === "order";
+          
+//           return (
+//             <div 
+//               key={msg._id || idx} 
+//               id={`msg-${msg._id}`}
+//               className={`flex w-full ${isMe ? "justify-end pl-8" : "justify-start pr-8"} animate-in fade-in slide-in-from-bottom-2 duration-200 group relative mb-0.5`}
+//             >
+//               {/* Context menu tracking background layer overlay */}
+//               {activeMenuMessageId === msg._id && (
+//                 <div 
+//                   className="fixed inset-0 z-30 cursor-default" 
+//                   onClick={() => setActiveMenuMessageId(null)}
+//                 />
+//               )}
+
+//               {/* Message Core Shape Container */}
+//               <div className={`relative max-w-[85%] sm:max-w-[70%] shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] rounded-2xl transition-all duration-200 p-2.5
+//                 ${isOrder 
+//                   ? "p-0 bg-transparent border-0 shadow-none" 
+//                   : isMe 
+//                     ? "bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 rounded-tr-none select-all" 
+//                     : "bg-white text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 rounded-tl-none select-all border border-zinc-200/50 dark:border-zinc-800/40"
+//                 }`}
+//               >
+//                 {/* Visual Media Engine */}
+//                 {renderMedia(msg)}
+                
+//                 {/* Meta details footer line */}
+//                 <div className={`flex items-center justify-end gap-1.5 mt-1 select-none opacity-60 ${isOrder ? "px-1 text-zinc-500" : ""}`}>
+//                   {msg.isPinned && <span className="text-[9px]">📌</span>}
+//                   {msg.isForwarded && <span className="text-[9px] italic font-light">↩️ {isRTL ? "منقولة" : "Forwarded"}</span>}
+//                   <span className="text-[8px] font-medium uppercase tracking-tight tabular-nums">
+//                     {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+//                   </span>
+//                   {isMe && <StatusIcon status={msg.status} size={11} />}
+//                 </div>
+
+//                 {/* 3-Dots Floating Single Message Controller Trigger */}
+//                 {!isOrder && msg._id && !msg._id.startsWith("temp_") && (
+//                   <div className={`absolute top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity z-20
+//                     ${isMe ? '-left-8' : '-right-8'}`}
+//                   >
+//                     <button 
+//                       onClick={(e) => {
+//                         e.stopPropagation();
+//                         setActiveMenuMessageId(activeMenuMessageId === msg._id ? null : msg._id);
+//                       }}
+//                       className="w-6 h-6 flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 rounded-full transition-all text-xs font-bold active:scale-90"
+//                     >
+//                       ⋮
+//                     </button>
+
+//                     {/* Popover Bubble Menu Options */}
+//                     {activeMenuMessageId === msg._id && (
+//                       <div className={`absolute top-6 bg-white dark:bg-zinc-900 shadow-xl border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl py-1 w-32 z-40 animate-in fade-in zoom-in-95 duration-100
+//                         ${isMe ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`}
+//                       >
+//                         <button
+//                           onClick={() => {
+//                             axios.patch(`/chat-actions/pin/${msg._id}`)
+//                               .then((response) => {
+//                                 setActiveMenuMessageId(null);
+//                                 if (response.data.success) {
+//                                   setActiveChat(prev => prev.map(m => m._id === msg._id ? { ...m, isPinned: !m.isPinned } : m));
+//                                 }
+//                               })
+//                               .catch(err => console.error(err));
+//                           }}
+//                           className={`w-full px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 text-[11px] text-zinc-700 dark:text-zinc-300 flex items-center gap-2 transition-colors
+//                             ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}
+//                         >
+//                           <span className="text-xs">📌</span>
+//                           <span className="flex-1 font-medium">{msg.isPinned ? (isRTL ? "إلغاء التثبيت" : "Unpin") : (isRTL ? "تثبيت الرسالة" : "Pin")}</span>
+//                         </button>
+
+//                         <button
+//                           onClick={() => {
+//                             setForwardMessageId(msg._id);
+//                             setIsForwardModalOpen(true);
+//                             setSearchCustomerQuery("");
+//                             setActiveMenuMessageId(null);
+//                           }}
+//                           className={`w-full px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 text-[11px] text-zinc-700 dark:text-zinc-300 flex items-center gap-2 border-t border-zinc-100 dark:border-zinc-800/60 transition-colors
+//                             ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}
+//                         >
+//                           <span className="text-xs transform scale-x-[-1]">↩️</span>
+//                           <span className="flex-1 font-medium">{isRTL ? "توجيه" : "Forward"}</span>
+//                         </button>
+//                       </div>
+//                     )}
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           );
+//         })}
+//         <div ref={chatEndRef} />
+//       </div>
+
+//       {/* 4️⃣ INPUT ACTION BAR BOTTOM */}
+//       <div className="p-3 bg-white dark:bg-zinc-900 flex items-end gap-2.5 border-t border-zinc-200/80 dark:border-zinc-800/80 shrink-0 z-20 pb-safe">
+        
+//         {/* Attachment Pin Controller */}
+//         <div className="flex items-center h-10 shrink-0">
+//           <label className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-xl cursor-pointer transition-colors block active:scale-95">
+//             <Paperclip size={19} />
+//             <input
+//               type="file"
+//               className="hidden"
+//               accept="image/*,audio/*"
+//               multiple
+//               onChange={handleMediaSelect}
+//             />
+//           </label>
+//         </div>
+
+//         {/* Live Audio Recorder Trigger */}
+//         <div className="flex items-center h-10 shrink-0">
+//           {isRecording ? (
+//             <button
+//               onClick={stopRecording}
+//               className="p-2 bg-rose-600 text-white rounded-xl animate-pulse transition-colors active:scale-95 flex items-center justify-center shadow-md shadow-rose-600/10"
+//               title={isRTL ? "إيقاف وحفظ" : "Stop Recording"}
+//             >
+//               <Square size={15} fill="currentColor" />
+//             </button>
+//           ) : (
+//             <button
+//               onClick={startRecording}
+//               className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-xl transition-colors active:scale-95 flex items-center justify-center"
+//               title={isRTL ? "تسجيل ريكورد" : "Record Voice Note"}
+//             >
+//               <Mic size={19} />
+//             </button>
+//           )}
+//         </div>
+
+//         {/* Core Input Composite Area */}
+//         <div className="flex-1 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800/80 overflow-hidden focus-within:border-zinc-400 dark:focus-within:border-zinc-700 transition-all flex flex-col min-w-0">
+          
+//           {/* Audio recording ongoing layout context tracker */}
+//           {isRecording && (
+//             <div className="px-3 py-2 bg-rose-50/60 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 flex items-center gap-2 text-xs font-medium animate-pulse border-b border-zinc-100 dark:border-zinc-800/60">
+//               <span className="w-1.5 h-1.5 rounded-full bg-rose-600 block animate-ping"></span>
+//               <span>{isRTL ? "جاري تسجيل الريكورد الفوري..." : "Recording live audio..."}</span>
+//             </div>
+//           )}
+
+//           {/* Pending files verification preview tier array */}
+//           {selectedFiles.length > 0 && (
+//             <div className="px-3 py-2 bg-zinc-100/60 dark:bg-zinc-900/60 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800/80 text-[11px]">
+//               <div className="flex flex-wrap gap-1 max-w-[85%] overflow-hidden truncate">
+//                 {selectedFiles.map((f, i) => (
+//                   <span
+//                     key={i}
+//                     className="bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded-md border border-zinc-200/60 dark:border-zinc-800/60 font-mono text-[10px] max-w-[120px] truncate shrink-0"
+//                   >
+//                     📷 {f.name}
+//                   </span>
+//                 ))}
+//               </div>
+//               <button
+//                 onClick={() => setSelectedFiles([])}
+//                 className="text-rose-500 hover:text-rose-700 font-bold px-1 text-xs"
+//               >
+//                 ✕
+//               </button>
+//             </div>
+//           )}
+
+//           {/* Audio blob staging validation container verification */}
+//           {audioBlob && !isRecording && (
+//             <div className="px-3 py-2 bg-zinc-100/60 dark:bg-zinc-900/60 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800/80 text-[11px]">
+//               <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+//                 🎙️ {isRTL ? "مذكرة صوتية جاهزة للاعتماد" : "Voice Note Selected"}
+//                 <span className="text-zinc-400 font-mono font-normal">
+//                   ({Math.round(audioBlob.size / 1024)} KB)
+//                 </span>
+//               </span>
+//               <button
+//                 onClick={() => setAudioBlob(null)}
+//                 className="text-rose-500 hover:text-rose-700 font-bold px-1 text-xs"
+//               >
+//                 ✕
+//               </button>
+//             </div>
+//           )}
+
+//           {/* Dynamic Auto-growing Text Input Node area */}
+//           <textarea
+//             ref={textareaRef}
+//             rows="1"
+//             disabled={isRecording}
+//             placeholder={
+//               isRecording
+//                 ? ""
+//                 : selectedFiles.length > 0
+//                   ? isRTL ? "أضف تعليقاً على الصور هنا..." : "Add a caption..."
+//                   : audioBlob
+//                     ? isRTL ? "اضغط إرسال لتأكيد الريكورد..." : "Press send to confirm voice note..."
+//                     : isRTL ? "اكتب رسالة الدعم الفني..." : "Type a message..."
+//             }
+//             className="w-full bg-transparent border-none outline-none py-2 px-3 text-xs sm:text-sm text-zinc-800 dark:text-zinc-100 resize-none max-h-24 custom-scrollbar dynamic-textarea block disabled:opacity-40"
+//             value={replyText}
+//             onChange={handleTextareaChange}
+//             onKeyDown={(e) => {
+//               if (
+//                 e.key === "Enter" &&
+//                 !e.shiftKey &&
+//                 window.innerWidth > 768
+//               ) {
+//                 e.preventDefault();
+//                 handleSendReply();
+//               }
+//             }}
+//           />
+//         </div>
+
+//         {/* Minimalist Circular Execution Sender button */}
+//         <button
+//           disabled={
+//             sending ||
+//             isRecording ||
+//             (!replyText.trim() &&
+//               selectedFiles.length === 0 &&
+//               !audioBlob)
+//           }
+//           onClick={handleSendReply}
+//           className="w-10 h-10 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 rounded-xl flex items-center justify-center shadow-sm active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all shrink-0"
+//         >
+//           {sending ? (
+//             <div className="w-4 h-4 border-2 border-current border-t-transparent animate-spin rounded-full" />
+//           ) : (
+//             <Send
+//               size={16}
+//               className={isRTL ? "rotate-180" : "ml-0.5"}
+//             />
+//           )}
+//         </button>
+//       </div>
+//     </>
+//   ): (
+//             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-zinc-50 dark:bg-zinc-950 h-full relative select-none">
+//               <div
+//                 className="absolute inset-0 opacity-[0.015] dark:opacity-[0.008] pointer-events-none bg-repeat"
+//                 style={{
+//                   backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
+//                   backgroundSize: "360px",
+//                 }}
+//               />
+
+//               {/* Minimal Animated Central Icon */}
+//               <div className="w-20 h-20 bg-zinc-900/5 dark:bg-zinc-100/5 rounded-full flex items-center justify-center text-zinc-900 dark:text-zinc-100 mb-5 animate-pulse border border-zinc-200/50 dark:border-zinc-800/30 shadow-sm z-10">
+//                 <MessageCircle size={32} strokeWidth={1.5} />
+//               </div>
+              
+//               <h2 className="text-sm font-bold mb-1.5 text-zinc-900 dark:text-zinc-50 tracking-widest uppercase z-10">
+//                 {isRTL ? "منصة فيسترو للمحادثات الحية" : "VESTRO LIVE HUB"}
+//               </h2>
+              
+//               <p className="text-zinc-400 dark:text-zinc-500 max-w-xs text-[11px] sm:text-xs leading-relaxed font-medium z-10">
+//                 {isRTL
+//                   ? "اختر عميلاً من القائمة الجانبية لإدارة الطلبات، الرد على الرسائل، وتوجيهها لايف وبشكل فوري."
+//                   : "Select a customer from the sidebar to respond to chats, review catalog items, and tag conversations."}
+//               </p>
+//             </div>
+//           )}
+
+//           {/* 🔲 مودال توجيه الرسالة الذكي (Forward Modal) */}
+//           {isForwardModalOpen && (
+//             <div className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+//               {/* Backdropper close handler */}
+//               <div className="absolute inset-0" onClick={() => setIsForwardModalOpen(false)} />
+
+//               <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-zinc-200/60 dark:border-zinc-800/60 flex flex-col max-h-[80vh] relative z-10 animate-in zoom-in-95 duration-200">
+                
+//                 {/* الهيدر */}
+//                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900">
+//                   <h3 className="font-semibold text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 tracking-wide flex items-center gap-1.5">
+//                     <span>{isRTL ? "↩️ توجيه الرسالة إلى عميل" : "↩️ Forward Message"}</span>
+//                   </h3>
+//                   <button
+//                     onClick={() => setIsForwardModalOpen(false)}
+//                     className="w-7 h-7 flex items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors font-bold text-xs"
+//                   >
+//                     ✕
+//                   </button>
+//                 </div>
+
+//                {/* بار البحث (Search Bar) */}
+// <div className="p-3 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800/40">
+//   <div className="relative flex items-center">
+//     <input
+//       type="text"
+//       placeholder={
+//         isRTL
+//           ? "ابحث باسم العميل أو رقم الهاتف..."
+//           : "Search by name or phone..."
+//       }
+//       value={searchCustomerQuery}
+//       onChange={(e) => setSearchCustomerQuery(e.target.value)}
+//       className={`w-full py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 text-zinc-800 dark:text-zinc-100 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 ${isRTL ? "pl-3 pr-8 text-right" : "pr-3 pl-8 text-left"}`}
+//     />
+//     <span className={`absolute opacity-40 text-xs pointer-events-none ${isRTL ? "right-3" : "left-3"}`}>
+//       🔍
+//     </span>
+//   </div>
+// </div>
+
+//                 {/* لستة العملاء الناتجة */}
+//                 <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-zinc-50/50 dark:bg-zinc-950/40 custom-scrollbar">
+//                   {isSearchingCustomers ? (
+//                     <div className="text-center py-8 text-xs text-zinc-400 dark:text-zinc-500 italic font-medium">
+//                       {isRTL ? "جاري البحث الآن..." : "Searching database..."}
+//                     </div>
+//                   ) : forwardCustomersList.length === 0 ? (
+//                     <div className="text-center py-8 text-xs text-zinc-400 dark:text-zinc-500">
+//                       {isRTL ? "لم يتم العثور على عملاء متطابقين" : "No customers found"}
+//                     </div>
+//                   ) : (
+//                     forwardCustomersList.map((customer) => (
+//                       <div
+//                         key={customer._id}
+//                         onClick={() => {
+//                           axios
+//                             .post("/chat-actions/forward", {
+//                               messageId: forwardMessageId,
+//                               targetPhone: customer.phone,
+//                             })
+//                             .then((res) => {
+//                               if (res.data.success) {
+//                                 setIsForwardModalOpen(false);
+//                                 alert(
+//                                   isRTL
+//                                     ? `تم توجيه الرسالة بنجاح إلى ${customer.name || customer.phone}`
+//                                     : "Message forwarded successfully!",
+//                                 );
+//                               }
+//                             })
+//                             .catch((err) => {
+//                               console.error(err);
+//                               alert(
+//                                 isRTL
+//                                   ? "حدث خطأ أثناء التوجيه"
+//                                   : "Error forwarding message",
+//                               );
+//                             });
+//                         }}
+//                         className={`flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800/30 hover:border-zinc-400 dark:hover:border-zinc-700 cursor-pointer transition-all active:scale-[0.99] group
+//                           ${isRTL ? "flex-row-reverse" : "flex-row"}`}
+//                       >
+//                         <div className={`flex flex-col gap-0.5 truncate max-w-[75%] ${isRTL ? "text-right" : "text-left"}`}>
+//                           <span className="font-semibold text-xs text-zinc-800 dark:text-zinc-200 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors truncate">
+//                             {customer.name || (isRTL ? "عميل بدون اسم" : "Unnamed Customer")}
+//                           </span>
+//                           <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono tracking-wide">
+//                             {customer.phone}
+//                           </span>
+//                         </div>
+                        
+//                         <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0">
+//                           {customer.chatStatus || "NEW"}
+//                         </span>
+//                       </div>
+//                     ))
+//                   )}
+//                 </div>
+
+//                 {/* الفوتر */}
+//                 <div className={`p-3 border-t border-zinc-100 dark:border-zinc-800/60 bg-zinc-50 dark:bg-zinc-900/50 flex items-center
+//                   ${isRTL ? "justify-start" : "justify-end"}`}>
+//                   <button
+//                     onClick={() => setIsForwardModalOpen(false)}
+//                     className="px-4 py-1.5 bg-zinc-200/70 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-700 dark:text-zinc-300 rounded-lg text-[11px] font-medium transition-colors"
+//                   >
+//                     {isRTL ? "إلغاء" : "Cancel"}
+//                   </button>
+//                 </div>
+//               </div>
+//             </div>
+//           )}
+//         </div>
+		
+		
+		
+		
+		
+		
+		
+		
+		
+// 		   </div>
+
+//       {/* الستايلات والـ Custom Overrides الخاصة بواتساب وتناسق الخطوط */}
+//       <style>{`
+//       @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+      
+//       .font-arabic { font-family: 'Cairo', sans-serif !important; }
+      
+//       /* التحكم الدقيق بالسكرول بار ليكون ناعماً كالموبايل */
+//       .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+//       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+//       .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+//       .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+      
+//       /* تعديل شكل مشغل الريكورد ليتطابق مع الـ Dark mode والـ WhatsApp Design */
+//       .custom-audio::-webkit-media-controls-panel { background-color: #f1f3f4; }
+//       .dark .custom-audio { filter: invert(100%) hue-rotate(180deg) brightness(1.4) contrast(0.95); }
+//       .custom-audio { border-radius: 30px; }
+      
+//       .dynamic-textarea { height: auto; min-height: 40px; }
+      
+//       /* دعم شاشات الهواتف بمسافات الأمان السفلية (Safe Areas للهواتف الحديثة) */
+//       .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem); }
+
+//       @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+//       .animate-in { animation: fadeIn 0.18s ease-out; contain-visibility: auto; }
+//     `}</style>
+//     </div>
+//   );
+// }
