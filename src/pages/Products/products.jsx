@@ -1907,7 +1907,7 @@ const imageToShow = img.isNew
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      className={`transition-all duration-300 group ${snapshot.isDragging ? "bg-[#86FE05]/10 shadow-2xl scale-[1.01] z-50" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"}`}
+                      className={`transition-all duration-300 group ${snapshot.isDragging ? "bg-red-700/10 shadow-2xl scale-[1.01] z-50" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"}`}
                     >
                       <td className="px-6 py-4">
                         <img
@@ -1942,7 +1942,7 @@ const imageToShow = img.isNew
                         <div className="flex flex-col items-center">
                           <button
                             onClick={() => handleToggleActive(product._id, product.isActive)}
-                            className={`relative inline-flex h-6 w-12 items-center rounded-full transition-all duration-300 ${product.isActive ? "bg-gradient-to-r from-[#86FE05] to-[#6ed204] shadow-[0_0_10px_rgba(134,254,5,0.3)]" : "bg-gray-300 dark:bg-zinc-700"}`}
+                            className={`relative inline-flex h-6 w-12 items-center rounded-full transition-all duration-300 ${product.isActive ? "bg-gradient-to-r from-red-700 to-[#6ed204] shadow-[0_0_10px_rgba(134,254,5,0.3)]" : "bg-gray-300 dark:bg-zinc-700"}`}
                           >
                             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${product.isActive ? (language === "ar" ? "-translate-x-7" : "translate-x-7") : (language === "ar" ? "-translate-x-1" : "translate-x-1")}`} />
                           </button>
@@ -1993,7 +1993,7 @@ const imageToShow = img.isNew
                   {...provided.dragHandleProps}
                   className={`bg-white dark:bg-gray-800 p-4 rounded-2xl border transition-all duration-300 ${
                     snapshot.isDragging 
-                      ? "border-[#86FE05] shadow-[0_0_25px_rgba(134,254,5,0.3)] scale-[1.03] z-[100] bg-gray-50 dark:bg-zinc-800" 
+                      ? "border-red-700 shadow-[0_0_25px_rgba(134,254,5,0.3)] scale-[1.03] z-[100] bg-gray-50 dark:bg-zinc-800" 
                       : "border-gray-100 dark:border-gray-700 shadow-sm"
                   }`}
                 >
@@ -2033,7 +2033,7 @@ const imageToShow = img.isNew
                           handleToggleActive(product._id, product.isActive);
                         }}
                         className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 ${
-                          product.isActive ? "bg-[#86FE05]" : "bg-gray-300 dark:bg-zinc-700"
+                          product.isActive ? "bg-red-700" : "bg-gray-300 dark:bg-zinc-700"
                         }`}
                       >
                         <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-300 ${

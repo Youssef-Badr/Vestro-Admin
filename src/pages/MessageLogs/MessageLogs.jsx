@@ -482,6 +482,8 @@ useEffect(() => {
     });
 
     currentSocket.on("receive-message", (newMessage) => {
+        //  console.log(newMessage);
+
       const isChatOpen = activePhoneRef.current === newMessage.phone;
 
       if (isChatOpen) {
@@ -1099,6 +1101,9 @@ mediaRecorderRef.current = recorder;
                     new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
                 )
                 .map((msg) => {
+
+                  // console.log(msg.chatStatus);
+                  // console.log(msg);
                   const isCurrentActive = replyTarget?.phone === msg.phone;
                   const hasUnread = msg.unreadCount > 0 && !isCurrentActive;
 
@@ -1176,7 +1181,7 @@ mediaRecorderRef.current = recorder;
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             {/* عرض حالة الشات مثل Waiting أو المسؤول عنه حالياً */}
-                            {msg.chatStatus === "Waiting" && (
+                           {msg.chatStatus === "Waiting" && msg.direction === "inbound" && (
                               <span className="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold text-[9px] px-1.5 py-0.5 rounded">
                                 {isRTL ? "انتظار" : "Waiting"}
                               </span>
@@ -1503,7 +1508,7 @@ mediaRecorderRef.current = recorder;
             setTimeout(() => element.classList.remove('bg-amber-100', 'dark:bg-amber-950/40'), 1500);
           } else {
             // 2️⃣ لو الرسالة قديمة ومش مرندرة
-            console.log("⏳ الرسالة قديمة وغير مرندرة، جاري سحب كامل المحادثة...");
+            // console.log("⏳ الرسالة قديمة وغير مرندرة، جاري سحب كامل المحادثة...");
             if (typeof fetchChatMessages === "function") {
               await fetchChatMessages(replyTarget.phone);
               setTimeout(() => {
