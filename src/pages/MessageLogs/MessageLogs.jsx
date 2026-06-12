@@ -113,7 +113,7 @@ const MessageBubble = React.memo(
             msg._id &&
             !String(msg._id).startsWith("temp_") && (
               <div
-                className={`absolute top-1/2 -translate-y-1/2 flex items-center z-40 ${
+                className={`absolute top-1/2 -translate-y-1/2 flex items-center z-10 ${
                   isMe ? "-left-7" : "-right-7"
                 }`}
               >
@@ -127,7 +127,7 @@ const MessageBubble = React.memo(
                         : msg._id
                     );
                   }}
-                  className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-all text-sm font-bold active:scale-90"
+                  className="w-6 h-6  flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-all text-sm font-bold active:scale-90"
                 >
                   ⋮
                 </button>
@@ -239,7 +239,7 @@ const mediaRecorderRef = useRef(null);
   const [searchCustomerQuery, setSearchCustomerQuery] = useState("");
   const [forwardCustomersList, setForwardCustomersList] = useState([]);
   const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
-  
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [activeMenuMessageId, setActiveMenuMessageId] = useState(null);
   const [isAssignMenuOpen, setIsAssignMenuOpen] = useState(false);
@@ -262,7 +262,7 @@ const mediaRecorderRef = useRef(null);
   const activePhoneRef = useRef(null);
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  
+  const messagesContainerRef = useRef(null);
   // حفظ الـ State جوة Ref عشان السوكيت يقراها فوراً بدون ما يعيد بناء الـ Listeners
   const localUnreadPhonesRef = useRef(localUnreadPhones);
   const notificationAudioRef = useRef(null);
@@ -563,9 +563,17 @@ useEffect(() => {
       .catch((err) => console.error("Error fetching agents:", err));
   }, []);
 
-  const scrollToBottom = useCallback((behavior = "smooth") => {
-    chatEndRef.current?.scrollIntoView({ behavior });
-  }, []);
+const scrollToBottom = useCallback((behavior = "smooth") => {
+  const container = messagesContainerRef.current;
+  if (!container) return;
+
+  container.scrollTo({
+    top: container.scrollHeight,
+    behavior: typeof behavior === "string" ? behavior : "smooth",
+  });
+
+  setShowScrollButton(false);
+}, []);
 
   const firstLoadRef = useRef(true);
 
@@ -588,6 +596,34 @@ useEffect(() => {
   scrollToBottom("smooth");
 }, [activeChat]);
 
+useEffect(() => {
+  const container = messagesContainerRef.current;
+  if (!container) return;
+
+ const handleScroll = () => {
+  const container = messagesContainerRef.current;
+  if (!container) return;
+
+  const distanceFromBottom =
+    container.scrollHeight -
+    container.scrollTop -
+    container.clientHeight;
+
+  const isNearBottom = distanceFromBottom < 80;
+
+  setShowScrollButton(!isNearBottom);
+};
+
+  container.addEventListener("scroll", handleScroll);
+
+  // run once initially
+  handleScroll();
+
+  return () => {
+    container.removeEventListener("scroll", handleScroll);
+  };
+}, [activeChat]);
+
  useEffect(() => {
   if (!replyTarget?.phone) return;
 
@@ -607,6 +643,7 @@ useEffect(() => {
     const handler = setTimeout(fetchLogs, 400);
     return () => clearTimeout(handler);
   }, [search, fetchLogs]);
+  
 
   const handleMediaSelect = useCallback((e) => {
     const files = Array.from(e.target.files);
@@ -1486,13 +1523,13 @@ mediaRecorderRef.current = recorder;
               </div>
 
             {/* صندوق عرض الرسائل (Scroll Area) */}
-<div className="flex-1 overflow-y-auto pt-16 pb-3 px-3 sm:px-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar flex flex-col">
+<div   ref={messagesContainerRef} className="flex-1 overflow-y-auto pt-16 pb-3 px-3 sm:px-6 space-y-3 bg-[#e5ddd5] dark:bg-[#090909] relative custom-scrollbar flex flex-col">
   <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.02] pointer-events-none" 
        style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundSize: '340px' }} />
   
   {/* 📌 شريط التثبيت العلوي - تم رفع الـ z-index لـ z-30 لضمان ظهوره دائماً فوق كل الرسائل */}
   {activeChat.some(m => m.isPinned) && (
-    <div className="sticky top-2 z-30 mx-auto max-w-md w-full bg-white/95 dark:bg-[#1f2c34]/95 backdrop-blur shadow-md rounded-lg p-2.5 flex items-center justify-between text-xs border border-gray-200 dark:border-white/5 animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="fixed top-2 z-100 mx-auto max-w-md w-full bg-white/95 dark:bg-[#1f2c34]/95 backdrop-blur shadow-md rounded-lg p-2.5 flex items-center justify-between text-xs border border-gray-200 dark:border-white/5 animate-in fade-in slide-in-from-top-2 duration-200">
       
       <div 
         onClick={async () => {
@@ -1564,6 +1601,14 @@ mediaRecorderRef.current = recorder;
       </div>
     </div>
   )}
+  {showScrollButton && (
+  <button
+    onClick={scrollToBottom}
+    className="fixed bottom-20 right-50 z-50 bg-red-600 hover:bg-red-700 text-white p-3 rounded-full shadow-lg transition-all"
+  >
+    ⬇
+  </button>
+)}
 
   <div className="flex-1" />
 
@@ -1583,7 +1628,9 @@ mediaRecorderRef.current = recorder;
   />
 ))}
   <div ref={chatEndRef} />
+  
 </div>
+
 
               {/* ⚠️ التعديل هنا: تم جعل الحاوية sticky bottom-0 وزيادة الـ z-index لمنع الرسائل من العبور فوقه */}
               <div className="fixed bottom-0 w-full p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#111] flex items-center gap-1.5 border-t border-gray-200 dark:border-white/5 shrink-0  z-30 pb-safe">
