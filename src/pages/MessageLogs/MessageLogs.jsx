@@ -774,7 +774,24 @@ mediaRecorderRef.current = recorder;
         selectedFiles.forEach((file) => formData.append("file", file));
       } else if (hasAudio) {
         formData.append("type", "audio");
-        const audioFile = audioBlob instanceof File ? audioBlob : new File([audioBlob], "voice.mp3", { type: audioBlob.type || "audio/mp3" });
+        const extension =
+  audioBlob.type.includes("ogg")
+    ? "ogg"
+    : audioBlob.type.includes("webm")
+    ? "webm"
+    : "mp3";
+
+const audioFile =
+  audioBlob instanceof File
+    ? audioBlob
+    : new File(
+        [audioBlob],
+        `voice.${extension}`,
+        {
+          type: audioBlob.type,
+        }
+      );
+        // const audioFile = audioBlob instanceof File ? audioBlob : new File([audioBlob], "voice.mp3", { type: audioBlob.type || "audio/mp3" });
         formData.append("file", audioFile);
       } else {
         formData.append("type", "text");
@@ -1085,6 +1102,7 @@ mediaRecorderRef.current = recorder;
     );
   }, [isRTL]);
 
+  
   return (
     <div
       className={`flex flex-col h-screen w-full bg-[#f0f2f5] dark:bg-[#0c0c0c] text-slate-900 dark:text-slate-100 overflow-hidden ${isRTL ? "font-arabic" : ""}`}
