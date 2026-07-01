@@ -113,10 +113,10 @@ relatedProduct: [],
     <div className={`p-4 md:p-10 min-h-screen bg-[#FDFDFD] dark:bg-gray-950 transition-colors duration-500 ${isRTL ? "font-cairo" : ""}`} dir={isRTL ? "rtl" : "ltr"}>
       
       {/* Header - Luxury Vestro Style */}
-      <div className="flex flex-col mt-16 md:flex-row justify-between items-start md:items-center gap-6 mb-16">
+      <div className="flex flex-col mt-10 md:flex-row justify-between items-start md:items-center gap-6 mb-16">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-4xl md:text-5xl font-black text-slate-700 dark:text-gray-100 flex items-center gap-5">
-            <div className="bg-red-950 dark:bg-red-700 p-3.5 rounded-[1.8rem] text-red-100 shadow-2xl border border-red-800/20">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-700 dark:text-gray-100 flex items-center gap-5">
+            <div className="bg-red-800 dark:bg-red-700 p-3.5 rounded-[1.8rem] text-red-100 shadow-2xl border border-red-800/20">
               <Layers size={35} />
             </div>
             {isRTL ? "إدارة العروض" : "Vestro Bundles"}
@@ -153,7 +153,7 @@ relatedProduct: [],
             </div>
 
             <div className="relative mb-8 overflow-hidden rounded-[2.5rem] shadow-inner bg-gray-50 dark:bg-gray-800">
-              <img src={bundle.image?.url} alt="" className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-1000" />
+              <img src={bundle.image?.url} alt="" className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-1000" />
               <div className="absolute inset-0 bg-gradient-to-t from-red-950/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
                  <span className="text-white/80 text-xs font-bold tracking-widest uppercase"><Eye size={14} className="inline mr-1"/> {bundle.slug}</span>
               </div>
@@ -233,12 +233,12 @@ relatedProduct: [],
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
               className="bg-white dark:bg-gray-950 w-full max-w-5xl max-h-[94vh] overflow-y-auto rounded-[4rem] p-8 md:p-14 shadow-3xl relative custom-scrollbar border border-slate-100 dark:border-gray-800"
             >
-              <button onClick={() => setShowModal(false)} className={`absolute top-10 ${isRTL ? 'left-10' : 'right-10'} p-4 bg-slate-50 dark:bg-gray-700 dark:text-white rounded-full hover:scale-110 transition-transform border border-slate-100 dark:border-gray-800`}>
+              <button onClick={() => setShowModal(false)} className={`fixed top-10 ${isRTL ? 'left-10' : 'right-10'} p-4 bg-slate-400 z-10 dark:bg-gray-700 dark:text-white rounded-full hover:scale-110 transition-transform border border-slate-100 dark:border-gray-800`}>
                 <X size={24} />
               </button>
 
-              <div className="mb-14 text-center">
-                <h2 className="text-4xl font-black text-slate-700 dark:text-gray-100 mb-4 uppercase tracking-tight">
+              <div className="mb-10 text-center">
+                <h2 className="text-2xl font-black text-slate-700 dark:text-gray-100 mb-4 uppercase tracking-tight">
                   {editingBundle ? (isRTL ? "تحديث العرض الفاخر" : "Update Elite Bundle") : (isRTL ? "إطلاق عرض جديد" : "Launch New Bundle")}
                 </h2>
                 <div className="h-1.5 w-28 bg-red-700 dark:bg-red-500 mx-auto rounded-full"></div>
