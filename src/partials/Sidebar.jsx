@@ -88,6 +88,11 @@ useEffect(() => {
         label: isRTL ? "الإعلانات" : "Ads",
         icon: "📢",
       },
+       {
+        to: "/reviews",
+        label: isRTL ? "التقييمات" : "Reviews",
+        icon: "⭐",
+      },
 //       {
   //   to: "/campaigns",
   //   label: isRTL ? "الحملات" : "Campaigns",

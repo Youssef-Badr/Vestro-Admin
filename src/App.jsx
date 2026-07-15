@@ -244,6 +244,9 @@ const UserManagement = lazy(() =>
 const AbandonedOrders = lazy(() =>
   import("./pages/AbandonedOrders/AbandonedOrders")
 );
+const Reviews = lazy(() =>
+  import("./pages/ReviewsPage/Reviews")
+);
 const MetaCatalogSync = lazy(() =>
   import("./pages/MetaCatalogSync/MetaCatalogSync")
 );
@@ -291,6 +294,7 @@ function App() {
         <Route path="/settings" element={wrap(Settings)} />
         <Route path="/announcements" element={wrap(Announcements)} />
         <Route path="/abandoned" element={wrap(AbandonedOrders)} />
+        <Route path="/reviews" element={wrap(Reviews)} />
         <Route path="/audit-logs" element={wrap(AuditLogs)} />
         <Route path="/bundles" element={wrap(AdminBundles)} />
         <Route path="/user-management" element={wrap(UserManagement)} />
