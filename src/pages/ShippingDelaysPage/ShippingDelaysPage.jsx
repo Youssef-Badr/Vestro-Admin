@@ -15,10 +15,9 @@ export default function ShippingDelaysPage() {
     maxShippingDays: "",
   });
 
-  const { language } = useLanguage(); // 'ar' أو 'en'
+  const { language } = useLanguage(); 
   const { theme } = useTheme(); 
 
-  // قاموس الترجمة للواجهات والكلمات الثابتة
   const t = {
     ar: {
       title: "🚨 تقصيرات الشحن",
@@ -68,9 +67,7 @@ export default function ShippingDelaysPage() {
 
   const currentText = t[language];
 
-  // =========================
-  // FETCH DATA
-  // =========================
+  // FETCH DATA (بتشتغل مرة واحدة بس عند التحميل)
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -95,9 +92,7 @@ export default function ShippingDelaysPage() {
     }
   };
 
-  // =========================
   // LIVE SEARCH FILTER
-  // =========================
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredOrders(orders);
@@ -123,10 +118,14 @@ export default function ShippingDelaysPage() {
     setFilteredOrders(filtered);
   }, [searchQuery, orders]);
 
-  // =========================
   // UPDATE SETTINGS
-  // =========================
   const updateSettings = async () => {
+    // تحقق سريع بالفرونت قبل الإرسال لمنع القيم السالبة
+    if (Number(settings.warehouseStuckHours) < 0 || Number(settings.maxShippingDays) < 0) {
+      alert(language === "ar" ? "لا يمكن إدخال قيم سالبة!" : "Negative values are not allowed!");
+      return;
+    }
+
     try {
       await axios.put("/orders/shipping-delays", settings, { withCredentials: true });
       alert(currentText.updated);
@@ -137,26 +136,24 @@ export default function ShippingDelaysPage() {
     }
   };
 
-  // =========================
-  // 🎯 CLEAR SHIPPING DELAY (الطلب المضاف يدوياً)
-  // =========================
+  // CLEAR SHIPPING DELAY
   const handleClearDelay = async (orderId) => {
     if (!window.confirm(currentText.clearConfirm)) return;
 
     try {
-      // 🚀 إرسال طلب PUT لتصفير الأوبجكت وحذفه من لوحة التأخيرات فقط مع الاحتفاظ بالأوردر كامل
       const res = await axios.put(`/orders/shipping-delays/${orderId}/clear`, {}, { withCredentials: true });
       alert(res.data?.message || currentText.clearSuccess);
-      fetchData(); // تحديث فوري للشاشة عشان الكرت يختفي
+      fetchData(); 
     } catch (err) {
       console.error("Error clearing shipping delay:", err);
       alert(err.response?.data?.message || currentText.clearError);
     }
   };
 
+  // يتم الاستدعاء عند فتح الصفحة فقط، وحذفنا الـ theme من الـ dependencies
   useEffect(() => {
     fetchData();
-  }, [theme]); 
+  }, []); 
 
   return (
     <div className="min-h-screen p-4 sm:p-6 transition-colors duration-200 bg-gray-100 text-black dark:bg-zinc-950 dark:text-white" dir={language === "ar" ? "rtl" : "ltr"}>
@@ -192,8 +189,8 @@ export default function ShippingDelaysPage() {
               min="0"
               value={settings.warehouseStuckHours}
               onChange={(e) => {
-                const val = e.target.value === "" ? "" : Math.max(0, Number(e.target.value));
-                setSettings({ ...settings, warehouseStuckHours: val });
+                // بنسمح لليوزر يكتب عادي ويمسح، وبنعتمد القيمة كـ string في الـ state لحين الحفظ
+                setSettings({ ...settings, warehouseStuckHours: e.target.value });
               }}
               className="border p-2.5 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white border-gray-300 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white text-sm"
               placeholder="24"
@@ -209,8 +206,7 @@ export default function ShippingDelaysPage() {
               min="0"
               value={settings.maxShippingDays}
               onChange={(e) => {
-                const val = e.target.value === "" ? "" : Math.max(0, Number(e.target.value));
-                setSettings({ ...settings, maxShippingDays: val });
+                setSettings({ ...settings, maxShippingDays: e.target.value });
               }}
               className="border p-2.5 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white border-gray-300 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white text-sm"
               placeholder="3"
@@ -242,7 +238,7 @@ export default function ShippingDelaysPage() {
 
       {/* CARDS LIST SECTION */}
       {loading ? (
-        /* Skeleton Loader المتجاوب */
+        /* Skeleton Loader */
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 animate-pulse">
           {[1, 2, 3, 4, 5, 6].map((n) => (
             <div key={n} className="p-5 rounded-xl bg-white dark:bg-zinc-900 border-s-4 border-gray-300 dark:border-zinc-700 h-40 flex flex-col justify-between shadow-sm">
@@ -261,7 +257,7 @@ export default function ShippingDelaysPage() {
           {currentText.noDelays}
         </p>
       ) : (
-        /* Grid متجاوب بالكامل */
+        /* Grid */
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {filteredOrders.map((order) => (
             <div
@@ -285,7 +281,6 @@ export default function ShippingDelaysPage() {
                   <span>📞</span> {order.guestInfo?.phone || order.client?.phone || currentText.notAvailable}
                 </p>
 
-                {/* كتل تفاصيل الـ ID والـ Tracking مترجمة بالكامل */}
                 <div className="mt-2 text-xs text-zinc-400 dark:text-zinc-500 font-mono space-y-0.5">
                   <div>{currentText.orderId}: <span className="text-zinc-600 dark:text-zinc-300">#{order._id}</span></div>
                   {order.bostaInfo?.trackingNumber && (
@@ -293,14 +288,12 @@ export default function ShippingDelaysPage() {
                   )}
                 </div>
 
-                {/* قراءة السبب المترجم القادم من دالة الباك إند */}
                 <div className="text-sm mt-3 font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-zinc-800/40 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800/80">
                   <span className="me-1">🧾</span> 
                   {order.shippingDelay?.reason?.[language] || order.shippingDelay?.reason || currentText.notAvailable}
                 </div>
               </div>
 
-              {/* الجزء السفلي: تاريخ الرصد + زرار الحذف الفني */}
               <div className="mt-4 pt-3 border-t border-gray-100 dark:border-zinc-800/60 flex items-center justify-between gap-2">
                 <p className="text-xs text-gray-400 flex items-center gap-1 opacity-70">
                   <span>⏱</span> 
@@ -309,7 +302,6 @@ export default function ShippingDelaysPage() {
                     : currentText.notAvailable}
                 </p>
 
-                {/* 🎯 زرار مسح التقصير السحري المتوافق مع الدارك مود واللغتين */}
                 <button
                   onClick={() => handleClearDelay(order._id)}
                   className="px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-red-600 bg-red-50 hover:bg-red-100/80 dark:text-red-400 dark:bg-red-950/30 dark:hover:bg-red-950/60 flex items-center gap-1"
