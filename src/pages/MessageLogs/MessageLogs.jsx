@@ -482,6 +482,9 @@ useEffect(() => {
     });
 
     currentSocket.on("receive-message", (newMessage) => {
+      console.log("🔥 SOCKET RECEIVED:", newMessage);
+console.log("🔥 MESSAGE TYPE:", newMessage.type);
+console.log("🔥 LOCATION:", newMessage.location);
         //  console.log(newMessage);
 
       const isChatOpen = activePhoneRef.current === newMessage.phone;
@@ -1005,6 +1008,62 @@ const audioFile =
         </div>
       );
     }
+
+  if (msg.type === "location") {
+
+  const latitude = msg.location?.latitude;
+  const longitude = msg.location?.longitude;
+  const name = msg.location?.name;
+  const address = msg.location?.address;
+
+
+  return (
+    <div className="w-full max-w-xs rounded-xl overflow-hidden border bg-white shadow">
+
+      <div className="p-3">
+
+        <div className="flex gap-2 items-center">
+          <span className="text-xl">
+            📍
+          </span>
+
+          <div>
+            <p className="font-bold">
+              {name || "Location"}
+            </p>
+
+            <p className="text-xs text-gray-500">
+              {address}
+            </p>
+          </div>
+
+        </div>
+
+
+        <a
+          href={`https://www.google.com/maps?q=${latitude},${longitude}`}
+          target="_blank"
+          rel="noreferrer"
+          className="
+          mt-3
+          block
+          text-center
+          bg-red-600
+          text-white
+          rounded-lg
+          py-2
+          font-bold
+          "
+        >
+          Open Google Maps
+        </a>
+
+
+      </div>
+
+    </div>
+  );
+}
 
     if (!msg.mediaUrl && (!msg.mediaUrls || msg.mediaUrls.length === 0)) {
       return (
