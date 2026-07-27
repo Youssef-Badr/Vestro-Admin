@@ -2432,148 +2432,547 @@ useEffect(() => {
   }, [markAsRead]);
 
   // --- Socket Integration (Isolated & Anti-Leak) ---
-  useEffect(() => {
-    socket.current = io(SOCKET_URL, {
-      transports: ["websocket"],
-      reconnection: true,
-    });
+useEffect(() => {
+  // Prevent duplicate socket connections
+  if (socket.current?.connected) {
+    return;
+  }
 
-    const currentSocket = socket.current;
+  socket.current = io(SOCKET_URL, {
+    transports: ["polling", "websocket"],
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 20000,
+    withCredentials: true,
+  });
 
-    currentSocket.on("message_status_updated", (update) => {
-      const updateIdStr = update.messageId ? String(update.messageId) : null;
-      const updateWamIdStr = update.whatsappMessageId ? String(update.whatsappMessageId) : null;
+  const currentSocket = socket.current;
 
-      if (update.status === "read") {
-        setLocalUnreadPhones((prev) => {
-          const updated = { ...prev };
-          delete updated[update.phone];
-          return updated;
-        });
-        setLogs((prev) => prev.map((log) => log.phone === update.phone ? { ...log, unreadCount: 0 } : log));
-      }
+  // ==============================
+  // Connection Monitoring
+  // ==============================
 
-      setActiveChat((prev) => prev.map((msg) => {
-        const isMatch = (updateIdStr && String(msg._id) === updateIdStr) || (updateWamIdStr && String(msg.whatsappMessageId) === updateWamIdStr);
-        return isMatch ? { ...msg, status: update.status } : msg;
-      }));
+  currentSocket.on("connect", () => {
+    console.log("🟢 SOCKET CONNECTED:", currentSocket.id);
+    console.log(
+      "🔌 SOCKET TRANSPORT:",
+      currentSocket.io.engine?.transport?.name
+    );
+  });
 
-      setLogs((prev) => prev.map((log) => {
-        const isMatch = (updateIdStr && String(log._id) === updateIdStr) || (updateWamIdStr && String(log.whatsappMessageId) === updateWamIdStr);
-        return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
-      }));
-    });
+  currentSocket.io.engine?.on("upgrade", () => {
+    console.log(
+      "⬆️ SOCKET UPGRADED TO:",
+      currentSocket.io.engine.transport.name
+    );
+  });
 
-    currentSocket.on("chat_cleared", (data) => {
-      if (activePhoneRef.current === data.phone) {
-        setReplyTarget(null);
-        setActiveChat([]);
-      }
+  currentSocket.on("connect_error", (error) => {
+    console.error("❌ SOCKET CONNECT ERROR:", error.message);
+  });
+
+  currentSocket.on("disconnect", (reason) => {
+    console.warn("🔴 SOCKET DISCONNECTED:", reason);
+  });
+
+  // ==============================
+  // Message Status Updated
+  // ==============================
+
+  currentSocket.on("message_status_updated", (update) => {
+    const updateIdStr = update.messageId
+      ? String(update.messageId)
+      : null;
+
+    const updateWamIdStr = update.whatsappMessageId
+      ? String(update.whatsappMessageId)
+      : null;
+
+    if (update.status === "read") {
       setLocalUnreadPhones((prev) => {
         const updated = { ...prev };
-        delete updated[data.phone];
+        delete updated[update.phone];
         return updated;
       });
-      setLogs((prev) => prev.filter((log) => log.phone !== data.phone));
+
+      setLogs((prev) =>
+        prev.map((log) =>
+          log.phone === update.phone
+            ? { ...log, unreadCount: 0 }
+            : log
+        )
+      );
+    }
+
+    setActiveChat((prev) =>
+      prev.map((msg) => {
+        const isMatch =
+          (updateIdStr &&
+            String(msg._id) === updateIdStr) ||
+          (updateWamIdStr &&
+            String(msg.whatsappMessageId) === updateWamIdStr);
+
+        return isMatch
+          ? { ...msg, status: update.status }
+          : msg;
+      })
+    );
+
+    setLogs((prev) =>
+      prev.map((log) => {
+        const isMatch =
+          (updateIdStr &&
+            String(log._id) === updateIdStr) ||
+          (updateWamIdStr &&
+            String(log.whatsappMessageId) === updateWamIdStr);
+
+        return isMatch || log.phone === update.phone
+          ? { ...log, status: update.status }
+          : log;
+      })
+    );
+  });
+
+  // ==============================
+  // Chat Cleared
+  // ==============================
+
+  currentSocket.on("chat_cleared", (data) => {
+    if (activePhoneRef.current === data.phone) {
+      setReplyTarget(null);
+      setActiveChat([]);
+    }
+
+    setLocalUnreadPhones((prev) => {
+      const updated = { ...prev };
+      delete updated[data.phone];
+      return updated;
     });
 
-    currentSocket.on("user_typing_status", (data) => {
-      if (activePhoneRef.current === data.phone) {
-        setIsPeerTyping(data.isTyping);
-      }
-    });
+    setLogs((prev) =>
+      prev.filter((log) => log.phone !== data.phone)
+    );
+  });
 
-    currentSocket.on("chat_assigned", (data) => {
-      setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, assignedTo: data.assignedTo, chatStatus: "Waiting" } : log));
-      if (activePhoneRef.current === data.phone) {
-        setReplyTarget((prev) => prev ? { ...prev, assignedTo: data.assignedTo, chatStatus: "Waiting" } : null);
-      }
-    });
+  // ==============================
+  // User Typing
+  // ==============================
 
-    currentSocket.on("customer_meta_updated", (data) => {
-      setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, ...data.customer } : log));
-      if (activePhoneRef.current === data.phone) {
-        setReplyTarget((prev) => prev ? { ...prev, ...data.customer } : null);
-      }
-    });
+  currentSocket.on("user_typing_status", (data) => {
+    if (activePhoneRef.current === data.phone) {
+      setIsPeerTyping(data.isTyping);
+    }
+  });
 
-    currentSocket.on("unread_alert", (data) => {
-      if (activePhoneRef.current !== data.phone) {
-        try {
-       notificationAudioRef.current?.play().catch(() => {});
-        } catch (e) {}
-      }
-    });
+  // ==============================
+  // Chat Assigned
+  // ==============================
 
-    currentSocket.on("new_reaction", (data) => {
-      if (activePhoneRef.current === data.phone) {
-        setActiveChat((prev) => prev.map((msg) => msg.whatsappMessageId === data.targetMessageId ? { ...msg, reaction: data.emoji } : msg));
-      }
-    });
-
-    currentSocket.on("receive-message", (newMessage) => {
-        //  console.log(newMessage);
-
-      const isChatOpen = activePhoneRef.current === newMessage.phone;
-
-      if (isChatOpen) {
-        setIsPeerTyping(false);
-        setActiveChat((prev) => {
-          if (newMessage.direction === "outbound") {
-            const hasTemp = prev.some((msg) => msg._id?.toString().startsWith("temp_"));
-            if (hasTemp) {
-              let replaced = false;
-              return prev.map((msg) => {
-                if (!replaced && msg._id?.toString().startsWith("temp_") && msg.text === newMessage.text) {
-                  replaced = true;
-                  return { ...newMessage, isRead: true };
-                }
-                return msg;
-              });
+  currentSocket.on("chat_assigned", (data) => {
+    setLogs((prev) =>
+      prev.map((log) =>
+        log.phone === data.phone
+          ? {
+              ...log,
+              assignedTo: data.assignedTo,
+              chatStatus: "Waiting",
             }
+          : log
+      )
+    );
+
+    if (activePhoneRef.current === data.phone) {
+      setReplyTarget((prev) =>
+        prev
+          ? {
+              ...prev,
+              assignedTo: data.assignedTo,
+              chatStatus: "Waiting",
+            }
+          : null
+      );
+    }
+  });
+
+  // ==============================
+  // Customer Meta Updated
+  // ==============================
+
+  currentSocket.on("customer_meta_updated", (data) => {
+    setLogs((prev) =>
+      prev.map((log) =>
+        log.phone === data.phone
+          ? {
+              ...log,
+              ...data.customer,
+            }
+          : log
+      )
+    );
+
+    if (activePhoneRef.current === data.phone) {
+      setReplyTarget((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...data.customer,
+            }
+          : null
+      );
+    }
+  });
+
+  // ==============================
+  // Unread Alert
+  // ==============================
+
+  currentSocket.on("unread_alert", (data) => {
+    if (activePhoneRef.current !== data.phone) {
+      try {
+        notificationAudioRef.current
+          ?.play()
+          .catch(() => {});
+      } catch (e) {}
+    }
+  });
+
+  // ==============================
+  // New Reaction
+  // ==============================
+
+  currentSocket.on("new_reaction", (data) => {
+    if (activePhoneRef.current === data.phone) {
+      setActiveChat((prev) =>
+        prev.map((msg) =>
+          msg.whatsappMessageId === data.targetMessageId
+            ? {
+                ...msg,
+                reaction: data.emoji,
+              }
+            : msg
+        )
+      );
+    }
+  });
+
+  // ==============================
+  // Receive New Message
+  // ==============================
+
+  currentSocket.on("receive-message", (newMessage) => {
+    const isChatOpen =
+      activePhoneRef.current === newMessage.phone;
+
+    // ------------------------------
+    // Active Chat
+    // ------------------------------
+
+    if (isChatOpen) {
+      setIsPeerTyping(false);
+
+      setActiveChat((prev) => {
+        // Replace temporary outbound message
+        if (newMessage.direction === "outbound") {
+          const hasTemp = prev.some((msg) =>
+            msg._id?.toString().startsWith("temp_")
+          );
+
+          if (hasTemp) {
+            let replaced = false;
+
+            return prev.map((msg) => {
+              if (
+                !replaced &&
+                msg._id
+                  ?.toString()
+                  .startsWith("temp_") &&
+                msg.text === newMessage.text
+              ) {
+                replaced = true;
+
+                return {
+                  ...newMessage,
+                  isRead: true,
+                };
+              }
+
+              return msg;
+            });
           }
+        }
 
-          const isAlreadyExists = prev.some((msg) => (newMessage._id && msg._id?.toString() === newMessage._id.toString()) || (newMessage.whatsappMessageId && msg.whatsappMessageId?.toString() === newMessage.whatsappMessageId.toString()));
-          return isAlreadyExists ? prev : [...prev, { ...newMessage, isRead: true }];
-        });
-      }
+        // Prevent duplicate messages
+        const isAlreadyExists = prev.some(
+          (msg) =>
+            (newMessage._id &&
+              msg._id?.toString() ===
+                newMessage._id.toString()) ||
+            (newMessage.whatsappMessageId &&
+              msg.whatsappMessageId?.toString() ===
+                newMessage.whatsappMessageId.toString())
+        );
 
-      const isCustomerMsg = newMessage.direction === "inbound";
-      if (isCustomerMsg && !isChatOpen) {
-        setLocalUnreadPhones((prevPhones) => {
-          const currentLocalCount = prevPhones[newMessage.phone] || 0;
-          const updatedPhones = { ...prevPhones, [newMessage.phone]: currentLocalCount + 1 };
+        if (isAlreadyExists) {
+          return prev;
+        }
 
-          setLogs((prevLogs) => {
-            const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
-            const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
-            const updatedLog = {
-              ...newMessage,
-              unreadCount: updatedPhones[newMessage.phone],
-              customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" },
-            };
-            return [updatedLog, ...filtered];
-          });
-
-          return updatedPhones;
-        });
-      } else {
-        setLogs((prevLogs) => {
-          const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
-          const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
-          return [{
+        return [
+          ...prev,
+          {
             ...newMessage,
-            unreadCount: isChatOpen ? 0 : (existingLog?.unreadCount || 0),
-            customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" },
-          }, ...filtered];
-        });
-      }
-    });
+            isRead: true,
+          },
+        ];
+      });
+    }
 
-    return () => {
-      currentSocket.disconnect();
-    };
-  }, []); // مفيش أي dependencies هنا عشان الـ Listeners متتكررش!
+    // ------------------------------
+    // Customer Message
+    // ------------------------------
+
+    const isCustomerMsg =
+      newMessage.direction === "inbound";
+
+    if (isCustomerMsg && !isChatOpen) {
+      setLocalUnreadPhones((prevPhones) => {
+        const currentLocalCount =
+          prevPhones[newMessage.phone] || 0;
+
+        const updatedPhones = {
+          ...prevPhones,
+          [newMessage.phone]:
+            currentLocalCount + 1,
+        };
+
+        setLogs((prevLogs) => {
+          const existingLog = prevLogs.find(
+            (l) => l.phone === newMessage.phone
+          );
+
+          const filtered = prevLogs.filter(
+            (l) => l.phone !== newMessage.phone
+          );
+
+          const updatedLog = {
+            ...newMessage,
+            unreadCount:
+              updatedPhones[newMessage.phone],
+            customer:
+              existingLog?.customer ||
+              newMessage.customer || {
+                name: "Unknown Customer",
+              },
+          };
+
+          return [
+            updatedLog,
+            ...filtered,
+          ];
+        });
+
+        return updatedPhones;
+      });
+    } else {
+      // ------------------------------
+      // Update Chat List
+      // ------------------------------
+
+      setLogs((prevLogs) => {
+        const existingLog = prevLogs.find(
+          (l) => l.phone === newMessage.phone
+        );
+
+        const filtered = prevLogs.filter(
+          (l) => l.phone !== newMessage.phone
+        );
+
+        return [
+          {
+            ...newMessage,
+            unreadCount: isChatOpen
+              ? 0
+              : existingLog?.unreadCount || 0,
+
+            customer:
+              existingLog?.customer ||
+              newMessage.customer || {
+                name: "Unknown Customer",
+              },
+          },
+          ...filtered,
+        ];
+      });
+    }
+  });
+
+  // ==============================
+  // Cleanup
+  // ==============================
+
+  return () => {
+    console.log(
+      "🧹 Cleaning up Socket.IO connection..."
+    );
+
+    currentSocket.removeAllListeners();
+
+    if (currentSocket.io?.engine) {
+      currentSocket.io.engine.removeAllListeners();
+    }
+
+    currentSocket.disconnect();
+
+    if (socket.current === currentSocket) {
+      socket.current = null;
+    }
+  };
+}, []);
+
+  // // --- Socket Integration (Isolated & Anti-Leak) ---
+  // useEffect(() => {
+  //   socket.current = io(SOCKET_URL, {
+  // transports: ["polling", "websocket"],
+  //     reconnection: true,
+  //   });
+
+  //   const currentSocket = socket.current;
+
+  //   currentSocket.on("message_status_updated", (update) => {
+  //     const updateIdStr = update.messageId ? String(update.messageId) : null;
+  //     const updateWamIdStr = update.whatsappMessageId ? String(update.whatsappMessageId) : null;
+
+  //     if (update.status === "read") {
+  //       setLocalUnreadPhones((prev) => {
+  //         const updated = { ...prev };
+  //         delete updated[update.phone];
+  //         return updated;
+  //       });
+  //       setLogs((prev) => prev.map((log) => log.phone === update.phone ? { ...log, unreadCount: 0 } : log));
+  //     }
+
+  //     setActiveChat((prev) => prev.map((msg) => {
+  //       const isMatch = (updateIdStr && String(msg._id) === updateIdStr) || (updateWamIdStr && String(msg.whatsappMessageId) === updateWamIdStr);
+  //       return isMatch ? { ...msg, status: update.status } : msg;
+  //     }));
+
+  //     setLogs((prev) => prev.map((log) => {
+  //       const isMatch = (updateIdStr && String(log._id) === updateIdStr) || (updateWamIdStr && String(log.whatsappMessageId) === updateWamIdStr);
+  //       return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
+  //     }));
+  //   });
+
+  //   currentSocket.on("chat_cleared", (data) => {
+  //     if (activePhoneRef.current === data.phone) {
+  //       setReplyTarget(null);
+  //       setActiveChat([]);
+  //     }
+  //     setLocalUnreadPhones((prev) => {
+  //       const updated = { ...prev };
+  //       delete updated[data.phone];
+  //       return updated;
+  //     });
+  //     setLogs((prev) => prev.filter((log) => log.phone !== data.phone));
+  //   });
+
+  //   currentSocket.on("user_typing_status", (data) => {
+  //     if (activePhoneRef.current === data.phone) {
+  //       setIsPeerTyping(data.isTyping);
+  //     }
+  //   });
+
+  //   currentSocket.on("chat_assigned", (data) => {
+  //     setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, assignedTo: data.assignedTo, chatStatus: "Waiting" } : log));
+  //     if (activePhoneRef.current === data.phone) {
+  //       setReplyTarget((prev) => prev ? { ...prev, assignedTo: data.assignedTo, chatStatus: "Waiting" } : null);
+  //     }
+  //   });
+
+  //   currentSocket.on("customer_meta_updated", (data) => {
+  //     setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, ...data.customer } : log));
+  //     if (activePhoneRef.current === data.phone) {
+  //       setReplyTarget((prev) => prev ? { ...prev, ...data.customer } : null);
+  //     }
+  //   });
+
+  //   currentSocket.on("unread_alert", (data) => {
+  //     if (activePhoneRef.current !== data.phone) {
+  //       try {
+  //      notificationAudioRef.current?.play().catch(() => {});
+  //       } catch (e) {}
+  //     }
+  //   });
+
+  //   currentSocket.on("new_reaction", (data) => {
+  //     if (activePhoneRef.current === data.phone) {
+  //       setActiveChat((prev) => prev.map((msg) => msg.whatsappMessageId === data.targetMessageId ? { ...msg, reaction: data.emoji } : msg));
+  //     }
+  //   });
+
+  //   currentSocket.on("receive-message", (newMessage) => {
+  //       //  console.log(newMessage);
+
+  //     const isChatOpen = activePhoneRef.current === newMessage.phone;
+
+  //     if (isChatOpen) {
+  //       setIsPeerTyping(false);
+  //       setActiveChat((prev) => {
+  //         if (newMessage.direction === "outbound") {
+  //           const hasTemp = prev.some((msg) => msg._id?.toString().startsWith("temp_"));
+  //           if (hasTemp) {
+  //             let replaced = false;
+  //             return prev.map((msg) => {
+  //               if (!replaced && msg._id?.toString().startsWith("temp_") && msg.text === newMessage.text) {
+  //                 replaced = true;
+  //                 return { ...newMessage, isRead: true };
+  //               }
+  //               return msg;
+  //             });
+  //           }
+  //         }
+
+  //         const isAlreadyExists = prev.some((msg) => (newMessage._id && msg._id?.toString() === newMessage._id.toString()) || (newMessage.whatsappMessageId && msg.whatsappMessageId?.toString() === newMessage.whatsappMessageId.toString()));
+  //         return isAlreadyExists ? prev : [...prev, { ...newMessage, isRead: true }];
+  //       });
+  //     }
+
+  //     const isCustomerMsg = newMessage.direction === "inbound";
+  //     if (isCustomerMsg && !isChatOpen) {
+  //       setLocalUnreadPhones((prevPhones) => {
+  //         const currentLocalCount = prevPhones[newMessage.phone] || 0;
+  //         const updatedPhones = { ...prevPhones, [newMessage.phone]: currentLocalCount + 1 };
+
+  //         setLogs((prevLogs) => {
+  //           const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
+  //           const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
+  //           const updatedLog = {
+  //             ...newMessage,
+  //             unreadCount: updatedPhones[newMessage.phone],
+  //             customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" },
+  //           };
+  //           return [updatedLog, ...filtered];
+  //         });
+
+  //         return updatedPhones;
+  //       });
+  //     } else {
+  //       setLogs((prevLogs) => {
+  //         const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
+  //         const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
+  //         return [{
+  //           ...newMessage,
+  //           unreadCount: isChatOpen ? 0 : (existingLog?.unreadCount || 0),
+  //           customer: existingLog?.customer || newMessage.customer || { name: "Unknown Customer" },
+  //         }, ...filtered];
+  //       });
+  //     }
+  //   });
+
+  //   return () => {
+  //     currentSocket.disconnect();
+  //   };
+  // }, []); // مفيش أي dependencies هنا عشان الـ Listeners متتكررش!
 
   useEffect(() => {
     if (!isForwardModalOpen) return;
