@@ -2054,7 +2054,15 @@ import {
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
 
-
+// 🌟 1. نقل السوكت هنا بره المكون خالص ليكون مفرد (Singleton)
+const socket = io(SOCKET_URL, {
+ transports: ["websocket", "polling"],
+   withCredentials: true,
+  autoConnect: true,
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+});
 const cleanMediaUrl = (url) => {
   if (!url) return "";
 
@@ -2275,6 +2283,14 @@ const mediaRecorderRef = useRef(null);
   const [isAssignMenuOpen, setIsAssignMenuOpen] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [isPeerTyping, setIsPeerTyping] = useState(false);
+  // pagination states
+  const [logsPage, setLogsPage] = useState(1);
+const [hasMoreLogs, setHasMoreLogs] = useState(true);
+const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+const [isLoadingMoreLogs, setIsLoadingMoreLogs] = useState(false);
+const LOGS_PAGE_LIMIT = 50;
+
+const logsContainerRef = useRef(null);
 
   // --- LocalStorage Sync Optimized ---
   const [localUnreadPhones, setLocalUnreadPhones] = useState(() => {
@@ -2287,7 +2303,7 @@ const mediaRecorderRef = useRef(null);
   });
 
   // --- Refs (The Secret to High Performance) ---
-  const socket = useRef(null);
+  // const socket = useRef(null);
   const chatEndRef = useRef(null);
   const activePhoneRef = useRef(null);
   const textareaRef = useRef(null);
@@ -2330,79 +2346,369 @@ useEffect(() => {
       default: return <Clock size={size - 2} className="text-gray-300" />;
     }
   }, []);
+// --- Memoized Actions ---
+const markAsRead = useCallback((phone) => {
+  if (socket.current?.connected) {
+    socket.current.emit("mark_as_read", { phone });
+  }
 
-  // --- Memoized Actions ---
-  const markAsRead = useCallback((phone) => {
-    if (socket.current?.connected) {
-      socket.current.emit("mark_as_read", { phone });
+  setLocalUnreadPhones((prev) => {
+    const updated = { ...prev };
+    delete updated[phone];
+    return updated;
+  });
+
+  setLogs((prev) =>
+    prev.map((log) =>
+      log.phone === phone
+        ? { ...log, unreadCount: 0 }
+        : log
+    )
+  );
+}, []);
+
+
+
+
+// =========================================================
+// 🔥 FETCH LOGS WITH PAGINATION
+// =========================================================
+const fetchLogs = useCallback(
+  async (
+    page = 1,
+    append = false,
+    searchQuery = search
+  ) => {
+    // 🚫 منع طلبات Pagination إضافية لو مفيش صفحات
+    if (append && !hasMoreLogs) {
+      return;
     }
 
-    setLocalUnreadPhones((prev) => {
-      const updated = { ...prev };
-      delete updated[phone];
-      return updated;
-    });
-
-    setLogs((prev) =>
-      prev.map((log) => (log.phone === phone ? { ...log, unreadCount: 0 } : log))
-    );
-  }, []);
-
-  const fetchLogs = useCallback(async () => {
-    try {
-      const { data } = await axios.get("/messages", { params: { search } });
-      const fetchedMessages = data.messages || [];
-
-      setLogs(
-        fetchedMessages.map((msg) => {
-          const localCount = localUnreadPhonesRef.current[msg.phone];
-          return {
-            ...msg,
-            unreadCount: localCount !== undefined ? Math.max(msg.unreadCount || 0, localCount) : msg.unreadCount || 0,
-          };
-        })
-      );
-    } catch (err) {
-      console.error("Error fetching logs:", err);
+    // 🚫 منع إرسال أكثر من Request لتحميل نفس الصفحة
+    if (append && isLoadingMoreLogs) {
+      return;
     }
-  }, [search]);
 
-  const fetchChatMessages = useCallback(async (phone) => {
-    if (!phone) return;
     try {
-      const [chatRes] = await Promise.all([
-        axios.get(`/whatsapp/chat/${phone}`),
-        fetchLogs(),
-      ]);
-      if (chatRes.data.success) {
-        setActiveChat(chatRes.data.messages || []);
+      if (append) {
+        setIsLoadingMoreLogs(true);
+      } else {
+        setIsLoadingLogs(true);
       }
-    } catch (err) {
-      console.error("Failed to force refresh chat:", err);
-    }
-  }, [fetchLogs]);
 
-  const handleClearChat = useCallback(async (phone) => {
-    const confirmMsg = isRTL ? "هل أنت متأكد من رغبتك في إخفاء هذه المحادثة؟" : "Are you sure you want to hide this chat?";
-    if (!window.confirm(confirmMsg)) return;
-    try {
-      const res = await axios.delete(`/messages/clear/${phone}`);
-      if (res.data.success) {
-        if (activePhoneRef.current === phone) {
-          setReplyTarget(null);
-          setActiveChat([]);
+      // console.log("📥 Fetch Logs:", {
+      //   page,
+      //   limit: LOGS_PAGE_LIMIT,
+      //   append,
+      //   search: searchQuery,
+      // });
+
+      const { data } = await axios.get("/messages", {
+        params: {
+          page,
+          limit: LOGS_PAGE_LIMIT,
+          search: searchQuery?.trim() || undefined,
+        },
+      });
+
+      // console.log("📥 Fetched Messages Response:", data);
+
+      // =====================================================
+      // 📦 استخراج الـ Messages
+      // =====================================================
+      const fetchedMessages = Array.isArray(data)
+        ? data
+        : (data.messages || data.data || []);
+
+      // =====================================================
+      // 🔢 Pagination Data
+      // =====================================================
+      const pagination = data.pagination || {};
+
+      // =====================================================
+      // 🧠 تجهيز البيانات مع الحفاظ على Local Unread Count
+      // =====================================================
+      const formattedMessages = fetchedMessages.map((msg) => {
+        const localCount =
+          localUnreadPhonesRef.current[msg.phone];
+
+        return {
+          ...msg,
+
+          unreadCount:
+            localCount !== undefined
+              ? Math.max(
+                  msg.unreadCount || 0,
+                  localCount
+                )
+              : msg.unreadCount || 0,
+        };
+      });
+
+
+      // =====================================================
+      // 🔥 UPDATE LOGS
+      // =====================================================
+      setLogs((prevLogs) => {
+
+        // ================================================
+        // 🆕 PAGE 1
+        // Search / Initial Load / Refresh
+        // ================================================
+        if (!append || page === 1) {
+          return formattedMessages;
         }
-        setLocalUnreadPhones((prev) => {
-          const updated = { ...prev };
-          delete updated[phone];
-          return updated;
+
+
+        // ================================================
+        // ➕ LOAD MORE
+        // Page 2, 3, 4...
+        // ================================================
+
+        const logsMap = new Map();
+
+        // أولاً البيانات القديمة
+        prevLogs.forEach((log) => {
+          if (log.phone) {
+            logsMap.set(log.phone, log);
+          }
         });
-        setLogs((prev) => prev.filter((log) => log.phone !== phone));
-      }
+
+        // بعدين البيانات الجديدة
+        formattedMessages.forEach((log) => {
+          if (!log.phone) return;
+
+          const existingLog = logsMap.get(log.phone);
+
+          if (existingLog) {
+            // تحديث البيانات القديمة بالبيانات الجديدة
+            logsMap.set(log.phone, {
+              ...existingLog,
+              ...log,
+
+              // الحفاظ على أعلى unreadCount
+              unreadCount: Math.max(
+                existingLog.unreadCount || 0,
+                log.unreadCount || 0
+              ),
+            });
+          } else {
+            // Conversation جديدة
+            logsMap.set(log.phone, log);
+          }
+        });
+
+        return Array.from(logsMap.values());
+      });
+
+
+      // =====================================================
+      // 📄 UPDATE PAGINATION STATE
+      // =====================================================
+      setLogsPage(
+        pagination.page ||
+        page
+      );
+
+      setHasMoreLogs(
+        pagination.hasNextPage === true
+      );
+
     } catch (err) {
-      console.error("Failed to clear chat:", err);
+      console.error(
+        "❌ Error fetching logs:",
+        err
+      );
+    } finally {
+      if (append) {
+        setIsLoadingMoreLogs(false);
+      } else {
+        setIsLoadingLogs(false);
+      }
     }
-  }, [isRTL]);
+  },
+  [
+    search,
+    hasMoreLogs,
+    isLoadingMoreLogs,
+  ]
+);
+
+
+// =========================================================
+// 🚀 INITIAL LOAD
+// أول تحميل للمكون
+// =========================================================
+// useEffect(() => {
+//   fetchLogs(1, false, "");
+// }, []);
+
+
+// =========================================================
+// 🔍 SEARCH WITH DEBOUNCE
+// عند تغيير Search
+// =========================================================
+useEffect(() => {
+
+  const handler = setTimeout(() => {
+
+    // 🔄 Reset Pagination
+    setLogsPage(1);
+
+    // ✅ السماح بتحميل صفحات جديدة
+    setHasMoreLogs(true);
+
+    // 🆕 جلب أول صفحة من نتائج البحث
+    fetchLogs(
+      1,
+      false,
+      search
+    );
+
+  }, 350);
+
+  return () => {
+    clearTimeout(handler);
+  };
+
+}, [search]);
+
+
+// =========================================================
+// 💬 FETCH ACTIVE CHAT
+// =========================================================
+const fetchChatMessages = useCallback(
+  async (phone) => {
+    if (!phone) return;
+
+    try {
+
+      const [chatRes] =
+        await Promise.all([
+          axios.get(
+            `/whatsapp/chat/${phone}`
+          ),
+
+          // 🔄 Refresh Logs
+          // نرجع دائماً للصفحة الأولى
+          fetchLogs(
+            1,
+            false,
+            search
+          ),
+        ]);
+
+
+      if (chatRes.data.success) {
+
+        setActiveChat(
+          chatRes.data.messages || []
+        );
+
+      }
+
+    } catch (err) {
+
+      console.error(
+        "Failed to force refresh chat:",
+        err
+      );
+
+    }
+  },
+  [
+    fetchLogs,
+    search,
+  ]
+);
+
+
+// =========================================================
+// 🗑️ CLEAR / HIDE CHAT
+// =========================================================
+const handleClearChat = useCallback(
+  async (phone) => {
+
+    const confirmMsg =
+      isRTL
+        ? "هل أنت متأكد من رغبتك في إخفاء هذه المحادثة؟"
+        : "Are you sure you want to hide this chat?";
+
+
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+
+    try {
+
+      const res =
+        await axios.delete(
+          `/messages/clear/${phone}`
+        );
+
+
+      if (res.data.success) {
+
+        // =================================================
+        // 🔴 لو دي المحادثة المفتوحة حالياً
+        // =================================================
+        if (
+          activePhoneRef.current ===
+          phone
+        ) {
+
+          setReplyTarget(null);
+
+          setActiveChat([]);
+
+        }
+
+
+        // =================================================
+        // 🔢 حذف الـ Local Unread
+        // =================================================
+        setLocalUnreadPhones(
+          (prev) => {
+
+            const updated = {
+              ...prev,
+            };
+
+            delete updated[phone];
+
+            return updated;
+          }
+        );
+
+
+        // =================================================
+        // 🗑️ حذف المحادثة من الـ Sidebar
+        // =================================================
+        setLogs(
+          (prev) =>
+            prev.filter(
+              (log) =>
+                log.phone !== phone
+            )
+        );
+
+      }
+
+    } catch (err) {
+
+      console.error(
+        "Failed to clear chat:",
+        err
+      );
+
+    }
+
+  },
+  [
+    isRTL,
+  ]
+);
 
   const openChat = useCallback(async (msg) => {
     firstLoadRef.current = true;
@@ -2431,60 +2737,153 @@ useEffect(() => {
     }
   }, [markAsRead]);
 
- useEffect(() => {
-  console.log("🚀 INITIALIZING SOCKET");
+// --- Socket Integration (Singleton) ---
+useEffect(() => {
+  // --- Handlers ---
+  const handleMessageStatusUpdated = (update) => {
+    const updateIdStr = update.messageId ? String(update.messageId) : null;
+    const updateWamIdStr = update.whatsappMessageId ? String(update.whatsappMessageId) : null;
 
-  const newSocket = io(SOCKET_URL, {
-    transports: ["polling", "websocket"],
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 20000,
-    withCredentials: true,
-  });
+    if (update.status === "read") {
+      setLocalUnreadPhones((prev) => {
+        const updated = { ...prev };
+        delete updated[update.phone];
+        return updated;
+      });
+      setLogs((prev) => prev.map((log) => log.phone === update.phone ? { ...log, unreadCount: 0 } : log));
+    }
 
-  socket.current = newSocket;
+    setActiveChat((prev) => prev.map((msg) => {
+      const isMatch = (updateIdStr && String(msg._id) === updateIdStr) || (updateWamIdStr && String(msg.whatsappMessageId) === updateWamIdStr);
+      return isMatch ? { ...msg, status: update.status } : msg;
+    }));
 
-  const currentSocket = newSocket;
+    setLogs((prev) => prev.map((log) => {
+      const isMatch = (updateIdStr && String(log._id) === updateIdStr) || (updateWamIdStr && String(log.whatsappMessageId) === updateWamIdStr);
+      return isMatch || log.phone === update.phone ? { ...log, status: update.status } : log;
+    }));
+  };
 
-  currentSocket.on("connect", () => {
-    console.log("🟢 SOCKET CONNECTED:", currentSocket.id);
-    console.log(
-      "🔌 Transport:",
-      currentSocket.io.engine.transport.name
-    );
-  });
+  const handleChatCleared = (data) => {
+    if (activePhoneRef.current === data.phone) {
+      setReplyTarget(null);
+      setActiveChat([]);
+    }
+    setLocalUnreadPhones((prev) => {
+      const updated = { ...prev };
+      delete updated[data.phone];
+      return updated;
+    });
+    setLogs((prev) => prev.filter((log) => log.phone !== data.phone));
+  };
 
-  currentSocket.on("connect_error", (error) => {
-    console.error(
-      "❌ SOCKET CONNECT ERROR:",
-      error.message
-    );
-  });
+  const handleUserTypingStatus = (data) => {
+    if (activePhoneRef.current === data.phone) {
+      setIsPeerTyping(data.isTyping);
+    }
+  };
 
-  currentSocket.on("disconnect", (reason) => {
-    console.warn(
-      "🔴 SOCKET DISCONNECTED:",
-      currentSocket.id,
-      reason
-    );
-  });
+  const handleChatAssigned = (data) => {
+    setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, assignedTo: data.assignedTo, chatStatus: "Waiting" } : log));
+    if (activePhoneRef.current === data.phone) {
+      setReplyTarget((prev) => prev ? { ...prev, assignedTo: data.assignedTo, chatStatus: "Waiting" } : null);
+    }
+  };
 
-  // كل الـ listeners بتوعك هنا...
+  const handleCustomerMetaUpdated = (data) => {
+    setLogs((prev) => prev.map((log) => log.phone === data.phone ? { ...log, ...data.customer } : log));
+    if (activePhoneRef.current === data.phone) {
+      setReplyTarget((prev) => prev ? { ...prev, ...data.customer } : null);
+    }
+  };
+
+  const handleUnreadAlert = (data) => {
+    if (activePhoneRef.current !== data.phone) {
+      try {
+        notificationAudioRef.current?.play().catch(() => {});
+      } catch (e) {}
+    }
+  };
+
+  const handleNewReaction = (data) => {
+    if (activePhoneRef.current === data.phone) {
+      setActiveChat((prev) => prev.map((msg) => msg.whatsappMessageId === data.targetMessageId ? { ...msg, reaction: data.emoji } : msg));
+    }
+  };
+
+  const handleReceiveMessage = (newMessage) => {
+    const isChatOpen = activePhoneRef.current === newMessage.phone;
+
+    // أ) تحديث الشات المفتوح حالياً
+    if (isChatOpen) {
+      setIsPeerTyping(false);
+      setActiveChat((prev) => {
+        if (newMessage.direction === "outbound") {
+          const hasTemp = prev.some((msg) => msg._id?.toString().startsWith("temp_"));
+          if (hasTemp) {
+            let replaced = false;
+            return prev.map((msg) => {
+              if (!replaced && msg._id?.toString().startsWith("temp_") && msg.text === newMessage.text) {
+                replaced = true;
+                return { ...newMessage, isRead: true };
+              }
+              return msg;
+            });
+          }
+        }
+
+        const isAlreadyExists = prev.some((msg) => 
+          (newMessage._id && msg._id?.toString() === newMessage._id.toString()) || 
+          (newMessage.whatsappMessageId && msg.whatsappMessageId?.toString() === newMessage.whatsappMessageId.toString())
+        );
+        return isAlreadyExists ? prev : [...prev, { ...newMessage, isRead: true }];
+      });
+    }
+
+    // ب) تحديث قائمة الشاتات (Logs)
+    setLogs((prevLogs) => {
+      const existingLog = prevLogs.find((l) => l.phone === newMessage.phone);
+      const filtered = prevLogs.filter((l) => l.phone !== newMessage.phone);
+      
+      const isCustomerMsg = newMessage.direction === "inbound";
+      let newUnreadCount = 0;
+
+      if (isCustomerMsg && !isChatOpen) {
+        newUnreadCount = (existingLog?.unreadCount || 0) + 1;
+        setLocalUnreadPhones((prev) => ({ ...prev, [newMessage.phone]: newUnreadCount }));
+      } else {
+        newUnreadCount = isChatOpen ? 0 : (existingLog?.unreadCount || 0);
+      }
+
+      const updatedLog = {
+        ...newMessage,
+        unreadCount: newUnreadCount,
+        customer: existingLog?.customer || newMessage.customer || { name: newMessage.phone },
+      };
+
+      return [updatedLog, ...filtered];
+    });
+  };
+
+  // 🌟 الربط بـ Singleton Socket مباشرة
+  socket.on("message_status_updated", handleMessageStatusUpdated);
+  socket.on("chat_cleared", handleChatCleared);
+  socket.on("user_typing_status", handleUserTypingStatus);
+  socket.on("chat_assigned", handleChatAssigned);
+  socket.on("customer_meta_updated", handleCustomerMetaUpdated);
+  socket.on("unread_alert", handleUnreadAlert);
+  socket.on("new_reaction", handleNewReaction);
+  socket.on("receive-message", handleReceiveMessage);
 
   return () => {
-    console.log(
-      "🧹 DESTROYING SOCKET:",
-      currentSocket.id
-    );
-
-    currentSocket.removeAllListeners();
-    currentSocket.disconnect();
-
-    if (socket.current === currentSocket) {
-      socket.current = null;
-    }
+    socket.off("message_status_updated", handleMessageStatusUpdated);
+    socket.off("chat_cleared", handleChatCleared);
+    socket.off("user_typing_status", handleUserTypingStatus);
+    socket.off("chat_assigned", handleChatAssigned);
+    socket.off("customer_meta_updated", handleCustomerMetaUpdated);
+    socket.off("unread_alert", handleUnreadAlert);
+    socket.off("new_reaction", handleNewReaction);
+    socket.off("receive-message", handleReceiveMessage);
   };
 }, []);
 
@@ -2649,6 +3048,7 @@ useEffect(() => {
       .then((res) => Array.isArray(res.data) && setEmployees(res.data))
       .catch((err) => console.error("Error fetching agents:", err));
   }, []);
+// 🌟 جلب قائمة المحادثات (Logs) أول ما الصفحة تفتح
 
 const scrollToBottom = useCallback((behavior = "smooth") => {
   const container = messagesContainerRef.current;
@@ -2726,10 +3126,10 @@ useEffect(() => {
     });
 }, [replyTarget?.phone]);
 
-  useEffect(() => {
-    const handler = setTimeout(fetchLogs, 400);
-    return () => clearTimeout(handler);
-  }, [search, fetchLogs]);
+  // useEffect(() => {
+  //   const handler = setTimeout(fetchLogs, 400);
+  //   return () => clearTimeout(handler);
+  // }, [search, fetchLogs]);
   
 
   const handleMediaSelect = useCallback((e) => {
@@ -3196,174 +3596,268 @@ const audioFile =
       dir={isRTL ? "rtl" : "ltr"}
     >
       <div className="flex flex-1 h-full w-full overflow-hidden relative">
-        {/* SIDEBAR (قائمة المحادثات) */}
-        <div
-          className={`w-full md:w-[360px] lg:w-[400px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 shrink-0 h-full ${replyTarget ? "hidden md:flex" : "flex"}`}
-        >
-          <div className="p-3.5 space-y-3 shrink-0 bg-white dark:bg-[#111] z-10 border-b border-gray-100 dark:border-white/5">
-            <div className="flex items-center justify-between">
-              <h1 className="text-lg font-black text-red-700 flex items-center gap-2">
-                <Headset size={22} /> VESTRO{" "}
-                <span className="text-[10px] bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
-                  LIVE
-                </span>
-              </h1>
-            </div>
-            <div className="relative group">
-              <Search
-                className={`${isRTL ? "right-3" : "left-3"} absolute top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-600 transition-colors`}
-                size={16}
-              />
-              <input
-                type="text"
-                placeholder={
-                  isRTL
-                    ? "بحث في المحادثات أو الأرقام..."
-                    : "Search chats or numbers..."
-                }
-                className={`w-full bg-gray-100 dark:bg-white/5 rounded-xl py-2 ${isRTL ? "pr-9 pl-4" : "pl-9 pr-4"} text-xs sm:text-sm outline-none border border-transparent focus:border-red-500/50 transition-all`}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
+      {/* SIDEBAR (قائمة المحادثات) */}
+<div
+  className={`w-full md:w-[360px] lg:w-[400px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 shrink-0 h-full ${
+    replyTarget ? "hidden md:flex" : "flex"
+  }`}
+>
+  <div className="p-3.5 space-y-3 shrink-0 bg-white dark:bg-[#111] z-10 border-b border-gray-100 dark:border-white/5">
+    <div className="flex items-center justify-between">
+      <h1 className="text-lg font-black text-red-700 flex items-center gap-2">
+        <Headset size={22} /> VESTRO{" "}
+        <span className="text-[10px] bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+          LIVE
+        </span>
+      </h1>
+    </div>
 
-          {/* قائمة المحادثات المدعمة بالتثبيت وحالة الشات */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-gray-100 dark:divide-white/5">
-            {logs.length === 0 ? (
-              <div className="p-8 text-center text-xs text-gray-400">
-                {isRTL ? "لا توجد محادثات متاحة" : "No conversations found"}
+    <div className="relative group">
+      <Search
+        className={`${
+          isRTL ? "right-3" : "left-3"
+        } absolute top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-600 transition-colors`}
+        size={16}
+      />
+
+      <input
+        type="text"
+        placeholder={
+          isRTL
+            ? "بحث في المحادثات أو الأرقام..."
+            : "Search chats or numbers..."
+        }
+        className={`w-full bg-gray-100 dark:bg-white/5 rounded-xl py-2 ${
+          isRTL ? "pr-9 pl-4" : "pl-9 pr-4"
+        } text-xs sm:text-sm outline-none border border-transparent focus:border-red-500/50 transition-all`}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+    </div>
+  </div>
+
+  {/* قائمة المحادثات المدعمة بالتثبيت وحالة الشات */}
+  <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-gray-100 dark:divide-white/5">
+    {logs.length === 0 ? (
+      <div className="p-8 text-center text-xs text-gray-400">
+        {isRTL ? "لا توجد محادثات متاحة" : "No conversations found"}
+      </div>
+    ) : (
+      // ترتيب المحادثات: المتبت أولاً (isPinned) ثم بالأحدث زمانياً
+      [...logs]
+        .sort(
+          (a, b) =>
+            (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) ||
+            new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+        )
+        .map((msg) => {
+          // console.log(msg.chatStatus);
+          // console.log(msg);
+
+          const isCurrentActive = replyTarget?.phone === msg.phone;
+          const hasUnread = msg.unreadCount > 0 && !isCurrentActive;
+
+          return (
+            <div
+              key={msg._id || msg.phone}
+              onClick={() => openChat(msg)}
+              className={`flex items-center gap-3 p-3.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors relative
+              ${isCurrentActive ? "bg-red-50/40 dark:bg-red-900/10" : ""}
+              ${hasUnread ? "bg-green-50/20 dark:bg-green-500/[0.02]" : ""}`}
+            >
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-sm relative text-sm">
+                {msg.customer?.name &&
+                msg.customer.name !== "Unknown Customer" ? (
+                  msg.customer.name.charAt(0).toUpperCase()
+                ) : (
+                  <User size={20} />
+                )}
+
+                {hasUnread && (
+                  <span className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-[#111]"></span>
+                )}
               </div>
-            ) : (
-              // ترتيب المحادثات: المتبت أولاً (isPinned) ثم بالأحدث زمانياً
-              [...logs]
-                .sort(
-                  (a, b) =>
-                    (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) ||
-                    new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
-                )
-                .map((msg) => {
 
-                  // console.log(msg.chatStatus);
-                  // console.log(msg);
-                  const isCurrentActive = replyTarget?.phone === msg.phone;
-                  const hasUnread = msg.unreadCount > 0 && !isCurrentActive;
-
-                  return (
-                    <div
-                      key={msg._id || msg.phone}
-                      onClick={() => openChat(msg)}
-                      className={`flex items-center gap-3 p-3.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors relative
-                    ${isCurrentActive ? "bg-red-50/40 dark:bg-red-900/10" : ""}
-                    ${hasUnread ? "bg-green-50/20 dark:bg-green-500/[0.02]" : ""}`}
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-center mb-1 gap-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <h3
+                      className={`text-[13.5px] truncate ${
+                        hasUnread
+                          ? "font-black text-black dark:text-white"
+                          : "font-bold text-slate-800 dark:text-slate-200"
+                      }`}
                     >
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white font-bold shrink-0 shadow-sm relative text-sm">
-                        {msg.customer?.name &&
-                        msg.customer.name !== "Unknown Customer" ? (
-                          msg.customer.name.charAt(0).toUpperCase()
-                        ) : (
-                          <User size={20} />
-                        )}
-                        {hasUnread && (
-                          <span className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-[#111]"></span>
-                        )}
-                      </div>
+                      {msg.customer?.name &&
+                      msg.customer.name !== "Unknown Customer"
+                        ? msg.customer.name
+                        : msg.phone}
+                    </h3>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center mb-1 gap-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <h3
-                              className={`text-[13.5px] truncate ${hasUnread ? "font-black text-black dark:text-white" : "font-bold text-slate-800 dark:text-slate-200"}`}
-                            >
-                              {msg.customer?.name &&
-                              msg.customer.name !== "Unknown Customer"
-                                ? msg.customer.name
-                                : msg.phone}
-                            </h3>
-                            {msg.isPinned && (
-                              <span className="text-[10px] text-red-600 shrink-0 transform rotate-45">
-                                📌
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            className={`text-[9.5px] shrink-0 tabular-nums ${hasUnread ? "text-green-500 font-bold" : "text-gray-400"}`}
-                          >
-                            {msg.createdAt
-                              ? new Date(msg.createdAt).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : ""}
-                          </span>
-                        </div>
+                    {msg.isPinned && (
+                      <span className="text-[10px] text-red-600 shrink-0 transform rotate-45">
+                        📌
+                      </span>
+                    )}
+                  </div>
 
-                        <div className="flex items-center justify-between gap-1.5">
-                          <div className="flex items-center gap-1 min-w-0 flex-1">
-                            {msg.direction === "outbound" && (
-                              <StatusIcon status={msg.status} size={13} />
-                            )}
-                            <p
-                              className={`text-xs truncate ${hasUnread ? "text-black dark:text-slate-100 font-bold" : "text-gray-500 dark:text-gray-400"}`}
-                            >
-                              {msg.text ||
-                                (msg.type === "image"
-                                  ? isRTL
-                                    ? "📷 صورة"
-                                    : "📷 Photo"
-                                  : msg.type === "audio" || msg.type === "voice"
-                                    ? isRTL
-                                      ? "🎙️ ريكورد"
-                                      : "🎙️ Voice Note"
-                                    : isRTL
-                                      ? "📎 وسائط"
-                                      : "📎 Media")}
-                            </p>
-                          </div>
+                  <span
+                    className={`text-[9.5px] shrink-0 tabular-nums ${
+                      hasUnread
+                        ? "text-green-500 font-bold"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {msg.createdAt
+                      ? new Date(msg.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : ""}
+                  </span>
+                </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {/* عرض حالة الشات مثل Waiting أو المسؤول عنه حالياً */}
-                           {msg.chatStatus === "Waiting" && msg.direction === "inbound" && (
-                              <span className="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold text-[9px] px-1.5 py-0.5 rounded">
-                                {isRTL ? "انتظار" : "Waiting"}
-                              </span>
-                            )}
-                            {msg.assignedTo?.name && (
-                              <span
-                                className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[9px] px-1 rounded truncate max-w-[60px]"
-                                title={`Assigned to ${msg.assignedTo.name}`}
-                              >
-                                👤 {msg.assignedTo.name.split(" ")[0]}
-                              </span>
-                            )}
-                            {hasUnread && (
-                              <span className="bg-green-500 text-white font-bold text-[10px] min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-sm font-mono animate-pulse">
-                                {msg.unreadCount}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1 min-w-0 flex-1">
+                    {msg.direction === "outbound" && (
+                      <StatusIcon status={msg.status} size={13} />
+                    )}
 
-                        {/* عرض التاجات المضافة للعميل لايف */}
-                        {msg.tags && msg.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1.5 overflow-hidden max-h-5">
-                            {msg.tags.slice(0, 3).map((tag, tIdx) => (
-                              <span
-                                key={tIdx}
-                                className="text-[9px] bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 px-1 py-0.2 rounded font-medium"
-                              >
-                                #{tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-            )}
-          </div>
-        </div>
+                    <p
+                      className={`text-xs truncate ${
+                        hasUnread
+                          ? "text-black dark:text-slate-100 font-bold"
+                          : "text-gray-500 dark:text-gray-400"
+                      }`}
+                    >
+                      {msg.text ||
+                        (msg.type === "image"
+                          ? isRTL
+                            ? "📷 صورة"
+                            : "📷 Photo"
+                          : msg.type === "audio" ||
+                              msg.type === "voice"
+                            ? isRTL
+                              ? "🎙️ ريكورد"
+                              : "🎙️ Voice Note"
+                            : isRTL
+                              ? "📎 وسائط"
+                              : "📎 Media")}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* عرض حالة الشات مثل Waiting أو المسؤول عنه حالياً */}
+                    {msg.chatStatus === "Waiting" &&
+                      msg.direction === "inbound" && (
+                        <span className="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold text-[9px] px-1.5 py-0.5 rounded">
+                          {isRTL ? "انتظار" : "Waiting"}
+                        </span>
+                      )}
+
+                    {msg.assignedTo?.name && (
+                      <span
+                        className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[9px] px-1 rounded truncate max-w-[60px]"
+                        title={`Assigned to ${msg.assignedTo.name}`}
+                      >
+                        👤 {msg.assignedTo.name.split(" ")[0]}
+                      </span>
+                    )}
+
+                    {hasUnread && (
+                      <span className="bg-green-500 text-white font-bold text-[10px] min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-sm font-mono animate-pulse">
+                        {msg.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* عرض التاجات المضافة للعميل لايف */}
+                {msg.tags && msg.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5 overflow-hidden max-h-5">
+                    {msg.tags.slice(0, 3).map((tag, tIdx) => (
+                      <span
+                        key={tIdx}
+                        className="text-[9px] bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 px-1 py-0.2 rounded font-medium"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })
+    )}
+  </div>
+
+ {/* ========================================================= */}
+{/* 🔥 PAGINATION CONTROLS */}
+{/* ========================================================= */}
+<div className="shrink-0 p-2.5 border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#111]">
+  <div className="flex items-center justify-between gap-2">
+
+    {/* Previous */}
+    <button
+      type="button"
+      disabled={logsPage <= 1 || isLoadingLogs}
+      onClick={() => {
+        if (logsPage <= 1 || isLoadingLogs) return;
+
+        fetchLogs(
+          logsPage - 1,
+          false,
+          search
+        );
+      }}
+      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold
+      bg-gray-100 dark:bg-white/5
+      text-gray-700 dark:text-gray-300
+      hover:bg-gray-200 dark:hover:bg-white/10
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-colors"
+    >
+      {isRTL ? "→" : "←"}
+      {isRTL ? "السابق" : "Previous"}
+    </button>
+
+    {/* Current Page */}
+    <div className="flex items-center justify-center min-w-[70px] px-2">
+      <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+        {isRTL ? "صفحة" : "Page"}{" "}
+        <span className="text-red-600 dark:text-red-400">
+          {logsPage}
+        </span>
+      </span>
+    </div>
+
+    {/* Next */}
+    <button
+      type="button"
+      disabled={!hasMoreLogs || isLoadingLogs}
+      onClick={() => {
+        if (!hasMoreLogs || isLoadingLogs) return;
+
+        fetchLogs(
+          logsPage + 1,
+          false,
+          search
+        );
+      }}
+      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold
+      bg-red-600 text-white
+      hover:bg-red-700
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-colors"
+    >
+      {isRTL ? "التالي" : "Next"}
+      {isRTL ? "←" : "→"}
+    </button>
+
+  </div>
+</div>
+</div>
 
         {/* CHAT WINDOW */}
         <div
