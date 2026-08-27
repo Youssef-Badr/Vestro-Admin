@@ -3598,7 +3598,7 @@ const audioFile =
       <div className="flex flex-1 h-full w-full overflow-hidden relative">
       {/* SIDEBAR (قائمة المحادثات) */}
 <div
-  className={`w-full md:w-[360px] lg:w-[400px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 shrink-0 h-full ${
+  className={`w-full md:w-[360px] lg:w-[400px] flex flex-col bg-white dark:bg-[#111] border-e border-gray-200 dark:border-white/5 shrink-0 h-full min-h-0 ${
     replyTarget ? "hidden md:flex" : "flex"
   }`}
 >
@@ -3637,8 +3637,7 @@ const audioFile =
   </div>
 
   {/* قائمة المحادثات المدعمة بالتثبيت وحالة الشات */}
-  <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-gray-100 dark:divide-white/5">
-    {logs.length === 0 ? (
+<div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar divide-y divide-gray-100 dark:divide-white/5">    {logs.length === 0 ? (
       <div className="p-8 text-center text-xs text-gray-400">
         {isRTL ? "لا توجد محادثات متاحة" : "No conversations found"}
       </div>
@@ -3792,10 +3791,10 @@ const audioFile =
     )}
   </div>
 
- {/* ========================================================= */}
-{/* 🔥 PAGINATION CONTROLS */}
 {/* ========================================================= */}
-<div className="shrink-0 p-2.5 border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#111]">
+{/* 🔥 PAGINATION CONTROLS - FIXED INSIDE SIDEBAR */}
+{/* ========================================================= */}
+<div className="shrink-0 w-full p-2.5 border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#111] z-20">
   <div className="flex items-center justify-between gap-2">
 
     {/* Previous */}
