@@ -660,18 +660,7 @@ const Accessories = () => {
         ====================================== */}
 
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {t.title}
-            </h1>
-
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {t.subtitle}
-            </p>
-          </div>
-
-          <button
+<button
             type="button"
             onClick={openAddCategory}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
@@ -682,6 +671,17 @@ const Accessories = () => {
 
             {t.addCategory}
           </button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+              {t.title}
+            </h1>
+
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {t.subtitle}
+            </p>
+          </div>
+
+          
         </div>
 
         {/* ======================================
