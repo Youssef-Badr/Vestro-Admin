@@ -256,6 +256,9 @@ const WhatsAppSettings = lazy(() =>
 const MessageLogs = lazy(() =>
   import("./pages/MessageLogs/MessageLogs")
 );
+const Accessories = lazy(() =>
+  import("./pages/Accessories/Accessories")
+);
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -290,6 +293,7 @@ function App() {
         <Route path="/payments" element={wrap(Payments)} />
         <Route path="/cities" element={wrap(Cities)} />
         <Route path="/categories" element={wrap(AdminCategories)} />
+        <Route path="/accessories" element={wrap(Accessories)} />
         <Route path="/discounts" element={wrap(Discounts)} />
         <Route path="/settings" element={wrap(Settings)} />
         <Route path="/announcements" element={wrap(Announcements)} />

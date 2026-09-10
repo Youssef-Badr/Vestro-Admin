@@ -82,6 +82,12 @@ useEffect(() => {
         label: isRTL ? "الأقسام" : "Categories",
         icon: "🏷️",
       },
+      {
+        to: "/Accessories",
+        label: isRTL ? "الإكسسوارات" : "Accessories",
+        icon: "🧢",
+      },
+      ,
       { to: "/bundles", label: isRTL ? "العروض" : "Bundles", icon: "📦" },
       {
         to: "/announcements",
