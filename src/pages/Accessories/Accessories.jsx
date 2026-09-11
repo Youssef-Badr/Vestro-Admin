@@ -1,3 +1,4 @@
+ 
 import { useEffect, useMemo, useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import { useLanguage } from "../../context/LanguageContext";
@@ -15,6 +16,16 @@ const Accessories = () => {
   const [loading, setLoading] = useState(true);
 
   const [expandedCategories, setExpandedCategories] = useState({});
+
+  // ==========================================
+  // SEARCH + SORT
+  // ==========================================
+
+  const [search, setSearch] = useState("");
+
+  const [sort, setSort] = useState("createdAt");
+
+  const [order, setOrder] = useState("desc");
 
   // Category modal
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -126,10 +137,65 @@ const Accessories = () => {
         ? "لا توجد بيانات حتى الآن"
         : "No data available",
 
+    noSearchResults:
+      language === "ar"
+        ? "لا توجد نتائج مطابقة للبحث"
+        : "No matching results found",
+
     noItems:
       language === "ar"
         ? "لا توجد أصناف داخل هذا التصنيف"
         : "No items in this category",
+
+    search:
+      language === "ar"
+        ? "بحث"
+        : "Search",
+
+    searchPlaceholder:
+      language === "ar"
+        ? "ابحث باسم التصنيف أو الصنف أو الموقع..."
+        : "Search by category, item, or location...",
+
+    sort:
+      language === "ar"
+        ? "ترتيب حسب"
+        : "Sort By",
+
+    newest:
+      language === "ar"
+        ? "الأحدث"
+        : "Newest",
+
+    oldest:
+      language === "ar"
+        ? "الأقدم"
+        : "Oldest",
+
+    name:
+      language === "ar"
+        ? "الاسم"
+        : "Name",
+
+    quantitySort:
+      language === "ar"
+        ? "الكمية"
+        : "Quantity",
+
+    locationSort:
+      language === "ar"
+        ? "الموقع"
+        : "Location",
+
+    ascending:
+      language === "ar"
+        ? "تصاعدي"
+        : "Ascending",
+
+    descending:
+      language === "ar"
+        ? "تنازلي"
+        : "Descending",
 
     confirmDeleteCategory:
       language === "ar"
@@ -169,15 +235,46 @@ const Accessories = () => {
   // FETCH ACCESSORIES
   // ==========================================
 
-  const fetchAccessories = async () => {
+  const fetchAccessories = async (searchValue = search) => {
     try {
       setLoading(true);
 
-      const response = await axiosInstance.get("/accessories");
+      const params = {
+        search: searchValue.trim(),
+        sort,
+        order,
+      };
 
-      setCategories(response.data || []);
+      const response = await axiosInstance.get(
+        "/accessories",
+        {
+          params,
+        }
+      );
+
+      const data = response.data || [];
+
+      setCategories(data);
+
+      // ==========================================
+      // AUTO EXPAND SEARCH RESULTS
+      // ==========================================
+
+      if (searchValue.trim()) {
+        const expanded = {};
+
+        data.forEach((category) => {
+          expanded[category._id] = true;
+        });
+
+        setExpandedCategories(expanded);
+      }
+
     } catch (error) {
-      console.error("Fetch accessories error:", error);
+      console.error(
+        "Fetch accessories error:",
+        error
+      );
 
       toast.error(
         language === "ar"
@@ -189,9 +286,30 @@ const Accessories = () => {
     }
   };
 
+  // ==========================================
+  // INITIAL FETCH
+  // ==========================================
+
   useEffect(() => {
     fetchAccessories();
-  }, []);
+  }, [sort, order]);
+
+  // ==========================================
+  // SEARCH DEBOUNCE
+  // ==========================================
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+
+      fetchAccessories(search);
+
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+    };
+
+  }, [search]);
 
   // ==========================================
   // STATISTICS
@@ -199,20 +317,24 @@ const Accessories = () => {
 
   const totalItems = useMemo(() => {
     return categories.reduce(
-      (total, category) => total + (category.items?.length || 0),
+      (total, category) =>
+        total + (category.items?.length || 0),
       0
     );
   }, [categories]);
 
   const totalQuantity = useMemo(() => {
     return categories.reduce((total, category) => {
+
       return (
         total +
         (category.items || []).reduce(
-          (sum, item) => sum + Number(item.quantity || 0),
+          (sum, item) =>
+            sum + Number(item.quantity || 0),
           0
         )
       );
+
     }, 0);
   }, [categories]);
 
@@ -263,6 +385,7 @@ const Accessories = () => {
       setCategoryLoading(true);
 
       if (editingCategory) {
+
         await axiosInstance.put(
           `/accessories/categories/${editingCategory._id}`,
           {
@@ -275,7 +398,9 @@ const Accessories = () => {
             ? "تم تعديل التصنيف بنجاح"
             : "Category updated successfully"
         );
+
       } else {
+
         await axiosInstance.post(
           "/accessories/categories",
           {
@@ -291,9 +416,15 @@ const Accessories = () => {
       }
 
       closeCategoryModal();
+
       await fetchAccessories();
+
     } catch (error) {
-      console.error("Category save error:", error);
+
+      console.error(
+        "Category save error:",
+        error
+      );
 
       toast.error(
         error?.response?.data?.message ||
@@ -301,6 +432,7 @@ const Accessories = () => {
             ? "حدث خطأ أثناء حفظ التصنيف"
             : "Failed to save category")
       );
+
     } finally {
       setCategoryLoading(false);
     }
@@ -311,6 +443,7 @@ const Accessories = () => {
   // ==========================================
 
   const handleDeleteCategory = async (categoryId) => {
+
     const confirmed = window.confirm(
       t.confirmDeleteCategory
     );
@@ -318,6 +451,7 @@ const Accessories = () => {
     if (!confirmed) return;
 
     try {
+
       await axiosInstance.delete(
         `/accessories/categories/${categoryId}`
       );
@@ -329,8 +463,13 @@ const Accessories = () => {
       );
 
       await fetchAccessories();
+
     } catch (error) {
-      console.error("Delete category error:", error);
+
+      console.error(
+        "Delete category error:",
+        error
+      );
 
       toast.error(
         error?.response?.data?.message ||
@@ -346,6 +485,7 @@ const Accessories = () => {
   // ==========================================
 
   const openAddItem = (categoryId = "") => {
+
     setEditingItem(null);
 
     setItemForm({
@@ -362,25 +502,39 @@ const Accessories = () => {
   };
 
   const openEditItem = (item) => {
+
     setEditingItem(item);
 
     setItemForm({
-      category: item.category?._id || item.category || "",
+      category:
+        item.category?._id ||
+        item.category ||
+        "",
+
       name: item.name || "",
-      quantity: Number(item.quantity || 0),
-      location: item.location || "",
+
+      quantity:
+        Number(item.quantity || 0),
+
+      location:
+        item.location || "",
+
       image: null,
     });
 
-    setImagePreview(item.image || "");
+    setImagePreview(
+      item.image || ""
+    );
 
     setShowItemModal(true);
   };
 
   const closeItemModal = () => {
+
     if (itemLoading) return;
 
     setShowItemModal(false);
+
     setEditingItem(null);
 
     setItemForm({
@@ -399,7 +553,11 @@ const Accessories = () => {
   // ==========================================
 
   const handleItemChange = (e) => {
-    const { name, value } = e.target;
+
+    const {
+      name,
+      value
+    } = e.target;
 
     setItemForm((prev) => ({
       ...prev,
@@ -412,7 +570,9 @@ const Accessories = () => {
   // ==========================================
 
   const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
+
+    const file =
+      e.target.files?.[0];
 
     if (!file) return;
 
@@ -421,9 +581,12 @@ const Accessories = () => {
       image: file,
     }));
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl =
+      URL.createObjectURL(file);
 
-    setImagePreview(previewUrl);
+    setImagePreview(
+      previewUrl
+    );
   };
 
   // ==========================================
@@ -431,42 +594,61 @@ const Accessories = () => {
   // ==========================================
 
   const handleItemSubmit = async (e) => {
+
     e.preventDefault();
 
     if (!itemForm.category) {
+
       toast.error(
         language === "ar"
           ? "من فضلك اختر التصنيف"
           : "Please select a category"
       );
+
       return;
     }
 
     if (!itemForm.name.trim()) {
-      toast.error(t.itemRequired);
+
+      toast.error(
+        t.itemRequired
+      );
+
       return;
     }
 
     if (!itemForm.location.trim()) {
-      toast.error(t.locationRequired);
+
+      toast.error(
+        t.locationRequired
+      );
+
       return;
     }
 
-    const quantity = Number(itemForm.quantity);
+    const quantity =
+      Number(itemForm.quantity);
 
-    if (Number.isNaN(quantity) || quantity < 0) {
+    if (
+      Number.isNaN(quantity) ||
+      quantity < 0
+    ) {
+
       toast.error(
         language === "ar"
           ? "الكمية يجب أن تكون رقمًا صحيحًا"
           : "Quantity must be a valid number"
       );
+
       return;
     }
 
     try {
+
       setItemLoading(true);
 
-      const formData = new FormData();
+      const formData =
+        new FormData();
 
       formData.append(
         "category",
@@ -488,9 +670,9 @@ const Accessories = () => {
         itemForm.location.trim()
       );
 
-      // IMPORTANT:
       // Backend expects upload.single("image")
       if (itemForm.image) {
+
         formData.append(
           "image",
           itemForm.image
@@ -498,6 +680,7 @@ const Accessories = () => {
       }
 
       if (editingItem) {
+
         await axiosInstance.put(
           `/accessories/items/${editingItem._id}`,
           formData
@@ -508,7 +691,9 @@ const Accessories = () => {
             ? "تم تعديل الصنف بنجاح"
             : "Item updated successfully"
         );
+
       } else {
+
         await axiosInstance.post(
           "/accessories/items",
           formData
@@ -524,8 +709,13 @@ const Accessories = () => {
       closeItemModal();
 
       await fetchAccessories();
+
     } catch (error) {
-      console.error("Item save error:", error);
+
+      console.error(
+        "Item save error:",
+        error
+      );
 
       toast.error(
         error?.response?.data?.message ||
@@ -533,6 +723,7 @@ const Accessories = () => {
             ? "حدث خطأ أثناء حفظ الصنف"
             : "Failed to save item")
       );
+
     } finally {
       setItemLoading(false);
     }
@@ -543,13 +734,16 @@ const Accessories = () => {
   // ==========================================
 
   const handleDeleteItem = async (itemId) => {
-    const confirmed = window.confirm(
-      t.confirmDeleteItem
-    );
+
+    const confirmed =
+      window.confirm(
+        t.confirmDeleteItem
+      );
 
     if (!confirmed) return;
 
     try {
+
       await axiosInstance.delete(
         `/accessories/items/${itemId}`
       );
@@ -561,8 +755,13 @@ const Accessories = () => {
       );
 
       await fetchAccessories();
+
     } catch (error) {
-      console.error("Delete item error:", error);
+
+      console.error(
+        "Delete item error:",
+        error
+      );
 
       toast.error(
         error?.response?.data?.message ||
@@ -577,35 +776,52 @@ const Accessories = () => {
   // QUICK QUANTITY UPDATE
   // ==========================================
 
-  const updateQuantity = async (item, amount) => {
-    const newQuantity = Math.max(
-      0,
-      Number(item.quantity || 0) + amount
-    );
+  const updateQuantity = async (
+    item,
+    amount
+  ) => {
+
+    const newQuantity =
+      Math.max(
+        0,
+        Number(item.quantity || 0) +
+          amount
+      );
 
     try {
+
       await axiosInstance.patch(
         `/accessories/items/${item._id}/quantity`,
         {
-          quantity: newQuantity,
+          quantity:
+            newQuantity,
         }
       );
 
-      setCategories((prevCategories) =>
-        prevCategories.map((category) => ({
-          ...category,
-          items: (category.items || []).map(
-            (currentItem) =>
-              currentItem._id === item._id
-                ? {
-                    ...currentItem,
-                    quantity: newQuantity,
-                  }
-                : currentItem
-          ),
-        }))
+      setCategories(
+        (prevCategories) =>
+          prevCategories.map(
+            (category) => ({
+              ...category,
+
+              items:
+                (category.items || []).map(
+                  (currentItem) =>
+                    currentItem._id ===
+                    item._id
+                      ? {
+                          ...currentItem,
+                          quantity:
+                            newQuantity,
+                        }
+                      : currentItem
+                ),
+            })
+          )
       );
+
     } catch (error) {
+
       console.error(
         "Update quantity error:",
         error
@@ -624,13 +840,17 @@ const Accessories = () => {
   // ==========================================
 
   if (loading) {
+
     return (
       <div
         dir={isRTL ? "rtl" : "ltr"}
         className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-6"
       >
+
         <div className="flex min-h-[60vh] items-center justify-center">
+
           <div className="flex flex-col items-center gap-4">
+
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800 dark:border-slate-700 dark:border-t-white" />
 
             <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -638,8 +858,11 @@ const Accessories = () => {
                 ? "جاري تحميل المخزون..."
                 : "Loading inventory..."}
             </p>
+
           </div>
+
         </div>
+
       </div>
     );
   }
@@ -653,6 +876,7 @@ const Accessories = () => {
       dir={isRTL ? "rtl" : "ltr"}
       className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white"
     >
+
       <div className="mx-auto w-full max-w-[1600px] p-4 md:p-6 lg:p-8">
 
         {/* ======================================
@@ -660,7 +884,8 @@ const Accessories = () => {
         ====================================== */}
 
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-<button
+
+          <button
             type="button"
             onClick={openAddCategory}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
@@ -671,7 +896,9 @@ const Accessories = () => {
 
             {t.addCategory}
           </button>
+
           <div>
+
             <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
               {t.title}
             </h1>
@@ -679,9 +906,131 @@ const Accessories = () => {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {t.subtitle}
             </p>
+
           </div>
 
-          
+        </div>
+
+        {/* ======================================
+            SEARCH + SORT
+        ====================================== */}
+
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_220px_180px]">
+
+            {/* SEARCH */}
+
+            <div>
+
+              <label className="mb-2 block text-sm font-medium">
+                {t.search}
+              </label>
+
+              <div className="relative">
+
+                <span
+                  className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-lg text-slate-400 ${
+                    isRTL
+                      ? "right-4"
+                      : "left-4"
+                  }`}
+                >
+                  🔎
+                </span>
+
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) =>
+                    setSearch(
+                      e.target.value
+                    )
+                  }
+                  placeholder={
+                    t.searchPlaceholder
+                  }
+                  className={`w-full rounded-xl border border-slate-200 bg-white py-3 text-sm outline-none transition focus:border-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:focus:border-slate-400 ${
+                    isRTL
+                      ? "pr-11 pl-4"
+                      : "pl-11 pr-4"
+                  }`}
+                />
+
+              </div>
+
+            </div>
+
+            {/* SORT */}
+
+            <div>
+
+              <label className="mb-2 block text-sm font-medium">
+                {t.sort}
+              </label>
+
+              <select
+                value={sort}
+                onChange={(e) =>
+                  setSort(
+                    e.target.value
+                  )
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:focus:border-slate-400"
+              >
+
+                <option value="createdAt">
+                  {t.newest}
+                </option>
+
+                <option value="name">
+                  {t.name}
+                </option>
+
+                <option value="quantity">
+                  {t.quantitySort}
+                </option>
+
+               
+
+              </select>
+
+            </div>
+
+            {/* ORDER */}
+
+            <div>
+
+              <label className="mb-2 block text-sm font-medium">
+                {language === "ar"
+                  ? "الاتجاه"
+                  : "Order"}
+              </label>
+
+              <select
+                value={order}
+                onChange={(e) =>
+                  setOrder(
+                    e.target.value
+                  )
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-500 dark:border-slate-700 dark:focus:border-slate-400"
+              >
+
+                <option value="desc">
+                  {t.descending}
+                </option>
+
+                <option value="asc">
+                  {t.ascending}
+                </option>
+
+              </select>
+
+            </div>
+
+          </div>
+
         </div>
 
         {/* ======================================
@@ -691,11 +1040,13 @@ const Accessories = () => {
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 
           {/* Categories */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
 
             <div className="flex items-center justify-between">
 
               <div>
+
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {t.categories}
                 </p>
@@ -703,6 +1054,7 @@ const Accessories = () => {
                 <p className="mt-2 text-3xl font-bold">
                   {categories.length}
                 </p>
+
               </div>
 
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-xl dark:bg-slate-800">
@@ -710,14 +1062,17 @@ const Accessories = () => {
               </div>
 
             </div>
+
           </div>
 
           {/* Items */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
 
             <div className="flex items-center justify-between">
 
               <div>
+
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {t.items}
                 </p>
@@ -725,6 +1080,7 @@ const Accessories = () => {
                 <p className="mt-2 text-3xl font-bold">
                   {totalItems}
                 </p>
+
               </div>
 
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-xl dark:bg-slate-800">
@@ -732,14 +1088,17 @@ const Accessories = () => {
               </div>
 
             </div>
+
           </div>
 
           {/* Quantity */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
 
             <div className="flex items-center justify-between">
 
               <div>
+
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {t.totalQuantity}
                 </p>
@@ -747,6 +1106,7 @@ const Accessories = () => {
                 <p className="mt-2 text-3xl font-bold">
                   {totalQuantity.toLocaleString()}
                 </p>
+
               </div>
 
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-xl dark:bg-slate-800">
@@ -754,7 +1114,9 @@ const Accessories = () => {
               </div>
 
             </div>
+
           </div>
+
         </div>
 
         {/* ======================================
@@ -762,322 +1124,393 @@ const Accessories = () => {
         ====================================== */}
 
         {categories.length === 0 ? (
+
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900">
 
             <div className="mb-4 text-5xl">
-              📦
+              {search.trim()
+                ? "🔎"
+                : "📦"}
             </div>
 
             <h3 className="text-lg font-semibold">
-              {t.empty}
+
+              {search.trim()
+                ? t.noSearchResults
+                : t.empty}
+
             </h3>
 
-            <button
-              type="button"
-              onClick={openAddCategory}
-              className="mt-5 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white dark:bg-white dark:text-slate-900"
-            >
-              {t.addCategory}
-            </button>
+            {search.trim() ? (
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSearch("")
+                }
+                className="mt-5 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+              >
+                {language === "ar"
+                  ? "مسح البحث"
+                  : "Clear Search"}
+              </button>
+
+            ) : (
+
+              <button
+                type="button"
+                onClick={
+                  openAddCategory
+                }
+                className="mt-5 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white dark:bg-white dark:text-slate-900"
+              >
+                {t.addCategory}
+              </button>
+
+            )}
 
           </div>
+
         ) : (
+
           <div className="space-y-4">
 
-            {categories.map((category) => {
+            {categories.map(
+              (category) => {
 
-              const isExpanded =
-                !!expandedCategories[
-                  category._id
-                ];
+                const isExpanded =
+                  !!expandedCategories[
+                    category._id
+                  ];
 
-              const categoryItems =
-                category.items || [];
+                const categoryItems =
+                  category.items || [];
 
-              const categoryQuantity =
-                categoryItems.reduce(
-                  (sum, item) =>
-                    sum +
-                    Number(item.quantity || 0),
-                  0
-                );
+                const categoryQuantity =
+                  categoryItems.reduce(
+                    (sum, item) =>
+                      sum +
+                      Number(
+                        item.quantity || 0
+                      ),
+                    0
+                  );
 
-              return (
-                <div
-                  key={category._id}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
-                >
+                return (
 
-                  {/* =================================
-                      CATEGORY HEADER
-                  ================================= */}
+                  <div
+                    key={category._id}
+                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                  >
 
-                  <div className="flex flex-col gap-4 p-4 sm:p-5">
+                    {/* =================================
+                        CATEGORY HEADER
+                    ================================= */}
 
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-col gap-4 p-4 sm:p-5">
 
-                      <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleCategory(
-                              category._id
-                            )
-                          }
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg transition hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
-                        >
-                          <span
-                            className={`transition-transform ${
-                              isExpanded
-                                ? "rotate-90"
-                                : ""
-                            }`}
+                        <div className="flex min-w-0 items-center gap-3">
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggleCategory(
+                                category._id
+                              )
+                            }
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg transition hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
                           >
-                            ›
-                          </span>
-                        </button>
 
-                        <div className="min-w-0">
-
-                          <h2 className="truncate text-lg font-bold">
-                            {category.name}
-                          </h2>
-
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-
-                            <span>
-                              {categoryItems.length}{" "}
-                              {t.items}
+                            <span
+                              className={`transition-transform ${
+                                isExpanded
+                                  ? "rotate-90"
+                                  : ""
+                              }`}
+                            >
+                              ›
                             </span>
 
-                            <span>•</span>
+                          </button>
 
-                            <span>
-                              {categoryQuantity.toLocaleString()}{" "}
-                              {t.pieces}
-                            </span>
+                          <div className="min-w-0">
+
+                            <h2 className="truncate text-lg font-bold">
+                              {category.name}
+                            </h2>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+
+                              <span>
+                                {
+                                  categoryItems.length
+                                }{" "}
+                                {t.items}
+                              </span>
+
+                              <span>
+                                •
+                              </span>
+
+                              <span>
+                                {
+                                  categoryQuantity.toLocaleString()
+                                }{" "}
+                                {t.pieces}
+                              </span>
+
+                            </div>
 
                           </div>
 
                         </div>
 
-                      </div>
+                        <div className="flex flex-wrap items-center gap-2">
 
-                      <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openAddItem(
+                                category._id
+                              )
+                            }
+                            className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                          >
+                            +{" "}
+                            {t.addItem}
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openAddItem(
-                              category._id
-                            )
-                          }
-                          className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-                        >
-                          + {t.addItem}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openEditCategory(
+                                category
+                              )
+                            }
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            {t.edit}
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openEditCategory(
-                              category
-                            )
-                          }
-                          className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          {t.edit}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDeleteCategory(
+                                category._id
+                              )
+                            }
+                            className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/30"
+                          >
+                            {t.delete}
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDeleteCategory(
-                              category._id
-                            )
-                          }
-                          className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/30"
-                        >
-                          {t.delete}
-                        </button>
+                        </div>
 
                       </div>
 
                     </div>
-                  </div>
 
-                  {/* =================================
-                      ITEMS
-                  ================================= */}
+                    {/* =================================
+                        ITEMS
+                    ================================= */}
 
-                  {isExpanded && (
-                    <div className="border-t border-slate-200 dark:border-slate-800">
+                    {isExpanded && (
 
-                      {categoryItems.length === 0 ? (
+                      <div className="border-t border-slate-200 dark:border-slate-800">
 
-                        <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-                          {t.noItems}
-                        </div>
+                        {categoryItems.length === 0 ? (
 
-                      ) : (
+                          <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+                            {t.noItems}
+                          </div>
 
-                        <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                        ) : (
 
-                          {categoryItems.map(
-                            (item) => (
+                          <div className="divide-y divide-slate-200 dark:divide-slate-800">
 
-                              <div
-                                key={item._id}
-                                className="p-4 transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                              >
+                            {categoryItems.map(
+                              (item) => (
 
-                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                                <div
+                                  key={
+                                    item._id
+                                  }
+                                  className="p-4 transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                                >
 
-                                  {/* Image */}
-                                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
 
-                                    {item.image ? (
-                                      <img
-                                        src={
-                                          item.image
-                                        }
-                                        alt={
+                                    {/* Image */}
+
+                                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+
+                                      {item.image ? (
+
+                                        <img
+                                          src={
+                                            item.image
+                                          }
+                                          alt={
+                                            item.name
+                                          }
+                                          className="h-full w-full object-cover"
+                                        />
+
+                                      ) : (
+
+                                        <div className="flex h-full w-full items-center justify-center text-2xl">
+                                          🧰
+                                        </div>
+
+                                      )}
+
+                                    </div>
+
+                                    {/* Item Info */}
+
+                                    <div className="min-w-0 flex-1">
+
+                                      <h3 className="truncate text-base font-semibold">
+                                        {
                                           item.name
                                         }
-                                        className="h-full w-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="flex h-full w-full items-center justify-center text-2xl">
-                                        🧰
+                                      </h3>
+
+                                      <div className="mt-2 flex flex-wrap gap-2">
+
+                                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                          📍{" "}
+                                          {
+                                            item.location ||
+                                            "-"
+                                          }
+                                        </span>
+
                                       </div>
-                                    )}
-
-                                  </div>
-
-                                  {/* Item Info */}
-                                  <div className="min-w-0 flex-1">
-
-                                    <h3 className="truncate text-base font-semibold">
-                                      {item.name}
-                                    </h3>
-
-                                    <div className="mt-2 flex flex-wrap gap-2">
-
-                                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                        📍{" "}
-                                        {item.location ||
-                                          "-"}
-                                      </span>
 
                                     </div>
 
-                                  </div>
+                                    {/* Quantity */}
 
-                                  {/* Quantity */}
-                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3">
 
-                                    <div className="text-start lg:text-center">
+                                      <div className="text-start lg:text-center">
 
-                                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        {t.quantity}
-                                      </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                          {
+                                            t.quantity
+                                          }
+                                        </p>
 
-                                      <p className="mt-1 text-xl font-bold">
-                                        {Number(
-                                          item.quantity ||
-                                            0
-                                        ).toLocaleString()}
-                                      </p>
-
-                                    </div>
-
-                                    <div className="flex items-center overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          updateQuantity(
-                                            item,
-                                            -1
-                                          )
-                                        }
-                                        disabled={
-                                          Number(
+                                        <p className="mt-1 text-xl font-bold">
+                                          {Number(
                                             item.quantity ||
                                               0
-                                          ) <= 0
+                                          ).toLocaleString()}
+                                        </p>
+
+                                      </div>
+
+                                      <div className="flex items-center overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            updateQuantity(
+                                              item,
+                                              -1
+                                            )
+                                          }
+                                          disabled={
+                                            Number(
+                                              item.quantity ||
+                                                0
+                                            ) <=
+                                            0
+                                          }
+                                          className="h-9 w-9 text-lg font-bold transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                        >
+                                          −
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            updateQuantity(
+                                              item,
+                                              1
+                                            )
+                                          }
+                                          className="h-9 w-9 border-s border-slate-200 text-lg font-bold transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                                        >
+                                          +
+                                        </button>
+
+                                      </div>
+
+                                    </div>
+
+                                    {/* Actions */}
+
+                                    <div className="flex items-center gap-2">
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          openEditItem(
+                                            item
+                                          )
                                         }
-                                        className="h-9 w-9 text-lg font-bold transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                                       >
-                                        −
+                                        {
+                                          t.edit
+                                        }
                                       </button>
 
                                       <button
                                         type="button"
                                         onClick={() =>
-                                          updateQuantity(
-                                            item,
-                                            1
+                                          handleDeleteItem(
+                                            item._id
                                           )
                                         }
-                                        className="h-9 w-9 border-s border-slate-200 text-lg font-bold transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                                        className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/30"
                                       >
-                                        +
+                                        {
+                                          t.delete
+                                        }
                                       </button>
 
                                     </div>
-
-                                  </div>
-
-                                  {/* Actions */}
-                                  <div className="flex items-center gap-2">
-
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        openEditItem(
-                                          item
-                                        )
-                                      }
-                                      className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                                    >
-                                      {t.edit}
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleDeleteItem(
-                                          item._id
-                                        )
-                                      }
-                                      className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/30"
-                                    >
-                                      {t.delete}
-                                    </button>
 
                                   </div>
 
                                 </div>
 
-                              </div>
+                              )
+                            )}
 
-                            )
-                          )}
+                          </div>
 
-                        </div>
-                      )}
+                        )}
 
-                    </div>
-                  )}
+                      </div>
 
-                </div>
-              );
-            })}
+                    )}
+
+                  </div>
+
+                );
+              }
+            )}
 
           </div>
+
         )}
+
       </div>
 
       {/* ========================================
@@ -1085,6 +1518,7 @@ const Accessories = () => {
       ======================================== */}
 
       {showCategoryModal && (
+
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
 
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
@@ -1092,15 +1526,19 @@ const Accessories = () => {
             <div className="mb-5">
 
               <h2 className="text-xl font-bold">
+
                 {editingCategory
                   ? t.editCategory
                   : t.addCategory}
+
               </h2>
 
             </div>
 
             <form
-              onSubmit={handleCategorySubmit}
+              onSubmit={
+                handleCategorySubmit
+              }
               className="space-y-4"
             >
 
@@ -1112,7 +1550,9 @@ const Accessories = () => {
 
                 <input
                   type="text"
-                  value={categoryName}
+                  value={
+                    categoryName
+                  }
                   onChange={(e) =>
                     setCategoryName(
                       e.target.value
@@ -1131,8 +1571,12 @@ const Accessories = () => {
 
                 <button
                   type="button"
-                  onClick={closeCategoryModal}
-                  disabled={categoryLoading}
+                  onClick={
+                    closeCategoryModal
+                  }
+                  disabled={
+                    categoryLoading
+                  }
                   className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
                 >
                   {t.cancel}
@@ -1140,7 +1584,9 @@ const Accessories = () => {
 
                 <button
                   type="submit"
-                  disabled={categoryLoading}
+                  disabled={
+                    categoryLoading
+                  }
                   className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900"
                 >
                   {categoryLoading
@@ -1153,7 +1599,9 @@ const Accessories = () => {
             </form>
 
           </div>
+
         </div>
+
       )}
 
       {/* ========================================
@@ -1161,6 +1609,7 @@ const Accessories = () => {
       ======================================== */}
 
       {showItemModal && (
+
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
 
           <div className="flex min-h-full items-center justify-center">
@@ -1170,15 +1619,19 @@ const Accessories = () => {
               <div className="mb-5">
 
                 <h2 className="text-xl font-bold">
+
                   {editingItem
                     ? t.editItem
                     : t.addItem}
+
                 </h2>
 
               </div>
 
               <form
-                onSubmit={handleItemSubmit}
+                onSubmit={
+                  handleItemSubmit
+                }
                 className="space-y-4"
               >
 
@@ -1192,10 +1645,15 @@ const Accessories = () => {
 
                   <select
                     name="category"
-                    value={itemForm.category}
-                    onChange={handleItemChange}
+                    value={
+                      itemForm.category
+                    }
+                    onChange={
+                      handleItemChange
+                    }
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:focus:border-slate-400"
                   >
+
                     <option value="">
                       {language === "ar"
                         ? "اختر التصنيف"
@@ -1204,14 +1662,23 @@ const Accessories = () => {
 
                     {categories.map(
                       (category) => (
+
                         <option
-                          key={category._id}
-                          value={category._id}
+                          key={
+                            category._id
+                          }
+                          value={
+                            category._id
+                          }
                         >
-                          {category.name}
+                          {
+                            category.name
+                          }
                         </option>
+
                       )
                     )}
+
                   </select>
 
                 </div>
@@ -1227,8 +1694,12 @@ const Accessories = () => {
                   <input
                     type="text"
                     name="name"
-                    value={itemForm.name}
-                    onChange={handleItemChange}
+                    value={
+                      itemForm.name
+                    }
+                    onChange={
+                      handleItemChange
+                    }
                     placeholder={
                       t.itemNamePlaceholder
                     }
@@ -1251,8 +1722,12 @@ const Accessories = () => {
                       type="number"
                       name="quantity"
                       min="0"
-                      value={itemForm.quantity}
-                      onChange={handleItemChange}
+                      value={
+                        itemForm.quantity
+                      }
+                      onChange={
+                        handleItemChange
+                      }
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:focus:border-slate-400"
                     />
 
@@ -1267,8 +1742,12 @@ const Accessories = () => {
                     <input
                       type="text"
                       name="location"
-                      value={itemForm.location}
-                      onChange={handleItemChange}
+                      value={
+                        itemForm.location
+                      }
+                      onChange={
+                        handleItemChange
+                      }
                       placeholder={
                         t.locationPlaceholder
                       }
@@ -1290,7 +1769,9 @@ const Accessories = () => {
                     </label>
 
                     <span className="text-xs text-slate-400">
-                      {t.imageOptional}
+                      {
+                        t.imageOptional
+                      }
                     </span>
 
                   </div>
@@ -1298,31 +1779,43 @@ const Accessories = () => {
                   <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 transition hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-slate-600">
 
                     {imagePreview ? (
+
                       <div className="relative h-40 w-full overflow-hidden rounded-xl">
 
                         <img
-                          src={imagePreview}
+                          src={
+                            imagePreview
+                          }
                           alt="Preview"
                           className="h-full w-full object-contain"
                         />
 
                       </div>
+
                     ) : (
+
                       <>
+
                         <div className="mb-2 text-3xl">
                           🖼️
                         </div>
 
                         <span className="text-sm font-medium">
-                          {t.chooseImage}
+                          {
+                            t.chooseImage
+                          }
                         </span>
+
                       </>
+
                     )}
 
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/jpg,image/webp"
-                      onChange={handleImageChange}
+                      onChange={
+                        handleImageChange
+                      }
                       className="hidden"
                     />
 
@@ -1331,9 +1824,13 @@ const Accessories = () => {
                   {editingItem &&
                     !itemForm.image &&
                     editingItem.image && (
+
                       <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                        {t.currentImage}
+                        {
+                          t.currentImage
+                        }
                       </p>
+
                     )}
 
                 </div>
@@ -1344,8 +1841,12 @@ const Accessories = () => {
 
                   <button
                     type="button"
-                    onClick={closeItemModal}
-                    disabled={itemLoading}
+                    onClick={
+                      closeItemModal
+                    }
+                    disabled={
+                      itemLoading
+                    }
                     className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
                   >
                     {t.cancel}
@@ -1353,7 +1854,9 @@ const Accessories = () => {
 
                   <button
                     type="submit"
-                    disabled={itemLoading}
+                    disabled={
+                      itemLoading
+                    }
                     className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900"
                   >
                     {itemLoading
@@ -1366,11 +1869,16 @@ const Accessories = () => {
               </form>
 
             </div>
+
           </div>
+
         </div>
+
       )}
+
     </div>
   );
 };
 
 export default Accessories;
+ 
