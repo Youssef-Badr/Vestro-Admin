@@ -47,6 +47,7 @@ const Accessories = () => {
   });
 
   const [imagePreview, setImagePreview] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // ==========================================
   // TRANSLATIONS
@@ -1346,19 +1347,26 @@ const Accessories = () => {
 
                                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
 
-                                      {item.image ? (
+                                   {item.image ? (
 
-                                        <img
-                                          src={
-                                            item.image
-                                          }
-                                          alt={
-                                            item.name
-                                          }
-                                          className="h-full w-full object-cover"
-                                        />
+  <button
+    type="button"
+    onClick={() =>
+      setSelectedImage({
+        url: item.image,
+        name: item.name,
+      })
+    }
+    className="group h-full w-full cursor-zoom-in"
+  >
+    <img
+      src={item.image}
+      alt={item.name}
+      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+    />
+  </button>
 
-                                      ) : (
+) : (
 
                                         <div className="flex h-full w-full items-center justify-center text-2xl">
                                           🧰
@@ -1876,6 +1884,53 @@ const Accessories = () => {
 
       )}
 
+
+      {/* ========================================
+          IMAGE LIGHTBOX
+      ======================================== */}
+
+      {selectedImage && (
+
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={() => setSelectedImage(null)}
+        >
+
+          {/* Close Button */}
+
+          <button
+            type="button"
+            onClick={() => setSelectedImage(null)}
+            className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-3xl text-white backdrop-blur-md transition hover:bg-white/20"
+            aria-label={
+              language === "ar"
+                ? "إغلاق"
+                : "Close"
+            }
+          >
+            ×
+          </button>
+
+          {/* Image Container */}
+
+          <div
+            className="relative flex max-h-[90vh] max-w-[95vw] items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.name || "Preview"}
+              className="max-h-[90vh] max-w-[95vw] rounded-xl object-contain shadow-2xl"
+            />
+
+          </div>
+
+        </div>
+
+      )}
+
+      
     </div>
   );
 };
