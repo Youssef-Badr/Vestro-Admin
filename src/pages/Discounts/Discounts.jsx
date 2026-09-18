@@ -1,10 +1,422 @@
-//  --------------------------------------------------------------------------------------------------------------
+// import { useEffect, useState } from "react";
+// import axios from "../../api/axiosInstance";
+// import { toast } from "react-toastify";
+// import { useLanguage } from "../../context/LanguageContext";
+// import { useTheme } from "../../context/ThemeContext";
+// import { FiTag, FiTrash2, FiEdit3, FiPackage, FiCheckCircle, FiTruck, FiInfo, FiPower, FiChevronRight } from "react-icons/fi";
+
+// const Discounts = () => {
+//   const { language } = useLanguage();
+//   const [discounts, setDiscounts] = useState([]);
+//   const [products, setProducts] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [editId, setEditId] = useState(null);
+
+//   const initialForm = {
+//     code: "",
+//     discountType: "percentage",
+//     percentage: 0,
+//     buyQuantity: 0,
+//     getQuantity: 0,
+//     getDiscount: 0,
+//     expiresAt: "",
+//     applicableProducts: [],
+//     appliesToAll: true,
+//     minOrderAmount: 0,
+//     maxDiscountAmount: 0,
+//     usageLimit: 0,
+//     usagePerUser: 1,
+//     freeShipping: false,
+//     isActive: true,
+//     isVisible: true,
+//   };
+
+//   const [form, setForm] = useState(initialForm);
+
+//   const fetchData = async () => {
+//     try {
+//       setLoading(true);
+//       const [disRes, prodRes] = await Promise.all([
+//         axios.get("/discounts"),
+//         axios.get("/products"),
+//       ]);
+//       setDiscounts(disRes.data);
+//       setProducts(prodRes.data);
+//     } catch (err) {
+//       toast.error(language === "ar" ? "خطأ في تحميل البيانات" : "Error loading data");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchData();
+//   }, []);
+
+//   const handleChange = (e) => {
+//     const { name, value, type, checked } = e.target;
+//     setForm((prev) => ({
+//       ...prev,
+//       [name]: type === "checkbox" ? checked : type === "number" ? Number(value) : value,
+//     }));
+//   };
+
+//   const toggleProductSelection = (id) => {
+//     setForm((prev) => {
+//       const isSelected = prev.applicableProducts.includes(id);
+//       return {
+//         ...prev,
+//         applicableProducts: isSelected
+//           ? prev.applicableProducts.filter((p) => p !== id)
+//           : [...prev.applicableProducts, id],
+//       };
+//     });
+//   };
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     try {
+//       const payload = {
+//         ...form,
+//         code: form.code.toUpperCase(),
+//         freeShipping: form.discountType === "free_shipping",
+//         applicableProducts: form.appliesToAll ? [] : form.applicableProducts,
+//         isVisible: form.isVisible,
+//       };
+
+//       if (editId) {
+//         await axios.put(`/discounts/${editId}`, payload);
+//         toast.success(language === "ar" ? "تم التحديث بنجاح" : "Updated successfully");
+//       } else {
+//         await axios.post("/discounts", payload);
+//         toast.success(language === "ar" ? "تم الإنشاء بنجاح" : "Created successfully");
+//       }
+
+//       setForm(initialForm);
+//       setEditId(null);
+//       fetchData();
+//     } catch (err) {
+//       toast.error(err.response?.data?.message || "Error");
+//     }
+//   };
+
+//   const toggleActiveStatus = async (id, currentStatus) => {
+//     try {
+//       await axios.put(`/discounts/${id}`, { isActive: !currentStatus });
+//       toast.dark(language === "ar" ? "تم تحديث الحالة" : "Status Updated");
+//       fetchData();
+//     } catch {
+//       toast.error("Error updating status");
+//     }
+//   };
+
+//   const startEdit = (d) => {
+//     setEditId(d._id);
+//     const productIds = d.applicableProducts?.map((p) => (typeof p === "object" ? p._id : p)) || [];
+//     setForm({
+//       ...d,
+//       expiresAt: d.expiresAt?.slice(0, 10),
+//       applicableProducts: productIds,
+//     });
+//     window.scrollTo({ top: 0, behavior: "smooth" });
+//   };
+
+//   const deleteDiscount = async (id) => {
+//     if (!window.confirm(language === "ar" ? "حذف هذا الخصم؟" : "Delete this discount?")) return;
+//     try {
+//       await axios.delete(`/discounts/${id}`);
+//       fetchData();
+//       toast.dark(language === "ar" ? "تم الحذف" : "Deleted");
+//     } catch { toast.error("Error"); }
+//   };
+
+//   const toggleVisibility = async (id, current) => {
+//   try {
+//     await axios.put(`/discounts/${id}`, {
+//       isVisible: !current,
+//     });
+
+//     toast.dark(
+//       language === "ar"
+//         ? "تم تحديث الظهور"
+//         : "Visibility updated"
+//     );
+
+//     fetchData();
+//   } catch (err) {
+//     toast.error("Error updating visibility");
+//   }
+// };
+// return (
+//     <div dir={language === "ar" ? "rtl" : "ltr"} className="min-h-screen p-4 sm:p-6 md:p-8 bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-all">
+//       <div className="max-w-7xl mx-auto">
+        
+//         {/* Header */}
+//         <div className="mb-8 md:mb-12 border-b border-gray-100 mt-16 dark:border-gray-900 pb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+//           <div>
+//             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black italic tracking-tighter uppercase">
+//               Vestro <span className="text-blue-600">{language === "ar" ? "خصومات" : "Discounts"}</span>
+//             </h1>
+//             <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40 mt-2">
+//               {language === "ar" ? "التحكم الاحترافي بالمتجر" : "Professional Store Control"}
+//             </p>
+//           </div>
+//         </div>
+
+//         {/* Form Section */}
+//         <div className="bg-gray-50 dark:bg-[#111] rounded-[30px] md:rounded-[40px] p-5 sm:p-8 md:p-10 mb-12 md:pb-16 border border-gray-100 dark:border-gray-800">
+//           <form onSubmit={handleSubmit} className="space-y-8 md:space-y-10">
+//             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+              
+//               {/* Col 1: Identity */}
+//               <div className="space-y-6">
+//                 <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-blue-600">
+//                   <FiTag/> 01. {language === "ar" ? "الهوية" : "Identity"}
+//                 </h3>
+//                 <div className="space-y-4">
+//                   <div>
+//                     <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "كود الكوبون" : "Coupon Code"}</label>
+//                     <input type="text" name="code" value={form.code} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all outline-none" placeholder="E.G. VESTRO50" required />
+//                   </div>
+//                   <div>
+//                     <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "نوع العرض" : "Offer Type"}</label>
+//                     <select name="discountType" value={form.discountType} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white outline-none">
+//                       <option value="percentage">{language === "ar" ? "نسبة مئوية %" : "Percentage %"}</option>
+//                       <option value="bogo">{language === "ar" ? "اشتري قطعة واحصل على الأخرى مجاناً" : "BOGO (Buy X Get Y Free)"}</option>
+//                       <option value="bogo_discount">{language === "ar" ? "خصم على القطعة الثانية" : "BOGO Discount %"}</option>
+//                       <option value="free_shipping">{language === "ar" ? "شحن مجاني 🚚" : "Free Shipping 🚚"}</option>
+//                     </select>
+//                   </div>
+//                   <div>
+//                     <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "تاريخ الصلاحية" : "Expiry Date"}</label>
+//                     <input type="date" name="expiresAt" value={form.expiresAt} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none" required />
+//                   </div>
+//                 </div>
+//               </div>
+
+//               {/* Col 2: Rules */}
+//               <div className="space-y-6">
+//                 <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-blue-600">
+//                   <FiInfo/> 02. {language === "ar" ? "المعايير" : "Parameters"}
+//                 </h3>
+//                 <div className="grid grid-cols-2 gap-4">
+//                   <div className="col-span-2">
+//                     <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "الحد الأدنى للشراء" : "Min Order (EGP)"}</label>
+//                     <input type="number" name="minOrderAmount" value={form.minOrderAmount} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none" />
+//                   </div>
+//                   <div>
+//                     <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "الاستخدام الكلي" : "Total Limit"}</label>
+//                     <input type="number" name="usageLimit" value={form.usageLimit} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none" />
+//                   </div>
+//                   <div>
+//                     <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "لكل عميل" : "Per User"}</label>
+//                     <input type="number" name="usagePerUser" value={form.usagePerUser} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none" />
+//                   </div>
+//                 </div>
+                
+//                 <div className="space-y-3">
+//                     <div className={`p-4 rounded-2xl flex items-center justify-between transition-all cursor-pointer ${form.appliesToAll ? 'bg-black text-white' : 'bg-gray-200 dark:bg-[#222]'}`} onClick={() => handleChange({ target: { name: 'appliesToAll', type: 'checkbox', checked: !form.appliesToAll } })}>
+//                       <div className="flex items-center gap-3">
+//                         <input type="checkbox" name="appliesToAll" checked={form.appliesToAll} onChange={handleChange} className="w-5 h-5 accent-blue-600 cursor-pointer" />
+//                         <span className="text-[10px] font-black uppercase">{language === "ar" ? "تطبيق على جميع المنتجات" : "Apply to all products"}</span>
+//                       </div>
+//                     </div>
+
+//                     <div className={`p-4 rounded-2xl flex items-center justify-between border transition-all ${form.isActive ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+//                       <span className="text-[10px] font-black uppercase">{language === "ar" ? "حالة الكوبون (نشط)" : "Status: Active"}</span>
+//                       <button 
+//                         type="button" 
+//                         onClick={() => setForm(prev => ({...prev, isActive: !prev.isActive}))}
+//                         className={`w-12 h-6 rounded-full relative transition-all ${form.isActive ? 'bg-green-500' : 'bg-gray-400'}`}
+//                       >
+//                         <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${language === 'ar' ? (form.isActive ? 'right-1' : 'right-7') : (form.isActive ? 'left-7' : 'left-1')}`} />
+//                       </button>
+//                     </div>
+
+//                 </div>
+//               </div>
+
+//               {/* Col 3: Values */}
+//               <div className="space-y-6">
+//                 <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-blue-600">
+//                   <FiPackage/> 03. {language === "ar" ? "القيمة" : "Values"}
+//                 </h3>
+//                 <div className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[30px] ring-1 ring-gray-200 dark:ring-gray-800 min-h-[180px] flex items-center justify-center">
+//                    {form.discountType === "percentage" && (
+//                      <div className="w-full">
+//                        <label className="text-center block text-[10px] font-black uppercase opacity-40 mb-4 italic">{language === "ar" ? "نسبة الخصم" : "Discount Percentage"}</label>
+//                        <input type="number" name="percentage" value={form.percentage} onChange={handleChange} className="w-full bg-transparent text-5xl font-black text-center focus:outline-none" />
+//                        <div className="text-center text-4xl font-black opacity-10">%</div>
+//                      </div>
+//                    )}
+//                    {form.discountType === "free_shipping" && (
+//                      <div className="py-10 text-center space-y-4">
+//                         <FiTruck size={50} className="mx-auto text-blue-600 animate-pulse" />
+//                         <p className="font-black uppercase text-sm tracking-tighter italic">{language === "ar" ? "شحن مجاني مفعل" : "Free Shipping Ready"}</p>
+//                      </div>
+//                    )}
+//                    {(form.discountType === "bogo" || form.discountType === "bogo_discount") && (
+//                      <div className="space-y-4 w-full">
+//                         <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111] p-4 rounded-xl">
+//                           <span className="text-[10px] font-bold opacity-40 uppercase">{language === "ar" ? "اشتري" : "Buy"}</span>
+//                           <input type="number" name="buyQuantity" value={form.buyQuantity} onChange={handleChange} className="w-12 bg-transparent font-black text-xl text-center outline-none" />
+//                         </div>
+//                         <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111] p-4 rounded-xl">
+//                           <span className="text-[10px] font-bold opacity-40 uppercase">{language === "ar" ? "احصل على" : "Get"}</span>
+//                           <input type="number" name="getQuantity" value={form.getQuantity} onChange={handleChange} className="w-12 bg-transparent font-black text-xl text-center outline-none" />
+//                         </div>
+//                         {form.discountType === "bogo_discount" && (
+//                           <input type="number" name="getDiscount" value={form.getDiscount} onChange={handleChange} className="w-full bg-black text-white p-3 rounded-xl text-center font-black outline-none" placeholder={language === "ar" ? "خصم الهدية %" : "Gift Discount %"} />
+//                         )}
+//                      </div>
+//                    )}
+//                 </div>
+//               </div>
+//             </div>
+
+//             {/* Product Selector */}
+//             {!form.appliesToAll && (
+//               <div className="pt-10 border-t border-gray-200 dark:border-gray-800">
+//                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+//                    <h3 className="text-sm font-black uppercase tracking-widest">
+//                      {language === "ar" ? "تحديد المنتجات" : "Select Products"} ({form.applicableProducts.length})
+//                    </h3>
+//                    <input type="text" placeholder={language === "ar" ? "ابحث عن منتج..." : "Search products..."} className="bg-white dark:bg-[#1a1a1a] border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-full px-6 py-3 text-xs w-full md:w-64 outline-none focus:ring-2 focus:ring-blue-600 transition-all" onChange={(e) => setSearchTerm(e.target.value)} />
+//                 </div>
+//                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 max-h-96 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+//                   {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
+//                     <div key={p._id} onClick={() => toggleProductSelection(p._id)} className={`relative p-2 rounded-3xl cursor-pointer transition-all border-2 ${form.applicableProducts.includes(p._id) ? 'border-black dark:border-white bg-white dark:bg-[#222] scale-95 shadow-lg' : 'border-transparent opacity-60 grayscale'}`}>
+//                       <img src={p.images[0]?.url} alt={p.name} className="w-full aspect-square object-cover rounded-2xl mb-2" />
+//                       <p className="text-[9px] font-black uppercase truncate text-center px-1">{p.name}</p>
+//                       {form.applicableProducts.includes(p._id) && <FiCheckCircle className="absolute -top-1 -right-1 bg-black dark:bg-white text-white dark:text-black rounded-full p-0.5" size={18} />}
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+//             )}
+
+//             <button type="submit" className="w-full bg-black dark:bg-white text-white dark:text-black py-5 md:py-6 rounded-[25px] md:rounded-[30px] font-black uppercase tracking-[4px] md:tracking-[10px] text-base md:text-lg hover:shadow-2xl transition-all active:scale-[0.98] mt-4">
+//               {editId ? (language === "ar" ? "تحديث التغييرات" : "Save Changes") : (language === "ar" ? "تفعيل الكوبون" : "Activate Coupon")}
+//             </button>
+//           </form>
+//         </div>
+
+//         {/* Display Cards */}
+//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+//           {discounts.map(d => {
+//             const isExpired = new Date(d.expiresAt) < new Date();
+//             return (
+//               <div key={d._id} className={`bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-gray-900 rounded-[35px] p-6 md:p-8 relative overflow-hidden group transition-all flex flex-col justify-between ${!d.isActive ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                
+//                 <div className="flex justify-between items-start mb-6">
+//                   <div>
+//                     <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter truncate max-w-[150px]">{d.code}</h2>
+//                     <button 
+//                       onClick={() => toggleActiveStatus(d._id, d.isActive)}
+//                       className={`text-[9px] font-black uppercase px-2 py-1 rounded flex items-center gap-1 mt-1 transition-colors ${d.isActive ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}
+//                     >
+//                       <FiPower size={10} />
+//                       {d.isActive ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'معطل' : 'Disabled')}
+//                     </button>
+//                   </div>
+//                   <div className="flex gap-2">
+//                     <button onClick={() => startEdit(d)} className="p-2.5 bg-white dark:bg-[#1a1a1a] rounded-full shadow-sm hover:bg-black hover:text-white transition-all"><FiEdit3 size={14}/></button>
+//                     <button
+//   onClick={() => toggleVisibility(d._id, d.isVisible)}
+//   className={`p-2.5 rounded-full transition-all ${
+//     d.isVisible
+//       ? "bg-blue-500 text-white"
+//       : "bg-gray-300 text-black"
+//   }`}
+// >
+//   👁
+// </button>
+//                     <button onClick={() => deleteDiscount(d._id)} className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all"><FiTrash2 size={14}/></button>
+//                   </div>
+//                 </div>
+                
+
+//                 <div className="mb-6 p-4 bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800">
+//                   <p className="text-[12px] md:text-sm font-black uppercase italic">
+//                     {d.discountType === 'percentage' && `🔥 ${d.percentage}% ${language === "ar" ? "خصم على الطلب" : "OFF Order"}`}
+//                     {d.discountType === 'bogo' && `🛍 ${language === "ar" ? "اشتري" : "Buy"} ${d.buyQuantity} ${language === "ar" ? "واحصل على" : "Get"} ${d.getQuantity} ${language === "ar" ? "مجاناً" : "FREE"}`}
+//                     {d.discountType === 'bogo_discount' && `💸 ${d.getDiscount}% ${language === "ar" ? "خصم على القطعة" : "OFF On Item"}`}
+//                     {d.discountType === 'free_shipping' && `🚚 ${language === "ar" ? "شحن مجاني" : "FREE SHIPPING"}`}
+//                   </p>
+//                   <div className="mt-2 flex items-center gap-2">
+//                     <div className={`w-2 h-2 rounded-full ${isExpired ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
+//                     <span className="text-[10px] font-bold uppercase opacity-60">
+//                       {isExpired ? (language === "ar" ? "منتهي" : "Expired") : (language === "ar" ? "مباشر الآن" : "Live Now")}
+//                     </span>
+//                   </div>
+//                 </div>
+
+//                 {/* Selected Products List */}
+//                 <div className="space-y-3 mb-8 flex-1">
+//                   <div className="flex items-center gap-2 opacity-40">
+//                     <FiPackage size={14} />
+//                     <span className="text-[10px] font-black uppercase tracking-widest">
+//                       {d.appliesToAll ? (language === "ar" ? "جميع المنتجات" : "All Products") : (language === "ar" ? "المنتجات المشمولة" : "Included Products")}
+//                     </span>
+//                   </div>
+//                   {!d.appliesToAll && (
+//                     <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-hide pr-1">
+//                       {d.applicableProducts?.map((p, i) => (
+//                         <div key={i} className="flex items-center gap-3 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-gray-50 dark:border-gray-800">
+//                           <img 
+//                             src={typeof p === 'object' ? p.images[0]?.url : products.find(prod => prod._id === p)?.images[0]?.url} 
+//                             className="w-7 h-7 rounded-lg object-cover" 
+//                             alt=""
+//                           />
+//                           <span className="text-[9px] font-black uppercase truncate flex-1">
+//                             {typeof p === 'object' ? p.name : products.find(prod => prod._id === p)?.name}
+//                           </span>
+//                         </div>
+//                       ))}
+//                     </div>
+//                   )}
+//                 </div>
+
+//                 <div className="pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-wrap justify-between items-center gap-2">
+//                   <div className="text-[9px] font-black uppercase opacity-30">
+//                     {language === "ar" ? "ينتهي:" : "Exp:"} {new Date(d.expiresAt).toLocaleDateString(language === "ar" ? 'ar-EG' : 'en-US')}
+//                   </div>
+//                   <div className="text-[9px] font-black uppercase bg-blue-600 text-white px-2.5 py-1 rounded-full italic shrink-0">
+//                     {language === "ar" ? "الأدنى:" : "Min:"} {d.minOrderAmount} EGP
+//                   </div>
+//                 </div>
+//               </div>
+//             );
+//           })}
+//         </div>
+//       </div>
+//     </div>
+//   );
+
+// };
+
+// export default Discounts;
+
+// -------------------------------  ------------------------------    ----------------------------------
+
 import { useEffect, useState } from "react";
 import axios from "../../api/axiosInstance";
 import { toast } from "react-toastify";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
-import { FiTag, FiTrash2, FiEdit3, FiPackage, FiCheckCircle, FiTruck, FiInfo, FiPower, FiChevronRight } from "react-icons/fi";
+import {
+  FiTag,
+  FiTrash2,
+  FiEdit3,
+  FiPackage,
+  FiCheckCircle,
+  FiTruck,
+  FiInfo,
+  FiPower,
+  FiImage,
+  FiX,
+} from "react-icons/fi";
 
 const Discounts = () => {
   const { language } = useLanguage();
@@ -13,6 +425,10 @@ const Discounts = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [editId, setEditId] = useState(null);
+
+  // 🖼️ Offer image
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
 
   const initialForm = {
     code: "",
@@ -38,14 +454,20 @@ const Discounts = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+
       const [disRes, prodRes] = await Promise.all([
         axios.get("/discounts"),
         axios.get("/products"),
       ]);
+
       setDiscounts(disRes.data);
       setProducts(prodRes.data);
     } catch (err) {
-      toast.error(language === "ar" ? "خطأ في تحميل البيانات" : "Error loading data");
+      toast.error(
+        language === "ar"
+          ? "خطأ في تحميل البيانات"
+          : "Error loading data"
+      );
     } finally {
       setLoading(false);
     }
@@ -57,15 +479,48 @@ const Discounts = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : type === "number" ? Number(value) : value,
+      [name]:
+        type === "checkbox"
+          ? checked
+          : type === "number"
+          ? Number(value)
+          : value,
     }));
+  };
+
+  // =====================================================
+  // 🖼️ Handle Offer Image
+  // =====================================================
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setImageFile(file);
+
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+  };
+
+  const removeSelectedImage = () => {
+    setImageFile(null);
+    setImagePreview("");
+  };
+
+  const resetForm = () => {
+    setForm(initialForm);
+    setEditId(null);
+    setImageFile(null);
+    setImagePreview("");
   };
 
   const toggleProductSelection = (id) => {
     setForm((prev) => {
       const isSelected = prev.applicableProducts.includes(id);
+
       return {
         ...prev,
         applicableProducts: isSelected
@@ -77,35 +532,84 @@ const Discounts = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
       const payload = {
         ...form,
         code: form.code.toUpperCase(),
         freeShipping: form.discountType === "free_shipping",
-        applicableProducts: form.appliesToAll ? [] : form.applicableProducts,
+        applicableProducts: form.appliesToAll
+          ? []
+          : form.applicableProducts,
         isVisible: form.isVisible,
       };
 
-      if (editId) {
-        await axios.put(`/discounts/${editId}`, payload);
-        toast.success(language === "ar" ? "تم التحديث بنجاح" : "Updated successfully");
-      } else {
-        await axios.post("/discounts", payload);
-        toast.success(language === "ar" ? "تم الإنشاء بنجاح" : "Created successfully");
+      // =====================================================
+      // 🖼️ Use FormData because image is included
+      // =====================================================
+      const formData = new FormData();
+
+      Object.entries(payload).forEach(([key, value]) => {
+        if (key === "applicableProducts") {
+          formData.append(
+            key,
+            JSON.stringify(value)
+          );
+        } else if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
+      });
+
+      // 🖼️ Add image only if selected
+      if (imageFile) {
+        formData.append("image", imageFile);
       }
 
-      setForm(initialForm);
-      setEditId(null);
+      if (editId) {
+        await axios.put(
+          `/discounts/${editId}`,
+          formData
+        );
+
+        toast.success(
+          language === "ar"
+            ? "تم التحديث بنجاح"
+            : "Updated successfully"
+        );
+      } else {
+        await axios.post(
+          "/discounts",
+          formData
+        );
+
+        toast.success(
+          language === "ar"
+            ? "تم الإنشاء بنجاح"
+            : "Created successfully"
+        );
+      }
+
+      resetForm();
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Error");
+      toast.error(
+        err.response?.data?.message || "Error"
+      );
     }
   };
 
   const toggleActiveStatus = async (id, currentStatus) => {
     try {
-      await axios.put(`/discounts/${id}`, { isActive: !currentStatus });
-      toast.dark(language === "ar" ? "تم تحديث الحالة" : "Status Updated");
+      await axios.put(`/discounts/${id}`, {
+        isActive: !currentStatus,
+      });
+
+      toast.dark(
+        language === "ar"
+          ? "تم تحديث الحالة"
+          : "Status Updated"
+      );
+
       fetchData();
     } catch {
       toast.error("Error updating status");
@@ -114,84 +618,257 @@ const Discounts = () => {
 
   const startEdit = (d) => {
     setEditId(d._id);
-    const productIds = d.applicableProducts?.map((p) => (typeof p === "object" ? p._id : p)) || [];
+
+    const productIds =
+      d.applicableProducts?.map((p) =>
+        typeof p === "object" ? p._id : p
+      ) || [];
+
     setForm({
       ...d,
       expiresAt: d.expiresAt?.slice(0, 10),
       applicableProducts: productIds,
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // 🖼️ Show existing offer image
+    setImageFile(null);
+    setImagePreview(d.image?.url || "");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
   const deleteDiscount = async (id) => {
-    if (!window.confirm(language === "ar" ? "حذف هذا الخصم؟" : "Delete this discount?")) return;
+    if (
+      !window.confirm(
+        language === "ar"
+          ? "حذف هذا الخصم؟"
+          : "Delete this discount?"
+      )
+    )
+      return;
+
     try {
       await axios.delete(`/discounts/${id}`);
+
       fetchData();
-      toast.dark(language === "ar" ? "تم الحذف" : "Deleted");
-    } catch { toast.error("Error"); }
+
+      toast.dark(
+        language === "ar"
+          ? "تم الحذف"
+          : "Deleted"
+      );
+    } catch {
+      toast.error("Error");
+    }
   };
 
   const toggleVisibility = async (id, current) => {
-  try {
-    await axios.put(`/discounts/${id}`, {
-      isVisible: !current,
-    });
+    try {
+      await axios.put(`/discounts/${id}`, {
+        isVisible: !current,
+      });
 
-    toast.dark(
-      language === "ar"
-        ? "تم تحديث الظهور"
-        : "Visibility updated"
-    );
+      toast.dark(
+        language === "ar"
+          ? "تم تحديث الظهور"
+          : "Visibility updated"
+      );
 
-    fetchData();
-  } catch (err) {
-    toast.error("Error updating visibility");
-  }
-};
-return (
-    <div dir={language === "ar" ? "rtl" : "ltr"} className="min-h-screen p-4 sm:p-6 md:p-8 bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-all">
+      fetchData();
+    } catch (err) {
+      toast.error("Error updating visibility");
+    }
+  };
+
+  return (
+    <div
+      dir={language === "ar" ? "rtl" : "ltr"}
+      className="min-h-screen p-4 sm:p-6 md:p-8 bg-white dark:bg-[#0a0a0a] text-black dark:text-white transition-all"
+    >
       <div className="max-w-7xl mx-auto">
-        
         {/* Header */}
         <div className="mb-8 md:mb-12 border-b border-gray-100 mt-16 dark:border-gray-900 pb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black italic tracking-tighter uppercase">
-              Vestro <span className="text-blue-600">{language === "ar" ? "خصومات" : "Discounts"}</span>
+              Vestro{" "}
+              <span className="text-blue-600">
+                {language === "ar"
+                  ? "خصومات"
+                  : "Discounts"}
+              </span>
             </h1>
+
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40 mt-2">
-              {language === "ar" ? "التحكم الاحترافي بالمتجر" : "Professional Store Control"}
+              {language === "ar"
+                ? "التحكم الاحترافي بالمتجر"
+                : "Professional Store Control"}
             </p>
           </div>
         </div>
 
         {/* Form Section */}
         <div className="bg-gray-50 dark:bg-[#111] rounded-[30px] md:rounded-[40px] p-5 sm:p-8 md:p-10 mb-12 md:pb-16 border border-gray-100 dark:border-gray-800">
-          <form onSubmit={handleSubmit} className="space-y-8 md:space-y-10">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-8 md:space-y-10"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
-              
               {/* Col 1: Identity */}
               <div className="space-y-6">
                 <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-blue-600">
-                  <FiTag/> 01. {language === "ar" ? "الهوية" : "Identity"}
+                  <FiTag />
+                  01.{" "}
+                  {language === "ar"
+                    ? "الهوية"
+                    : "Identity"}
                 </h3>
+
                 <div className="space-y-4">
                   <div>
-                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "كود الكوبون" : "Coupon Code"}</label>
-                    <input type="text" name="code" value={form.code} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all outline-none" placeholder="E.G. VESTRO50" required />
+                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">
+                      {language === "ar"
+                        ? "كود الكوبون"
+                        : "Coupon Code"}
+                    </label>
+
+                    <input
+                      type="text"
+                      name="code"
+                      value={form.code}
+                      onChange={handleChange}
+                      className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all outline-none"
+                      placeholder="E.G. VESTRO50"
+                      required
+                    />
                   </div>
+
                   <div>
-                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "نوع العرض" : "Offer Type"}</label>
-                    <select name="discountType" value={form.discountType} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white outline-none">
-                      <option value="percentage">{language === "ar" ? "نسبة مئوية %" : "Percentage %"}</option>
-                      <option value="bogo">{language === "ar" ? "اشتري قطعة واحصل على الأخرى مجاناً" : "BOGO (Buy X Get Y Free)"}</option>
-                      <option value="bogo_discount">{language === "ar" ? "خصم على القطعة الثانية" : "BOGO Discount %"}</option>
-                      <option value="free_shipping">{language === "ar" ? "شحن مجاني 🚚" : "Free Shipping 🚚"}</option>
+                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">
+                      {language === "ar"
+                        ? "نوع العرض"
+                        : "Offer Type"}
+                    </label>
+
+                    <select
+                      name="discountType"
+                      value={form.discountType}
+                      onChange={handleChange}
+                      className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white outline-none"
+                    >
+                      <option value="percentage">
+                        {language === "ar"
+                          ? "نسبة مئوية %"
+                          : "Percentage %"}
+                      </option>
+
+                      <option value="bogo">
+                        {language === "ar"
+                          ? "اشتري قطعة واحصل على الأخرى مجاناً"
+                          : "BOGO (Buy X Get Y Free)"}
+                      </option>
+
+                      <option value="bogo_discount">
+                        {language === "ar"
+                          ? "خصم على القطعة الثانية"
+                          : "BOGO Discount %"}
+                      </option>
+
+                      <option value="free_shipping">
+                        {language === "ar"
+                          ? "شحن مجاني 🚚"
+                          : "Free Shipping 🚚"}
+                      </option>
                     </select>
                   </div>
+
                   <div>
-                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "تاريخ الصلاحية" : "Expiry Date"}</label>
-                    <input type="date" name="expiresAt" value={form.expiresAt} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none" required />
+                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">
+                      {language === "ar"
+                        ? "تاريخ الصلاحية"
+                        : "Expiry Date"}
+                    </label>
+
+                    <input
+                      type="date"
+                      name="expiresAt"
+                      value={form.expiresAt}
+                      onChange={handleChange}
+                      className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none"
+                      required
+                    />
+                  </div>
+
+                  {/* =====================================================
+                      🖼️ Offer Image
+                      ===================================================== */}
+                  <div>
+                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">
+                      {language === "ar"
+                        ? "صورة العرض"
+                        : "Offer Image"}
+                    </label>
+
+                    <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 ring-1 ring-gray-200 dark:ring-gray-800">
+                      {!imagePreview ? (
+                        <label className="cursor-pointer flex flex-col items-center justify-center min-h-[140px] border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-500 transition-all">
+                          <FiImage
+                            size={30}
+                            className="opacity-30 mb-2"
+                          />
+
+                          <span className="text-[10px] font-black uppercase opacity-50">
+                            {language === "ar"
+                              ? "اختيار صورة"
+                              : "Choose Image"}
+                          </span>
+
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg,image/webp"
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
+                        </label>
+                      ) : (
+                        <div className="relative">
+                          <img
+                            src={imagePreview}
+                            alt="Offer Preview"
+                            className="w-full h-40 object-cover rounded-xl"
+                          />
+
+                          <div className="absolute top-2 right-2 flex gap-2">
+                            <label className="cursor-pointer bg-black/80 text-white p-2 rounded-full hover:bg-black transition-all">
+                              <FiEdit3 size={14} />
+
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg,image/webp"
+                                onChange={handleImageChange}
+                                className="hidden"
+                              />
+                            </label>
+
+                            <button
+                              type="button"
+                              onClick={removeSelectedImage}
+                              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
+                            >
+                              <FiX size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="text-[9px] opacity-40 mt-2 text-center">
+                        {language === "ar"
+                          ? "اختياري — JPG / PNG / WEBP"
+                          : "Optional — JPG / PNG / WEBP"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -199,79 +876,241 @@ return (
               {/* Col 2: Rules */}
               <div className="space-y-6">
                 <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-blue-600">
-                  <FiInfo/> 02. {language === "ar" ? "المعايير" : "Parameters"}
+                  <FiInfo />
+                  02.{" "}
+                  {language === "ar"
+                    ? "المعايير"
+                    : "Parameters"}
                 </h3>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "الحد الأدنى للشراء" : "Min Order (EGP)"}</label>
-                    <input type="number" name="minOrderAmount" value={form.minOrderAmount} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none" />
+                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">
+                      {language === "ar"
+                        ? "الحد الأدنى للشراء"
+                        : "Min Order (EGP)"}
+                    </label>
+
+                    <input
+                      type="number"
+                      name="minOrderAmount"
+                      value={form.minOrderAmount}
+                      onChange={handleChange}
+                      className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none"
+                    />
                   </div>
+
                   <div>
-                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "الاستخدام الكلي" : "Total Limit"}</label>
-                    <input type="number" name="usageLimit" value={form.usageLimit} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none" />
+                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">
+                      {language === "ar"
+                        ? "الاستخدام الكلي"
+                        : "Total Limit"}
+                    </label>
+
+                    <input
+                      type="number"
+                      name="usageLimit"
+                      value={form.usageLimit}
+                      onChange={handleChange}
+                      className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none"
+                    />
                   </div>
+
                   <div>
-                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">{language === "ar" ? "لكل عميل" : "Per User"}</label>
-                    <input type="number" name="usagePerUser" value={form.usagePerUser} onChange={handleChange} className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none" />
+                    <label className="text-[10px] font-black uppercase opacity-40 mb-2 block">
+                      {language === "ar"
+                        ? "لكل عميل"
+                        : "Per User"}
+                    </label>
+
+                    <input
+                      type="number"
+                      name="usagePerUser"
+                      value={form.usagePerUser}
+                      onChange={handleChange}
+                      className="w-full bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl font-bold border-none ring-1 ring-gray-200 dark:ring-gray-800 outline-none"
+                    />
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
-                    <div className={`p-4 rounded-2xl flex items-center justify-between transition-all cursor-pointer ${form.appliesToAll ? 'bg-black text-white' : 'bg-gray-200 dark:bg-[#222]'}`} onClick={() => handleChange({ target: { name: 'appliesToAll', type: 'checkbox', checked: !form.appliesToAll } })}>
-                      <div className="flex items-center gap-3">
-                        <input type="checkbox" name="appliesToAll" checked={form.appliesToAll} onChange={handleChange} className="w-5 h-5 accent-blue-600 cursor-pointer" />
-                        <span className="text-[10px] font-black uppercase">{language === "ar" ? "تطبيق على جميع المنتجات" : "Apply to all products"}</span>
-                      </div>
-                    </div>
+                  <div
+                    className={`p-4 rounded-2xl flex items-center justify-between transition-all cursor-pointer ${
+                      form.appliesToAll
+                        ? "bg-black text-white"
+                        : "bg-gray-200 dark:bg-[#222]"
+                    }`}
+                    onClick={() =>
+                      handleChange({
+                        target: {
+                          name: "appliesToAll",
+                          type: "checkbox",
+                          checked: !form.appliesToAll,
+                        },
+                      })
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        name="appliesToAll"
+                        checked={form.appliesToAll}
+                        onChange={handleChange}
+                        className="w-5 h-5 accent-blue-600 cursor-pointer"
+                      />
 
-                    <div className={`p-4 rounded-2xl flex items-center justify-between border transition-all ${form.isActive ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
-                      <span className="text-[10px] font-black uppercase">{language === "ar" ? "حالة الكوبون (نشط)" : "Status: Active"}</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setForm(prev => ({...prev, isActive: !prev.isActive}))}
-                        className={`w-12 h-6 rounded-full relative transition-all ${form.isActive ? 'bg-green-500' : 'bg-gray-400'}`}
-                      >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${language === 'ar' ? (form.isActive ? 'right-1' : 'right-7') : (form.isActive ? 'left-7' : 'left-1')}`} />
-                      </button>
+                      <span className="text-[10px] font-black uppercase">
+                        {language === "ar"
+                          ? "تطبيق على جميع المنتجات"
+                          : "Apply to all products"}
+                      </span>
                     </div>
+                  </div>
 
+                  <div
+                    className={`p-4 rounded-2xl flex items-center justify-between border transition-all ${
+                      form.isActive
+                        ? "border-green-500/30 bg-green-500/5"
+                        : "border-red-500/30 bg-red-500/5"
+                    }`}
+                  >
+                    <span className="text-[10px] font-black uppercase">
+                      {language === "ar"
+                        ? "حالة الكوبون (نشط)"
+                        : "Status: Active"}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          isActive: !prev.isActive,
+                        }))
+                      }
+                      className={`w-12 h-6 rounded-full relative transition-all ${
+                        form.isActive
+                          ? "bg-green-500"
+                          : "bg-gray-400"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${
+                          language === "ar"
+                            ? form.isActive
+                              ? "right-1"
+                              : "right-7"
+                            : form.isActive
+                            ? "left-7"
+                            : "left-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Col 3: Values */}
               <div className="space-y-6">
                 <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-blue-600">
-                  <FiPackage/> 03. {language === "ar" ? "القيمة" : "Values"}
+                  <FiPackage />
+                  03.{" "}
+                  {language === "ar"
+                    ? "القيمة"
+                    : "Values"}
                 </h3>
+
                 <div className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[30px] ring-1 ring-gray-200 dark:ring-gray-800 min-h-[180px] flex items-center justify-center">
-                   {form.discountType === "percentage" && (
-                     <div className="w-full">
-                       <label className="text-center block text-[10px] font-black uppercase opacity-40 mb-4 italic">{language === "ar" ? "نسبة الخصم" : "Discount Percentage"}</label>
-                       <input type="number" name="percentage" value={form.percentage} onChange={handleChange} className="w-full bg-transparent text-5xl font-black text-center focus:outline-none" />
-                       <div className="text-center text-4xl font-black opacity-10">%</div>
-                     </div>
-                   )}
-                   {form.discountType === "free_shipping" && (
-                     <div className="py-10 text-center space-y-4">
-                        <FiTruck size={50} className="mx-auto text-blue-600 animate-pulse" />
-                        <p className="font-black uppercase text-sm tracking-tighter italic">{language === "ar" ? "شحن مجاني مفعل" : "Free Shipping Ready"}</p>
-                     </div>
-                   )}
-                   {(form.discountType === "bogo" || form.discountType === "bogo_discount") && (
-                     <div className="space-y-4 w-full">
-                        <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111] p-4 rounded-xl">
-                          <span className="text-[10px] font-bold opacity-40 uppercase">{language === "ar" ? "اشتري" : "Buy"}</span>
-                          <input type="number" name="buyQuantity" value={form.buyQuantity} onChange={handleChange} className="w-12 bg-transparent font-black text-xl text-center outline-none" />
-                        </div>
-                        <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111] p-4 rounded-xl">
-                          <span className="text-[10px] font-bold opacity-40 uppercase">{language === "ar" ? "احصل على" : "Get"}</span>
-                          <input type="number" name="getQuantity" value={form.getQuantity} onChange={handleChange} className="w-12 bg-transparent font-black text-xl text-center outline-none" />
-                        </div>
-                        {form.discountType === "bogo_discount" && (
-                          <input type="number" name="getDiscount" value={form.getDiscount} onChange={handleChange} className="w-full bg-black text-white p-3 rounded-xl text-center font-black outline-none" placeholder={language === "ar" ? "خصم الهدية %" : "Gift Discount %"} />
-                        )}
-                     </div>
-                   )}
+                  {form.discountType === "percentage" && (
+                    <div className="w-full">
+                      <label className="text-center block text-[10px] font-black uppercase opacity-40 mb-4 italic">
+                        {language === "ar"
+                          ? "نسبة الخصم"
+                          : "Discount Percentage"}
+                      </label>
+
+                      <input
+                        type="number"
+                        name="percentage"
+                        value={form.percentage}
+                        onChange={handleChange}
+                        className="w-full bg-transparent text-5xl font-black text-center focus:outline-none"
+                      />
+
+                      <div className="text-center text-4xl font-black opacity-10">
+                        %
+                      </div>
+                    </div>
+                  )}
+
+                  {form.discountType === "free_shipping" && (
+                    <div className="py-10 text-center space-y-4">
+                      <FiTruck
+                        size={50}
+                        className="mx-auto text-blue-600 animate-pulse"
+                      />
+
+                      <p className="font-black uppercase text-sm tracking-tighter italic">
+                        {language === "ar"
+                          ? "شحن مجاني مفعل"
+                          : "Free Shipping Ready"}
+                      </p>
+                    </div>
+                  )}
+
+                  {(form.discountType === "bogo" ||
+                    form.discountType ===
+                      "bogo_discount") && (
+                    <div className="space-y-4 w-full">
+                      <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111] p-4 rounded-xl">
+                        <span className="text-[10px] font-bold opacity-40 uppercase">
+                          {language === "ar"
+                            ? "اشتري"
+                            : "Buy"}
+                        </span>
+
+                        <input
+                          type="number"
+                          name="buyQuantity"
+                          value={form.buyQuantity}
+                          onChange={handleChange}
+                          className="w-12 bg-transparent font-black text-xl text-center outline-none"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111] p-4 rounded-xl">
+                        <span className="text-[10px] font-bold opacity-40 uppercase">
+                          {language === "ar"
+                            ? "احصل على"
+                            : "Get"}
+                        </span>
+
+                        <input
+                          type="number"
+                          name="getQuantity"
+                          value={form.getQuantity}
+                          onChange={handleChange}
+                          className="w-12 bg-transparent font-black text-xl text-center outline-none"
+                        />
+                      </div>
+
+                      {form.discountType ===
+                        "bogo_discount" && (
+                        <input
+                          type="number"
+                          name="getDiscount"
+                          value={form.getDiscount}
+                          onChange={handleChange}
+                          className="w-full bg-black text-white p-3 rounded-xl text-center font-black outline-none"
+                          placeholder={
+                            language === "ar"
+                              ? "خصم الهدية %"
+                              : "Gift Discount %"
+                          }
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -280,75 +1119,239 @@ return (
             {!form.appliesToAll && (
               <div className="pt-10 border-t border-gray-200 dark:border-gray-800">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                   <h3 className="text-sm font-black uppercase tracking-widest">
-                     {language === "ar" ? "تحديد المنتجات" : "Select Products"} ({form.applicableProducts.length})
-                   </h3>
-                   <input type="text" placeholder={language === "ar" ? "ابحث عن منتج..." : "Search products..."} className="bg-white dark:bg-[#1a1a1a] border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-full px-6 py-3 text-xs w-full md:w-64 outline-none focus:ring-2 focus:ring-blue-600 transition-all" onChange={(e) => setSearchTerm(e.target.value)} />
+                  <h3 className="text-sm font-black uppercase tracking-widest">
+                    {language === "ar"
+                      ? "تحديد المنتجات"
+                      : "Select Products"}{" "}
+                    ({form.applicableProducts.length})
+                  </h3>
+
+                  <input
+                    type="text"
+                    placeholder={
+                      language === "ar"
+                        ? "ابحث عن منتج..."
+                        : "Search products..."
+                    }
+                    className="bg-white dark:bg-[#1a1a1a] border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-full px-6 py-3 text-xs w-full md:w-64 outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+                    onChange={(e) =>
+                      setSearchTerm(e.target.value)
+                    }
+                  />
                 </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 max-h-96 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
-                  {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
-                    <div key={p._id} onClick={() => toggleProductSelection(p._id)} className={`relative p-2 rounded-3xl cursor-pointer transition-all border-2 ${form.applicableProducts.includes(p._id) ? 'border-black dark:border-white bg-white dark:bg-[#222] scale-95 shadow-lg' : 'border-transparent opacity-60 grayscale'}`}>
-                      <img src={p.images[0]?.url} alt={p.name} className="w-full aspect-square object-cover rounded-2xl mb-2" />
-                      <p className="text-[9px] font-black uppercase truncate text-center px-1">{p.name}</p>
-                      {form.applicableProducts.includes(p._id) && <FiCheckCircle className="absolute -top-1 -right-1 bg-black dark:bg-white text-white dark:text-black rounded-full p-0.5" size={18} />}
-                    </div>
-                  ))}
+                  {products
+                    .filter((p) =>
+                      p.name
+                        .toLowerCase()
+                        .includes(
+                          searchTerm.toLowerCase()
+                        )
+                    )
+                    .map((p) => (
+                      <div
+                        key={p._id}
+                        onClick={() =>
+                          toggleProductSelection(p._id)
+                        }
+                        className={`relative p-2 rounded-3xl cursor-pointer transition-all border-2 ${
+                          form.applicableProducts.includes(
+                            p._id
+                          )
+                            ? "border-black dark:border-white bg-white dark:bg-[#222] scale-95 shadow-lg"
+                            : "border-transparent opacity-60 grayscale"
+                        }`}
+                      >
+                        <img
+                          src={p.images[0]?.url}
+                          alt={p.name}
+                          className="w-full aspect-square object-cover rounded-2xl mb-2"
+                        />
+
+                        <p className="text-[9px] font-black uppercase truncate text-center px-1">
+                          {p.name}
+                        </p>
+
+                        {form.applicableProducts.includes(
+                          p._id
+                        ) && (
+                          <FiCheckCircle
+                            className="absolute -top-1 -right-1 bg-black dark:bg-white text-white dark:text-black rounded-full p-0.5"
+                            size={18}
+                          />
+                        )}
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
 
-            <button type="submit" className="w-full bg-black dark:bg-white text-white dark:text-black py-5 md:py-6 rounded-[25px] md:rounded-[30px] font-black uppercase tracking-[4px] md:tracking-[10px] text-base md:text-lg hover:shadow-2xl transition-all active:scale-[0.98] mt-4">
-              {editId ? (language === "ar" ? "تحديث التغييرات" : "Save Changes") : (language === "ar" ? "تفعيل الكوبون" : "Activate Coupon")}
+            <button
+              type="submit"
+              className="w-full bg-black dark:bg-white text-white dark:text-black py-5 md:py-6 rounded-[25px] md:rounded-[30px] font-black uppercase tracking-[4px] md:tracking-[10px] text-base md:text-lg hover:shadow-2xl transition-all active:scale-[0.98] mt-4"
+            >
+              {editId
+                ? language === "ar"
+                  ? "تحديث التغييرات"
+                  : "Save Changes"
+                : language === "ar"
+                ? "تفعيل الكوبون"
+                : "Activate Coupon"}
             </button>
           </form>
         </div>
 
         {/* Display Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {discounts.map(d => {
-            const isExpired = new Date(d.expiresAt) < new Date();
+          {discounts.map((d) => {
+            const isExpired =
+              new Date(d.expiresAt) < new Date();
+
             return (
-              <div key={d._id} className={`bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-gray-900 rounded-[35px] p-6 md:p-8 relative overflow-hidden group transition-all flex flex-col justify-between ${!d.isActive ? 'opacity-50 grayscale' : 'opacity-100'}`}>
-                
+              <div
+                key={d._id}
+                className={`bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-gray-900 rounded-[35px] p-6 md:p-8 relative overflow-hidden group transition-all flex flex-col justify-between ${
+                  !d.isActive
+                    ? "opacity-50 grayscale"
+                    : "opacity-100"
+                }`}
+              >
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter truncate max-w-[150px]">{d.code}</h2>
-                    <button 
-                      onClick={() => toggleActiveStatus(d._id, d.isActive)}
-                      className={`text-[9px] font-black uppercase px-2 py-1 rounded flex items-center gap-1 mt-1 transition-colors ${d.isActive ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}
+                    <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter truncate max-w-[150px]">
+                      {d.code}
+                    </h2>
+
+                    <button
+                      onClick={() =>
+                        toggleActiveStatus(
+                          d._id,
+                          d.isActive
+                        )
+                      }
+                      className={`text-[9px] font-black uppercase px-2 py-1 rounded flex items-center gap-1 mt-1 transition-colors ${
+                        d.isActive
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-500 text-white"
+                      }`}
                     >
                       <FiPower size={10} />
-                      {d.isActive ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'معطل' : 'Disabled')}
+
+                      {d.isActive
+                        ? language === "ar"
+                          ? "نشط"
+                          : "Active"
+                        : language === "ar"
+                        ? "معطل"
+                        : "Disabled"}
                     </button>
                   </div>
+
                   <div className="flex gap-2">
-                    <button onClick={() => startEdit(d)} className="p-2.5 bg-white dark:bg-[#1a1a1a] rounded-full shadow-sm hover:bg-black hover:text-white transition-all"><FiEdit3 size={14}/></button>
                     <button
-  onClick={() => toggleVisibility(d._id, d.isVisible)}
-  className={`p-2.5 rounded-full transition-all ${
-    d.isVisible
-      ? "bg-blue-500 text-white"
-      : "bg-gray-300 text-black"
-  }`}
->
-  👁
-</button>
-                    <button onClick={() => deleteDiscount(d._id)} className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all"><FiTrash2 size={14}/></button>
+                      onClick={() => startEdit(d)}
+                      className="p-2.5 bg-white dark:bg-[#1a1a1a] rounded-full shadow-sm hover:bg-black hover:text-white transition-all"
+                    >
+                      <FiEdit3 size={14} />
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        toggleVisibility(
+                          d._id,
+                          d.isVisible
+                        )
+                      }
+                      className={`p-2.5 rounded-full transition-all ${
+                        d.isVisible
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-300 text-black"
+                      }`}
+                    >
+                      👁
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        deleteDiscount(d._id)
+                      }
+                      className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all"
+                    >
+                      <FiTrash2 size={14} />
+                    </button>
                   </div>
                 </div>
-                
+
+                {/* 🖼️ Offer Image */}
+                {d.image?.url && (
+                  <div className="mb-6 rounded-2xl overflow-hidden bg-white dark:bg-[#1a1a1a]">
+                    <img
+                      src={d.image.url}
+                      alt={d.code}
+                      className="w-full h-40 object-cover"
+                    />
+                  </div>
+                )}
 
                 <div className="mb-6 p-4 bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800">
                   <p className="text-[12px] md:text-sm font-black uppercase italic">
-                    {d.discountType === 'percentage' && `🔥 ${d.percentage}% ${language === "ar" ? "خصم على الطلب" : "OFF Order"}`}
-                    {d.discountType === 'bogo' && `🛍 ${language === "ar" ? "اشتري" : "Buy"} ${d.buyQuantity} ${language === "ar" ? "واحصل على" : "Get"} ${d.getQuantity} ${language === "ar" ? "مجاناً" : "FREE"}`}
-                    {d.discountType === 'bogo_discount' && `💸 ${d.getDiscount}% ${language === "ar" ? "خصم على القطعة" : "OFF On Item"}`}
-                    {d.discountType === 'free_shipping' && `🚚 ${language === "ar" ? "شحن مجاني" : "FREE SHIPPING"}`}
+                    {d.discountType === "percentage" &&
+                      `🔥 ${d.percentage}% ${
+                        language === "ar"
+                          ? "خصم على الطلب"
+                          : "OFF Order"
+                      }`}
+
+                    {d.discountType === "bogo" &&
+                      `🛍 ${
+                        language === "ar"
+                          ? "اشتري"
+                          : "Buy"
+                      } ${d.buyQuantity} ${
+                        language === "ar"
+                          ? "واحصل على"
+                          : "Get"
+                      } ${d.getQuantity} ${
+                        language === "ar"
+                          ? "مجاناً"
+                          : "FREE"
+                      }`}
+
+                    {d.discountType ===
+                      "bogo_discount" &&
+                      `💸 ${d.getDiscount}% ${
+                        language === "ar"
+                          ? "خصم على القطعة"
+                          : "OFF On Item"
+                      }`}
+
+                    {d.discountType ===
+                      "free_shipping" &&
+                      `🚚 ${
+                        language === "ar"
+                          ? "شحن مجاني"
+                          : "FREE SHIPPING"
+                      }`}
                   </p>
+
                   <div className="mt-2 flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${isExpired ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        isExpired
+                          ? "bg-red-500"
+                          : "bg-green-500 animate-pulse"
+                      }`}
+                    />
+
                     <span className="text-[10px] font-bold uppercase opacity-60">
-                      {isExpired ? (language === "ar" ? "منتهي" : "Expired") : (language === "ar" ? "مباشر الآن" : "Live Now")}
+                      {isExpired
+                        ? language === "ar"
+                          ? "منتهي"
+                          : "Expired"
+                        : language === "ar"
+                        ? "مباشر الآن"
+                        : "Live Now"}
                     </span>
                   </div>
                 </div>
@@ -357,34 +1360,73 @@ return (
                 <div className="space-y-3 mb-8 flex-1">
                   <div className="flex items-center gap-2 opacity-40">
                     <FiPackage size={14} />
+
                     <span className="text-[10px] font-black uppercase tracking-widest">
-                      {d.appliesToAll ? (language === "ar" ? "جميع المنتجات" : "All Products") : (language === "ar" ? "المنتجات المشمولة" : "Included Products")}
+                      {d.appliesToAll
+                        ? language === "ar"
+                          ? "جميع المنتجات"
+                          : "All Products"
+                        : language === "ar"
+                        ? "المنتجات المشمولة"
+                        : "Included Products"}
                     </span>
                   </div>
+
                   {!d.appliesToAll && (
                     <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-hide pr-1">
-                      {d.applicableProducts?.map((p, i) => (
-                        <div key={i} className="flex items-center gap-3 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-gray-50 dark:border-gray-800">
-                          <img 
-                            src={typeof p === 'object' ? p.images[0]?.url : products.find(prod => prod._id === p)?.images[0]?.url} 
-                            className="w-7 h-7 rounded-lg object-cover" 
-                            alt=""
-                          />
-                          <span className="text-[9px] font-black uppercase truncate flex-1">
-                            {typeof p === 'object' ? p.name : products.find(prod => prod._id === p)?.name}
-                          </span>
-                        </div>
-                      ))}
+                      {d.applicableProducts?.map(
+                        (p, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-3 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-gray-50 dark:border-gray-800"
+                          >
+                            <img
+                              src={
+                                typeof p === "object"
+                                  ? p.images[0]?.url
+                                  : products.find(
+                                      (prod) =>
+                                        prod._id === p
+                                    )?.images[0]?.url
+                              }
+                              className="w-7 h-7 rounded-lg object-cover"
+                              alt=""
+                            />
+
+                            <span className="text-[9px] font-black uppercase truncate flex-1">
+                              {typeof p === "object"
+                                ? p.name
+                                : products.find(
+                                    (prod) =>
+                                      prod._id === p
+                                  )?.name}
+                            </span>
+                          </div>
+                        )
+                      )}
                     </div>
                   )}
                 </div>
 
                 <div className="pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-wrap justify-between items-center gap-2">
                   <div className="text-[9px] font-black uppercase opacity-30">
-                    {language === "ar" ? "ينتهي:" : "Exp:"} {new Date(d.expiresAt).toLocaleDateString(language === "ar" ? 'ar-EG' : 'en-US')}
+                    {language === "ar"
+                      ? "ينتهي:"
+                      : "Exp:"}{" "}
+                    {new Date(
+                      d.expiresAt
+                    ).toLocaleDateString(
+                      language === "ar"
+                        ? "ar-EG"
+                        : "en-US"
+                    )}
                   </div>
+
                   <div className="text-[9px] font-black uppercase bg-blue-600 text-white px-2.5 py-1 rounded-full italic shrink-0">
-                    {language === "ar" ? "الأدنى:" : "Min:"} {d.minOrderAmount} EGP
+                    {language === "ar"
+                      ? "الأدنى:"
+                      : "Min:"}{" "}
+                    {d.minOrderAmount} EGP
                   </div>
                 </div>
               </div>
@@ -394,7 +1436,6 @@ return (
       </div>
     </div>
   );
-
 };
 
 export default Discounts;
