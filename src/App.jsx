@@ -223,6 +223,7 @@ const Logout = lazy(() => import("./pages/Logout/Logout"));
 const inventory = lazy(() => import("./pages/Inventory/Inventory"));
 const HomeSettings = lazy(() => import("./pages/HomeSettings/HomeSettings"));
 const ShippingDelaysPage = lazy(() => import("./pages/ShippingDelaysPage/ShippingDelaysPage"));
+const BlockedPhones = lazy(() => import("./pages/BlockedPhones/BlockedPhones"));
 
 const Announcements = lazy(() =>
   import("./pages/Announcements/Announcements")
@@ -307,6 +308,7 @@ function App() {
         <Route path="/meta-catalog-sync" element={wrap(MetaCatalogSync)} />
         <Route path="/message-logs" element={wrap(MessageLogs)} />
         <Route path="/ShippingDelaysPage" element={wrap(ShippingDelaysPage)} />
+        <Route path="/blocked-phones" element={wrap(BlockedPhones)} />
         <Route path="/logout" element={wrap(Logout)} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

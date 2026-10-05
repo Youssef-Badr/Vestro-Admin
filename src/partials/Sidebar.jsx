@@ -11,6 +11,7 @@ import {
   Megaphone,
   PlusCircle ,
   Globe,
+  PhoneOff,
 } from "lucide-react";
 
 import { useTheme } from "../context/ThemeContext";
@@ -65,6 +66,7 @@ useEffect(() => {
       { to: "/products", label: isRTL ? "المنتجات" : "Products", icon: "🧥" },
       { to: "/inventory", label: isRTL ? "المخزن" : "stock management", icon: "📦" },
       { to: "/orders", label: isRTL ? "الطلبات" : "Orders", icon: "📦" },
+      { to: "/blocked-phones", label: isRTL ? "الأرقام المحظورة" : "Blocked Phones", icon: <PhoneOff size={18} /> },
       {
         to: "/abandoned",
         label: isRTL ? "مدفوعات الفيزا" : "Visa Payments",
