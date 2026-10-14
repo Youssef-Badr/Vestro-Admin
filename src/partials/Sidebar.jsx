@@ -66,6 +66,7 @@ useEffect(() => {
       { to: "/products", label: isRTL ? "المنتجات" : "Products", icon: "🧥" },
       { to: "/inventory", label: isRTL ? "المخزن" : "stock management", icon: "📦" },
       { to: "/orders", label: isRTL ? "الطلبات" : "Orders", icon: "📦" },
+      { to: "/payments", label: isRTL ? "مدفوعات إنستا باي" : "InstaPay Payments", icon: "💸" },
       { to: "/blocked-phones", label: isRTL ? "الأرقام المحظورة" : "Blocked Phones", icon: <PhoneOff size={18} /> },
       {
         to: "/abandoned",
@@ -128,6 +129,7 @@ useEffect(() => {
 
 
   { to: "/whatsapp-settings", label: isRTL ? "إعدادات واتساب" : "WhatsApp Settings", icon: "⚙️" },
+  { to: "/settings", label: isRTL ? "إعدادات الدفع" : "Payment Settings", icon: "💳" },
   { to: "/message-logs", label: isRTL ? "سجلات الرسائل التسويقية" : "Message Logs", icon: "📜" },
   { to: "/ShippingDelaysPage", label: isRTL ? "تأخيرات الشحن" : "Shipping Delays", icon: "⏱️" },
 
