@@ -34,7 +34,7 @@ const Payments = () => {
       setOrders(Array.isArray(data.orders) ? data.orders.filter(isWalletPaymentOrder) : []);
       setTotalPages(Math.max(1, data.totalPages || 1));
     } catch {
-      toast.error(isRTL ? "فشل تحميل طلبات إنستا باي" : "Failed to load wallet transfer orders");
+      toast.error(isRTL ? "فشل تحميل المدفوعات الأونلاين" : "Failed to load wallet transfer orders");
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ const Payments = () => {
     >
       <div className="mx-auto max-w-6xl">
         <h1 className="mb-2 border-b border-black/10 pb-3 text-3xl font-extrabold dark:border-white/10">
-          {isRTL ? "مدفوعات إنستا باي" : "Wallet Transfer Payments"}
+          {isRTL ? "مدفوعات أونلاين" : "Online Payments"}
         </h1>
         <p className="mb-8 text-sm text-black/60 dark:text-white/60">
           {isRTL ? "طلبات العملاء وإثباتات التحويل المرفوعة" : "Customer orders and uploaded transfer receipts"}
@@ -70,7 +70,7 @@ const Payments = () => {
         {loading ? (
           <p className="py-12 text-center text-black/50 dark:text-white/50">{isRTL ? "جارٍ تحميل الطلبات..." : "Loading payments..."}</p>
         ) : visibleOrders.length === 0 ? (
-          <p className="py-12 text-center text-black/50 dark:text-white/50">{isRTL ? "لا توجد طلبات إنستا باي" : "No wallet transfer orders found"}</p>
+          <p className="py-12 text-center text-black/50 dark:text-white/50">{isRTL ? "لا توجد مدفوعات أونلاين" : "No online payments found"}</p>
         ) : (
           <div className="space-y-4">
             {visibleOrders.map((order) => {

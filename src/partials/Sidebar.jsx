@@ -66,7 +66,7 @@ useEffect(() => {
       { to: "/products", label: isRTL ? "المنتجات" : "Products", icon: "🧥" },
       { to: "/inventory", label: isRTL ? "المخزن" : "stock management", icon: "📦" },
       { to: "/orders", label: isRTL ? "الطلبات" : "Orders", icon: "📦" },
-      { to: "/payments", label: isRTL ? "مدفوعات إنستا باي" : "InstaPay Payments", icon: "💸" },
+      { to: "/payments", label: isRTL ? "مدفوعات أونلاين" : "Online Payments", icon: "💸" },
       { to: "/blocked-phones", label: isRTL ? "الأرقام المحظورة" : "Blocked Phones", icon: <PhoneOff size={18} /> },
       {
         to: "/abandoned",
