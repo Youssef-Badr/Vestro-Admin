@@ -1399,6 +1399,11 @@ const imageToShow = img.isNew
                 className="bg-white dark:bg-gray-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 mb-4 shadow-sm"
               >
                 <div className="flex gap-3 mb-3">
+                  {option.name === "Color" || option.name === "Size" ? (
+                    <span className="flex-1 p-2 border-b border-slate-200 dark:border-slate-700 text-sm font-bold">
+                      {option.name}
+                    </span>
+                  ) : (
                   <input
                     type="text"
                     placeholder="الخاصية (مثل: اللون)"
@@ -1406,15 +1411,16 @@ const imageToShow = img.isNew
                     onChange={(e) => {
                       const newOpts = [...data.options];
                       newOpts[optIdx].name = e.target.value;
-                      setData({ ...data, options: newOpts });
+                      setData({ ...data, options: newOpts, variants: generateVariants(newOpts, data.variants || []) });
                     }}
                     className="flex-1 p-2 border-b border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:border-indigo-500 outline-none font-bold"
                   />
+                  )}
                   <button
                     onClick={() =>
-                      setData({
-                        ...data,
-                        options: data.options.filter((_, i) => i !== optIdx),
+                      setData((prev) => {
+                        const options = prev.options.filter((_, i) => i !== optIdx);
+                        return { ...prev, options, variants: generateVariants(options, prev.variants || []) };
                       })
                     }
                     className="text-slate-400 hover:text-red-500 transition-colors"
@@ -1436,7 +1442,7 @@ const imageToShow = img.isNew
       if (val && !option.values.includes(val)) {
         const newOpts = [...data.options];
         newOpts[optIdx].values.push(val);
-        setData({ ...data, options: newOpts });
+        setData({ ...data, options: newOpts, variants: generateVariants(newOpts, data.variants || []) });
         e.target.value = "";
       }
     }
@@ -1447,7 +1453,7 @@ const imageToShow = img.isNew
     if (val && !option.values.includes(val)) {
       const newOpts = [...data.options];
       newOpts[optIdx].values.push(val);
-      setData({ ...data, options: newOpts });
+      setData({ ...data, options: newOpts, variants: generateVariants(newOpts, data.variants || []) });
       e.target.value = "";
     }
   }}
@@ -1464,7 +1470,7 @@ const imageToShow = img.isNew
                         onClick={() => {
                           const newOpts = [...data.options];
                           newOpts[optIdx].values.splice(vIdx, 1);
-                          setData({ ...data, options: newOpts });
+                          setData({ ...data, options: newOpts, variants: generateVariants(newOpts, data.variants || []) });
                         }}
                         className="hover:text-red-500"
                       >
@@ -1478,9 +1484,9 @@ const imageToShow = img.isNew
 
             <button
               onClick={() =>
-                setData({
-                  ...data,
-                  options: [...data.options, { name: "", values: [] }],
+                setData((prev) => {
+                  const options = [...prev.options, { name: "", values: [] }];
+                  return { ...prev, options, variants: generateVariants(options, prev.variants || []) };
                 })
               }
               className="w-full py-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-500 hover:text-indigo-600 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all flex items-center justify-center gap-2"
