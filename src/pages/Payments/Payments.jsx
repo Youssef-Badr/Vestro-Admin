@@ -7,7 +7,30 @@ const PAGE_SIZE = 20;
 
 const isWalletPaymentOrder = (order) => {
   const method = String(order.paymentMethod || "").trim().toLowerCase();
-  return ["instapay", "insta pay", "انستا باي", "إنستا باي"].includes(method);
+  return [
+    "instapay",
+    "insta pay",
+    "انستا باي",
+    "إنستا باي",
+    "vodafone_cash",
+    "vodafone cash",
+    "فودافون كاش",
+    "ڤودافون كاش",
+  ].includes(method);
+};
+
+const getPaymentMethodLabel = (method, isRTL) => {
+  const normalizedMethod = String(method || "").trim().toLowerCase();
+  const isVodafoneCash = [
+    "vodafone_cash",
+    "vodafone cash",
+    "فودافون كاش",
+    "ڤودافون كاش",
+  ].includes(normalizedMethod);
+
+  return isVodafoneCash
+    ? isRTL ? "فودافون كاش" : "Vodafone Cash"
+    : isRTL ? "إنستا باي" : "InstaPay";
 };
 
 const Payments = () => {
@@ -77,6 +100,7 @@ const Payments = () => {
               const proofUrl = order.proofImage?.url || order.paymentProof;
               const customerName = order.guestInfo?.name || order.customerName || (isRTL ? "عميل" : "Customer");
               const isPaid = Boolean(order.isPaid);
+              const paymentMethodLabel = getPaymentMethodLabel(order.paymentMethod, isRTL);
 
               return (
                 <article key={order._id} className="flex flex-col gap-5 rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-black lg:flex-row lg:items-center lg:justify-between">
@@ -93,9 +117,14 @@ const Payments = () => {
 
                   <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
                     {proofUrl ? (
-                      <button type="button" onClick={() => setModalImage(proofUrl)} className="rounded-lg focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white">
-                        <img src={proofUrl} alt={isRTL ? "إثبات الدفع" : "Payment proof"} className="h-32 w-32 rounded-lg border border-black/20 object-cover dark:border-white/20" />
-                      </button>
+                      <div className="flex flex-col items-start gap-2">
+                        <span className="rounded-full bg-black px-3 py-1 text-xs font-bold text-white dark:bg-white dark:text-black">
+                          {paymentMethodLabel}
+                        </span>
+                        <button type="button" onClick={() => setModalImage(proofUrl)} className="rounded-lg focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white">
+                          <img src={proofUrl} alt={`${isRTL ? "إثبات الدفع" : "Payment proof"} - ${paymentMethodLabel}`} className="h-32 w-32 rounded-lg border border-black/20 object-cover dark:border-white/20" />
+                        </button>
+                      </div>
                     ) : (
                       <p className="text-sm text-black/50 dark:text-white/50">{isRTL ? "لا توجد صورة إثبات" : "No payment proof attached"}</p>
                     )}
